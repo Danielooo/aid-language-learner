@@ -210,18 +210,62 @@ imports, een matcher, en geen poging tot full-auth in proxy.
 
 ---
 
-## NOG TE DOEN — `next/image`, `next/link`, `Metadata` regels
+## 2026-05-27 20:13 — `next/image` en `next/link` sectie toegevoegd
+
+**Type:** rules-update
+**Files:** `.cursor/rules/nextjs-app-router.mdc`
+**Before:** Geen regels over `<Image>` of `<Link>` — agent zou waarschijnlijk rauwe `<img>`/`<a>` produceren
+**After:** Nieuwe sectie "Next.js components — geen rauwe HTML" (~75 regels) tussen `proxy.ts` en `Server vs Client Components`
+**Tags:** components, image, link, performance, prefetch
+**Refs:** _no commit yet_, zie [DEV-JOURNAL.md](./DEV-JOURNAL.md#2026-05-27-2013)
+
+### Wat
+Sectie toegevoegd met twee subsecties:
+
+**`<Image>` uit `next/image`:**
+- Waarom (size-optimalisatie, geen CLS, lazy loading, blur-placeholder)
+- Voorbeelden voor static import (auto width/height/blurDataURL) vs
+  public-folder/remote URL (verplichte `width`/`height`)
+- `remotePatterns` whitelist in `next.config.ts` met waarschuwing tegen
+  wildcard hosts
+- Praktische regels: `alt` verplicht, `fill` voor full-bleed, `priority`
+  voor LCP-image
+
+**`<Link>` uit `next/link`:**
+- Waarom (auto-prefetch in viewport, client-side transition, samenwerking
+  met `loading.tsx`)
+- Voorbeeld interne (`<Link>`) vs externe (`<a target="_blank" rel="...">`)
+- `prefetch={false}` voor lange lijsten
+- Verplicht `useRouter` uit `next/navigation` (niet `next/router` — dat is
+  Pages Router)
+
+Verwijst naar `node_modules/next/dist/docs/01-app/01-getting-started/12-images.md`
+en `04-linking-and-navigating.md`.
+
+### Waarom
+Gap-analyse op 18:48 had dit als TODO gemarkeerd. Zonder regel zou de agent:
+1. Rauwe `<img>` gebruiken → geen optimalisatie, CLS-issues, geen lazy load
+2. Rauwe `<a>` gebruiken voor interne routes → full page reload, geen prefetch
+3. `next/router` importeren (Pages Router API) i.p.v. `next/navigation`
+4. Remote images proberen zonder `remotePatterns` → build/runtime error
+
+### Effect
+_Verwacht:_ agent kiest automatisch `<Image>`/`<Link>` bij UI-werk, vraagt
+om `remotePatterns` bij remote images, en gebruikt `<a>` alleen nog voor
+externe links.
+
+---
+
+## NOG TE DOEN — `Metadata` regels
 
 **Type:** rules-update (gepland)
 **Files:** `.cursor/rules/nextjs-app-router.mdc` (uit te breiden)
 
 ### Wat
-Sectie "Next.js components & APIs (geen rauwe HTML)" toevoegen:
-- Altijd `<Image>` uit `next/image`, nooit `<img>`
-- Altijd `<Link>` uit `next/link` voor interne navigatie, nooit `<a>`
-- Metadata via `export const metadata: Metadata` of
-  `generateMetadata()`, nooit `<title>` in JSX
+Sectie over Metadata API: `export const metadata: Metadata` voor statisch,
+`generateMetadata()` voor dynamisch, nooit `<title>` in JSX (werkt niet in
+Server Components).
 
 ### Waarom
-Cursusmateriaal liet dit zien. Voorstel uitgewerkt in chat
-2026-05-27 maar nog niet doorgevoerd.
+Cursusmateriaal noemde het naast `next/image`/`next/link`. Beide afgesplitst
+omdat de huidige sessie alleen om image+link vroeg.

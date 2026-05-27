@@ -267,3 +267,45 @@ achteraf niet meer betrouwbaar te reproduceren zijn.
 Werkstroom verandert: ~10–15 min schrijftijd per sessie + 15 min per
 week = verantwoordingsdocument schrijven wordt samenstellen i.p.v.
 herinneren. Zie DECISIONS voor de afweging.
+
+---
+
+## 2026-05-27 20:13 — `next/image` en `next/link` sectie toegevoegd
+
+**Type:** rules-update
+**Files:** .cursor/rules/nextjs-app-router.mdc
+**Tags:** rules, components, image, link, performance
+**Refs:** _no commit yet_, zie [RULES-CHANGELOG.md](./RULES-CHANGELOG.md#2026-05-27-2013--nextimage-en-nextlink-sectie-toegevoegd)
+**Duration:** ~10 min
+
+### Wat
+Nieuwe sectie "Next.js components — geen rauwe HTML" toegevoegd aan
+`nextjs-app-router.mdc`, geplaatst tussen `proxy.ts` en `Server vs Client
+Components`. Bevat twee subsecties:
+
+- **`<Image>` uit `next/image`**: waarom (size-optimalisatie, CLS,
+  lazy loading, blur), static vs remote met code-voorbeelden,
+  `remotePatterns` whitelist in `next.config.ts`, regels voor `alt`,
+  `fill`, en `priority` op LCP-image.
+- **`<Link>` uit `next/link`**: waarom (auto-prefetch in viewport,
+  client-side transitions), interne `<Link>` vs externe `<a>`, gebruik
+  van `prefetch={false}` voor lange lijsten, en de waarschuwing dat
+  `useRouter` uit **`next/navigation`** moet komen, niet `next/router`.
+
+Bron-verwijzingen naar `node_modules/next/dist/docs/01-app/01-getting-started/12-images.md`
+en `.../04-linking-and-navigating.md` zodat de agent bij twijfel kan
+doorklikken.
+
+`Metadata` is bewust afgesplitst als aparte TODO — gebruiker vroeg alleen
+om image+link.
+
+### Waarom
+Op 18:48 had ik dit gat al vastgesteld maar nog niet doorgevoerd. Zonder
+regel zou de agent rauwe `<img>` (geen optimalisatie, CLS) en `<a>` (full
+page reload, geen prefetch) gebruiken, of `next/router` importeren (Pages
+Router API).
+
+### Effect
+_Verwacht:_ bij UI-werk kiest agent automatisch voor `<Image>`/`<Link>`,
+gebruikt `<a>` alleen voor externe links, en stelt voor `remotePatterns`
+te configureren bij remote images.

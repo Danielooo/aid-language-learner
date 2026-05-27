@@ -196,6 +196,88 @@ voor experimenten, **optimistische** auth-checks.
 
 Zie `node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md`.
 
+## Next.js components — geen rauwe HTML
+
+App Router heeft eigen componenten voor images en interne navigatie. Gebruik
+ze in plaats van de HTML-equivalenten — anders mis je auto-optimalisatie,
+prefetch en preventie van layout shift.
+
+### `<Image>` uit `next/image` (geen `<img>`)
+
+Wat `<Image>` boven `<img>` doet:
+- **Size-optimalisatie**: serveert correcte resoluties per device en
+  moderne formaten (WebP) waar de browser dat ondersteunt
+- **Geen layout shift (CLS)**: vereist `width`/`height` (of `fill`) zodat
+  de browser ruimte reserveert tijdens het laden
+- **Lazy loading** by default; alleen above-the-fold beeld krijgt `priority`
+- **Optionele blur-placeholder** bij static imports
+
+```tsx
+import Image from "next/image";
+import profile from "./profile.png";
+
+// Static import — width/height/blurDataURL automatisch
+<Image src={profile} alt="Profielfoto" placeholder="blur" />
+
+// Public-folder of remote URL — width/height verplicht
+<Image src="/profile.png" alt="Profielfoto" width={500} height={500} />
+```
+
+Remote images vereisen een `remotePatterns` whitelist in `next.config.ts`
+— wees zo specifiek mogelijk, wildcard hosts zijn een aanvalsvector:
+
+```ts
+// next.config.ts
+import type { NextConfig } from "next";
+
+const config: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "s3.amazonaws.com",
+        pathname: "/my-bucket/**",
+      },
+    ],
+  },
+};
+
+export default config;
+```
+
+- `alt` is **verplicht** voor screen readers
+- Voor responsive full-bleed: gebruik `fill` + parent met `position: relative`
+- LCP-image (hero, above-the-fold): zet `priority` zodat hij niet lazy-load
+
+### `<Link>` uit `next/link` (geen `<a>` voor interne routes)
+
+Wat `<Link>` boven `<a>` doet:
+- **Auto-prefetch** wanneer de link in de viewport komt (static routes
+  volledig; dynamic routes partial via `loading.tsx`)
+- **Client-side transition**: behoudt shared layouts, scroll-state en
+  interactiviteit — geen full page reload
+- Werkt samen met `loading.tsx` voor instant visuele feedback
+
+```tsx
+import Link from "next/link";
+
+// Interne navigatie — altijd <Link>
+<Link href="/dashboard">Dashboard</Link>
+
+// Externe link — gewoon <a>
+<a href="https://example.com" target="_blank" rel="noopener noreferrer">
+  Extern
+</a>
+```
+
+- Voor lange lijsten (infinite scroll, tabellen): `prefetch={false}` om
+  resource-gebruik te beperken
+- Programmatische navigatie vanuit Client Components: gebruik `useRouter()`
+  uit **`next/navigation`**, NOOIT `next/router` (dat is Pages Router)
+
+Zie `node_modules/next/dist/docs/01-app/01-getting-started/12-images.md`
+en `.../04-linking-and-navigating.md` voor de volledige API.
+
 ## Server vs Client Components
 - Default = **Server Component**. Voeg `"use client"` alleen toe bovenaan
   een bestand als je state, effects, event handlers of browser-APIs nodig hebt
