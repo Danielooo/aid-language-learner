@@ -1,0 +1,93 @@
+---
+description: Environment variables — security regels en NEXT_PUBLIC_ prefix
+alwaysApply: true
+---
+
+# Environment variables
+
+## Twee soorten variabelen
+
+Next.js maakt onderscheid tussen **server-only** en **client-exposed**
+env vars op basis van het variabele-prefix.
+
+| Type | Voorbeeld | Beschikbaar in |
+| --- | --- | --- |
+| Server-only (geen prefix) | `DATABASE_URL`, `API_SECRET` | Server Components, route handlers, Server Actions, `proxy.ts` |
+| Client-exposed (`NEXT_PUBLIC_` prefix) | `NEXT_PUBLIC_APP_NAME` | Server **én** Client Components (ingebakken in de bundle) |
+
+```bash
+# .env.local — NIET committen!
+DATABASE_URL=postgresql://localhost:5432/mydb
+API_SECRET=mijn-geheime-sleutel
+NEXT_PUBLIC_APP_NAME=QuickPoll
+```
+
+```tsx
+// Server-side (Server Component, route.ts, Server Action)
+const dbUrl = process.env.DATABASE_URL;          // ✅ werkt
+
+// Client-side (component met "use client")
+const appName = process.env.NEXT_PUBLIC_APP_NAME; // ✅ werkt
+const secret = process.env.API_SECRET;           // ❌ undefined!
+```
+
+## Veiligheidsregels (KRITIEK)
+
+1. **Geheim ≠ `NEXT_PUBLIC_`.** Zet NOOIT secrets, API keys, database
+   credentials of tokens achter de `NEXT_PUBLIC_` prefix. Alles met
+   die prefix wordt **letterlijk in de client-bundle ingebakken** en
+   is leesbaar voor iedere bezoeker.
+2. **Geheimen alleen aanraken in server-only code**: Server Components,
+   Server Actions, route handlers, `proxy.ts`.
+3. Gebruik `process.env.X` in een Client Component **alleen** als `X`
+   begint met `NEXT_PUBLIC_`. Anders krijg je `undefined` runtime.
+4. Voeg geen secrets toe aan `next.config.ts` of andere getrackte
+   bestanden; laad ze altijd uit een `.env.*` bestand.
+
+## .env bestanden
+
+| Bestand | Doel | Committen? |
+| --- | --- | --- |
+| `.env.local` | Lokale dev-secrets en overrides | **Nooit** |
+| `.env` | Defaults zonder secrets | Ja |
+| `.env.development`, `.env.production` | Environment-specifieke waarden | Ja, mits zonder secrets |
+| `.env.example` | Lijst variabelen + dummy waarden voor onboarding | Ja |
+
+- Precedence (winnaar staat eerst):
+  `.env.<environment>.local` > `.env.local` > `.env.<environment>` > `.env`
+- `.env*` staat al in `.gitignore` van dit project — laat dat zo
+- Plaats een `.env.example` met dummy-waarden zodat nieuwe collega's
+  weten welke variabelen ze lokaal moeten invullen
+
+## TypeScript type-safety (optioneel)
+
+Voor autocomplete + type-safety op `process.env` kun je een ambient
+declaration toevoegen, bijvoorbeeld in `types/env.d.ts`:
+
+```ts
+declare namespace NodeJS {
+  interface ProcessEnv {
+    DATABASE_URL: string;
+    API_SECRET: string;
+    NEXT_PUBLIC_APP_NAME: string;
+  }
+}
+```
+
+Voor strikte runtime-validatie kun je `zod` gebruiken om bij app-start
+te valideren dat alle vereiste env vars aanwezig zijn (b.v. in
+`lib/env.ts`).
+
+## Wanneer iets NEXT_PUBLIC mag zijn
+
+`NEXT_PUBLIC_` is bedoeld voor **niet-gevoelige** configuratie die de
+browser nodig heeft, zoals:
+
+- App-naam, omgevings-label (`production`/`staging`)
+- Publieke API base-URLs
+- Publieke (niet-secret) API keys, zoals Stripe publishable key,
+  Google Maps API key met domeinrestrictie, Sentry DSN
+- Feature flags zonder gevoelige informatie
+
+Bij twijfel: **niet** met `NEXT_PUBLIC_` prefixen. Haal de waarde dan
+server-side op en stuur 'm via props naar je Client Component.

@@ -1,0 +1,230 @@
+---
+description: Next.js 16 App Router conventies — file structure, Server/Client Components, data fetching
+globs: app/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Next.js 16 App Router
+
+## Routing — de gouden regel
+
+**Elke folder in `app/` is een route. Nested folders = nested routes.**
+Je hebt géén `react-router` (of vergelijkbare library) nodig — de file
+structure ís de routing.
+
+Een folder wordt pas een **publieke** route zodra er een `page.tsx` (UI) of
+`route.ts` (API) in staat. Folders zonder zo'n bestand zijn niet bereikbaar
+via een URL en zijn dus veilig voor co-located code.
+
+Mapping in dit project (let op: `app/` staat in de project-root, niet in `src/`):
+
+| Bestand                          | URL                  |
+| -------------------------------- | -------------------- |
+| `app/page.tsx`                   | `/`                  |
+| `app/about/page.tsx`             | `/about`             |
+| `app/blog/page.tsx`              | `/blog`              |
+| `app/blog/[slug]/page.tsx`       | `/blog/mijn-post`    |
+| `app/dashboard/page.tsx`         | `/dashboard`         |
+| `app/dashboard/settings/page.tsx`| `/dashboard/settings`|
+
+- `[slug]` = dynamisch segment, beschikbaar via `params` (zie verderop)
+- `[...slug]` = catch-all, `[[...slug]]` = optional catch-all
+- `(naam)` = route group, niet zichtbaar in URL
+- `_naam` = private folder, niet routeerbaar (voor co-located code)
+
+## File structure — best practices
+
+Dit project gebruikt **`app/` in de project-root** (géén `src/` folder).
+De vier kernregels:
+
+1. **`app/` is voor routing én components.** Components horen in
+   `app/`, in private folders (`_components/`). NOOIT een top-level
+   `components/` folder maken.
+2. **Gedeelde components** in `app/_components/`, opgesplitst naar doel:
+   - `app/_components/ui/` — generieke UI (`button.tsx`, `card.tsx`, ...)
+   - `app/_components/features/` — feature-specifiek (`poll-card.tsx`,
+     `vote-form.tsx`, ...)
+3. **Types** in top-level `types/` map voor types die door meerdere
+   features gebruikt worden. Eén `types/index.ts` als barrel-export.
+   Feature-specifieke types blijven bij het component zelf.
+4. **Business logic en helpers** in top-level `lib/`:
+   - `lib/utils.ts` — algemene utility-functies
+   - `lib/api.ts` — externe API-calls / data-fetching helpers
+
+### Doel-overzicht
+
+```
+project-root/
+├── app/                    # Routes, layouts, en components
+│   ├── _components/
+│   │   ├── ui/             # Generieke UI (Button, Card, ...)
+│   │   └── features/       # Feature-specifiek (PollCard, VoteForm)
+│   ├── (marketing)/        # Route group — niet in URL
+│   ├── (dashboard)/        # Route group — niet in URL
+│   ├── api/                # API endpoints (route.ts)
+│   ├── <segment>/
+│   │   ├── _components/    # Co-located segment-specifieke components
+│   │   └── page.tsx
+│   ├── globals.css
+│   ├── layout.tsx          # Root layout
+│   └── page.tsx            # Homepage (/)
+├── lib/                    # Business logic & utilities
+│   ├── utils.ts
+│   └── api.ts
+├── types/                  # Globale TypeScript types
+│   └── index.ts
+├── public/                 # Statische assets
+├── proxy.ts                # Next.js 16: voorheen middleware.ts
+└── (config files)          # next.config.ts, tsconfig.json, ...
+```
+
+### Special files (in `app/`)
+- `page.tsx` — maakt een route publiek bereikbaar
+- `layout.tsx` — gedeelde UI rond een route en zijn children
+- `loading.tsx` — Suspense fallback (zie "Loading & error UI")
+- `error.tsx` — error boundary (zie "Loading & error UI")
+- `not-found.tsx` — 404 UI
+- `route.ts` — API endpoint (alleen voor publieke API's)
+
+### Loading & error UI (App Router specials)
+
+`loading.tsx` en `error.tsx` zijn **automatisch** gekoppeld aan hun
+sibling `page.tsx`. Géén handmatige `<Suspense>` of `<ErrorBoundary>`
+nodig — Next.js wrapt ze voor je. Ze werken **per-segment**, dus je
+kunt scoped fallbacks maken per route.
+
+#### `loading.tsx` — Suspense fallback
+- Wordt getoond zolang sibling `page.tsx` (of nested layouts) aan het
+  fetchen is
+- Gebruik **skeleton-loaders** met Tailwind's `animate-pulse` voor een
+  snelle visuele indicatie i.p.v. een "Loading..." tekst
+- Mag een Server Component zijn (default — géén `"use client"`)
+
+Voorbeeld
+```tsx
+// app/polls/loading.tsx
+export default function Loading() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <div className="h-8 bg-gray-200 rounded w-1/2" />
+      <div className="h-4 bg-gray-200 rounded w-full" />
+      <div className="h-4 bg-gray-200 rounded w-3/4" />
+    </div>
+  );
+}
+```
+
+#### `error.tsx` — Error boundary
+- **MOET `"use client"`** bovenaan hebben — een error boundary heeft
+  client-side state nodig
+- Verplichte prop-signature: `{ error, reset }`
+- `reset()` rendert het segment opnieuw — gebruik dit voor een
+  "Probeer opnieuw" knop
+
+Voorbeeld
+```tsx
+// app/polls/error.tsx
+"use client";
+
+type Props = {
+  error: Error & { digest?: string };
+  reset: () => void;
+};
+
+export default function Error({ error, reset }: Props) {
+  return (
+    <div>
+      <h2>Er ging iets mis!</h2>
+      <p>{error.message}</p>
+      <button onClick={() => reset()}>Probeer opnieuw</button>
+    </div>
+  );
+}
+```
+
+- Voor errors in de **root-layout**: gebruik `global-error.tsx` i.p.v.
+  `error.tsx`. Die moet zelf `<html>` en `<body>` tags bevatten omdat
+  hij de root-layout vervangt.
+
+#### `not-found.tsx`
+- Wordt getoond bij een onbekende URL of wanneer je `notFound()` uit
+  `next/navigation` aanroept
+- Mag een Server Component zijn
+
+### Folder-prefixes
+- `_naam` — **private folder**, niet routeerbaar (voor co-located code)
+- `(naam)` — **route group**, niet zichtbaar in URL
+- `[slug]` — dynamisch segment
+- `[...slug]` — catch-all, `[[...slug]]` — optional catch-all
+
+### `proxy.ts` — request-laag (voorheen `middleware.ts`)
+
+In Next.js 16 is `middleware.ts` hernoemd naar **`proxy.ts`**.
+Functionaliteit identiek; plaats het bestand in de project-root.
+Per project mag er maar **één** `proxy.ts` bestaan — splits eventueel
+helpers op in `lib/proxy/*.ts` en importeer die.
+
+```ts
+// proxy.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+export function proxy(request: NextRequest) {
+  return NextResponse.next();
+}
+
+// Verplicht: scope met matcher, anders draait proxy op elke request
+export const config = {
+  matcher: ["/dashboard/:path*", "/api/private/:path*"],
+};
+```
+
+- Imports: `NextRequest` / `NextResponse` komen uit **`next/server`**,
+  NOOIT uit `"next"`
+- Export: named `proxy` óf default — niet beide
+
+**Wel gebruiken voor**: header-manipulatie, programmatische redirects
+op basis van request-data (cookies, geolocation, A/B-bucket), rewrites
+voor experimenten, **optimistische** auth-checks.
+
+**NIET gebruiken voor**:
+- Simpele redirects zonder request-data → gebruik `redirects` in `next.config.ts`
+- Volledige auth/sessie-laag → echte autorisatie hoort in Server Components/Actions
+- Data-fetching of caching → `fetch()` cache-opties (`cache`,
+  `next.revalidate`, `next.tags`) hebben **geen effect** in proxy
+- Trage operaties → proxy runt op elke matched request, houd het snel
+
+Zie `node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md`.
+
+## Server vs Client Components
+- Default = **Server Component**. Voeg `"use client"` alleen toe bovenaan
+  een bestand als je state, effects, event handlers of browser-APIs nodig hebt
+- Houd Client Components klein; duw `"use client"` zo ver mogelijk naar
+  de bladeren van de boom (lift het niet onnodig omhoog)
+- Async Server Components mogen `await` direct in de component body gebruiken
+- Custom hooks alleen in Client Components
+
+## Next.js 16: async params
+
+`params` en `searchParams` zijn **Promises** in Next 16 — altijd `await`:
+
+```tsx
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
+}
+```
+
+## Data fetching
+- Fetch in Server Components zo dicht mogelijk bij waar de data nodig is
+- Gebruik Next.js' uitgebreide `fetch()` met caching opties
+- Voor mutations: **Server Actions** (`"use server"`), geen losse
+  API routes tenzij voor externe consumers
+- Route handlers (`route.ts`) alleen voor publieke API endpoints
+
+## Bij twijfel
+Open `node_modules/next/dist/docs/01-app/` en lees de relevante guide
+voordat je een Next.js API gebruikt.

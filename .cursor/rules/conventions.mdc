@@ -1,0 +1,49 @@
+---
+description: Project-brede conventies voor naming, imports, comments en algemene regels
+alwaysApply: true
+---
+
+# Project-conventies
+
+## Naming conventions
+- **Bestanden voor components**: `kebab-case.tsx` (bijv. `flashcard-deck.tsx`)
+- **Component-namen (exports)**: `PascalCase` (bijv. `FlashcardDeck`)
+- **Hooks**: `use-camelCase.ts` als bestand, `useCamelCase` als export
+- **Utility-functies**: `camelCase`
+- **Constants**: `UPPER_SNAKE_CASE`
+- **Types/Interfaces**: `PascalCase`, prefix interfaces NIET met `I`
+- **Special Next.js files** behouden hun naam: `page.tsx`, `layout.tsx`, etc.
+- **Route groups**: `(naam)` — niet in URL
+- **Dynamic segments**: `[slug]`, `[...slug]`, `[[...slug]]`
+
+## Comments
+- Schrijf **comments in het Nederlands**
+- Comments leggen het *waarom* uit, niet het *wat*. Geen narrating comments
+  zoals `// importeer de module` of `// retourneer het resultaat`
+- JSDoc op publieke utilities en complexe hooks
+
+## Imports
+- Gebruik absolute imports via `@/` alias (zie `tsconfig.json` paths)
+- Volgorde:
+  1. externe packages (`react`, `next`, ...)
+  2. `@/` interne imports
+  3. relatieve imports
+  4. type imports (`import type { ... }`)
+  5. styles (CSS-bestanden, helemaal onderaan)
+- Geen onbenutte imports (ESLint vangt dit)
+
+## Types en business logic — waar plaatsen
+- **Globale types**: top-level `types/` (bijv. `types/index.ts`)
+- **Feature-specifieke types**: bij het component zelf
+- **Utilities & helpers**: top-level `lib/utils.ts`
+- **API / data-fetching helpers**: top-level `lib/api.ts`
+- **Components**: in `app/_components/ui/` (generiek) of
+  `app/_components/features/` (feature-specifiek). NOOIT een top-level
+  `components/` folder.
+
+## Algemene regels
+- Geen `console.log` in commits; gebruik een logging-utility als die er is
+- Liever vroeg `return`-en dan diep nesten
+- Houd componenten klein en testbaar (richtlijn: < ~150 regels)
+- Bij twijfel over Next.js APIs: open `node_modules/next/dist/docs/01-app/`
+  en lees de relevante guide

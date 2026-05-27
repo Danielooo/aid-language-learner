@@ -1,0 +1,56 @@
+---
+description: TypeScript regels en React component patterns
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# TypeScript & React
+
+## TypeScript
+- `strict: true` aanhouden (zoals in `tsconfig.json`)
+- **Geen `any`.** Bij echte onzekerheid: `unknown` en narrow met type guards
+- Props-types als `type Props = { ... }` boven het component
+- Liever `type` dan `interface`, behalve voor extendable public APIs
+- Gebruik discriminated unions voor variant-componenten
+- Importeer types met `import type { ... }`
+
+## React components
+- Gebruik **functional components** met React hooks — NOOIT class components
+- Voorkeur voor `function ComponentName()` declaraties boven `const X = () =>`
+- Eén component per bestand, default export voor het hoofdcomponent
+- Props-type direct boven het component definiëren:
+
+```tsx
+type Props = {
+  title: string
+  onSelect?: (id: string) => void
+}
+
+export default function FlashcardDeck({ title, onSelect }: Props) {
+  // ...
+}
+```
+
+- Custom hooks (`useXxx`) alleen aanroepen in Client Components of andere hooks
+- Hooks altijd op top-level van een component aanroepen, nooit conditioneel
+
+## Special-file signatures (Next.js App Router)
+
+Next.js verwacht voor sommige special files een **vaste prop-signature**.
+Wijk hier niet van af.
+
+- `error.tsx` / `global-error.tsx` — moet `"use client"` zijn en accepteert:
+  ```tsx
+  type Props = {
+    error: Error & { digest?: string };
+    reset: () => void;
+  };
+  ```
+- `page.tsx` (dynamische route) — `params` en `searchParams` zijn **Promises**:
+  ```tsx
+  type Props = {
+    params: Promise<{ slug: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  };
+  ```
+- `layout.tsx` — accepteert `children: React.ReactNode` (plus eventuele slots)

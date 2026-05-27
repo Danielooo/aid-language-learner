@@ -1,0 +1,48 @@
+---
+description: Tailwind CSS v4 styling-conventies
+globs: "**/*.{tsx,css}"
+alwaysApply: false
+---
+
+# Styling — Tailwind CSS v4
+
+## Algemeen
+- Gebruik **uitsluitend Tailwind utility classes** in JSX; geen losse
+  CSS-bestanden tenzij echt nodig
+- Vermijd inline `style={}` tenzij dynamische waarden onvermijdelijk zijn
+- Gebruik `clsx` of template-literals voor conditionele classes
+
+## Tailwind v4 setup (LET OP, anders dan v3)
+- **Geen** `@tailwind base/components/utilities` directives
+- Gebruik `@import "tailwindcss";` in `app/globals.css`
+- **Geen** `tailwind.config.js` — custom design tokens definiëren via
+  `@theme { ... }` in CSS:
+
+```css
+@import "tailwindcss";
+
+@theme {
+  --color-primary: oklch(0.7 0.15 250);
+  --font-display: "Inter", sans-serif;
+}
+```
+
+## Class-order conventie
+Order utility classes logisch:
+1. Layout (`flex`, `grid`, `block`, ...)
+2. Positionering & sizing (`w-`, `h-`, `gap-`, `inset-`)
+3. Spacing (`p-`, `m-`)
+4. Typografie (`text-`, `font-`)
+5. Kleuren & achtergrond (`bg-`, `text-white`)
+6. Border & shadow
+7. State-modifiers laatst (`hover:`, `focus:`, `disabled:`)
+
+Voorbeeld:
+```tsx
+<button className="flex items-center gap-4 px-4 py-2 text-sm font-medium
+  text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50">
+```
+
+## Responsive & dark mode
+- **Mobile first**: gebruik `sm:`, `md:`, `lg:`, `xl:` prefixes
+- Donkere modus via `dark:` prefix

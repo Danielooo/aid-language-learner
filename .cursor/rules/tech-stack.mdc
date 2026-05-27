@@ -1,0 +1,32 @@
+---
+description: Tech stack overview en kritieke waarschuwing over Next.js 16 versie
+alwaysApply: true
+---
+
+# Tech stack — AID Language Learner
+
+Je werkt aan een Next.js project voor taalonderwijs.
+
+## Stack
+- **Next.js 16** met App Router (geen Pages Router)
+- **React 19** (Server Components zijn de standaard)
+- **TypeScript 5** in strict mode
+- **Tailwind CSS v4** (via `@tailwindcss/postcss`)
+- **ESLint 9** met `eslint-config-next`
+- Path-alias `@/*` is geconfigureerd vanuit project-root
+
+## KRITIEK — Next.js versie
+
+Dit is **NIET** de Next.js die je kent uit je training data. Versie 16 heeft
+breaking changes t.o.v. eerdere versies (zoals async `params`/`searchParams`,
+gewijzigde caching defaults, etc.).
+
+**Raadpleeg ALTIJD `node_modules/next/dist/docs/01-app/` voordat je een
+Next.js API gebruikt.** Let op deprecation notices.
+
+## Tailwind v4 — let op
+
+Tailwind 4 werkt anders dan v3:
+- Geen `@tailwind base/components/utilities` directives
+- Gebruik `@import "tailwindcss";` in `app/globals.css`
+- Geen `tailwind.config.js`; design tokens via `@theme { ... }` in CSS
