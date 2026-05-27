@@ -309,3 +309,32 @@ Router API).
 _Verwacht:_ bij UI-werk kiest agent automatisch voor `<Image>`/`<Link>`,
 gebruikt `<a>` alleen voor externe links, en stelt voor `remotePatterns`
 te configureren bij remote images.
+
+---
+
+## 2026-05-27 20:52 — Commit-strategie + `/commit` en `/sessie-eind` commands
+
+**Type:** decision
+**Files:** WERKWIJZE.md, .cursor/commands/commit.md, .cursor/commands/sessie-eind.md, docs/DECISIONS.md
+**Tags:** git, commits, slash-commands, methodology
+**Refs:** [DECISIONS.md#commit-strategie-a](./DECISIONS.md#commit-strategie-a), _no commit yet_
+
+### Wat
+Drie wijzigingen:
+1. Commit-strategie A formeel gekozen: één commit per logische gebeurtenis
+2. `.cursor/commands/commit.md` aangemaakt — `/commit` voor per-event commit
+   + auto-koppelen van journal-entries
+3. `.cursor/commands/sessie-eind.md` aangemaakt — `/sessie-eind` als
+   eind-sessie-vangnet
+4. WERKWIJZE.md aangepast: stap 3 = `/commit`, stap 5 = `/sessie-eind`
+
+### Waarom
+Eindopdracht vereist 20+ commits met goede messages. Per-event committen
+sluit aan op het journaling-systeem (één entry = één SHA). `/commit`
+slash command voorkomt friction door staging + message + Refs-update in
+één flow te bundelen.
+
+### Effect
+_Verwacht:_ ik tik na elke gebeurtenis `/commit`, krijg een
+message-voorstel, accepteer of pas aan, en de journal-Refs zijn meteen
+up-to-date. `/sessie-eind` blijft als vangnet voor losse eindjes.

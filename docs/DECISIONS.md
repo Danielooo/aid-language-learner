@@ -150,6 +150,54 @@ auto-entries te schrijven.
 
 ---
 
+### 2026-05-27 — Commit-strategie A: één commit per logische gebeurtenis <a id="commit-strategie-a"></a>
+
+**Type:** decision
+**Status:** Accepted
+**Files:** WERKWIJZE.md, .cursor/commands/commit.md, .cursor/commands/sessie-eind.md
+**Tags:** git, commits, methodology
+**Refs:** [DEV-JOURNAL.md](./DEV-JOURNAL.md), _no commit yet_
+
+#### Context
+De eindopdracht vraagt om minimaal 20 kleine commits met zinvolle
+messages en minimaal 5 pull requests. Daarnaast wil ik dat elke
+journal-entry te koppelen is aan precies één commit, zodat de
+`**Refs:** commit:<sha>` veld eenduidig blijft.
+
+#### Decision
+Eén commit per logische gebeurtenis. Een rule-wijziging is één commit,
+een ADR is één commit, een feature in een component is één commit. Dit
+wordt ondersteund door het `/commit` slash command dat per groep een
+commit voorstelt en direct de journal-entries koppelt.
+
+#### Alternatieven overwogen
+- **Optie B: één commit per sessie** — verworpen: te grof voor 20+
+  commits eis, en koppeling van entries aan commits wordt onnauwkeurig
+- **Optie C: gemengd (kleine batches)** — verworpen voor consistentie;
+  ik kan dit later alsnog laten kantelen als het te veel friction geeft
+
+#### Argumenten voor
+- Voldoet ruim aan de 20+ commits eis van de eindopdracht
+- Iedere journal-entry heeft precies één SHA → eenvoudig te verifiëren
+- Commit-messages worden afgeleid uit entry-titels → automatisch
+  conventional-commit-stijl
+- Maakt het `/commit` slash command logisch (één event = één commit)
+
+#### Argumenten tegen
+- Meer commits = meer git-handelingen per sessie (gemitigeerd door
+  `/commit` slash command)
+- Bij grote refactors kan "één gebeurtenis" arbitrair worden — vraagt
+  discipline
+
+#### Consequences
+- WERKWIJZE.md stap 3 = `/commit` na elke logische gebeurtenis
+- `/commit` slash command aangemaakt om groepering + commit + Refs-update
+  in één flow te doen
+- `/sessie-eind` controleert achteraf of er geen losse eindjes zijn
+- Bij twijfel over groepering: `/commit` vraagt de gebruiker
+
+---
+
 ## Template — kopieer & vul in
 
 ```markdown

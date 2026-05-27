@@ -26,8 +26,23 @@ in het corresponderende docs-bestand vóór je je werk afsluit:
 | System prompt of agent-instructie in `app/api/**` of `lib/**` | `docs/PROMPT-LOG.md` + `docs/DEV-JOURNAL.md` |
 | Architectuur-/conventiekeuze (welke lib, welke structuur, welke aanpak) | `docs/DECISIONS.md` + `docs/DEV-JOURNAL.md` |
 | Onverwacht of fout AI-gedrag dat de gebruiker meldt | `docs/AI-FAILURES.md` + `docs/DEV-JOURNAL.md` |
+| `.cursor/commands/` bestand **toevoegen of verwijderen** | + `WERKWIJZE.md` ("Beschikbare slash commands" lijst) |
 
 Bij twijfel: altijd minimaal een entry in `docs/DEV-JOURNAL.md`.
+
+## WERKWIJZE.md sync
+
+`WERKWIJZE.md` in de project-root is een beknopt mens-leesbaar
+stappenplan. De enige dynamische sectie is **"Beschikbare slash commands"**;
+die lijst moet matchen met de bestanden in `.cursor/commands/*.md`.
+
+**NIET automatisch wijzigen in `WERKWIJZE.md`:**
+- De genummerde stappen (1 t/m 6) — die zijn handgeschreven werkwijze
+- "Voor de details" sectie aan het eind
+
+Als de gebruiker `/sync-werkwijze` aanroept, vergelijk je
+`.cursor/commands/*.md` met de "Beschikbare slash commands" sectie en
+update je verschillen.
 
 ## Automatische sessie-start
 
