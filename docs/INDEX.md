@@ -44,7 +44,8 @@ entry te schrijven.
 
 ## Light template
 
-Iedere entry gebruikt deze structuur. Subkopjes mogen, hoeven niet.
+Maximaal 3 zinnen vrije tekst. Geen `### Wat` / `### Waarom` / `### Effect`
+sub-kopjes. Geen `Type:`-veld (impliciet via het bestand).
 
 ```markdown
 ## YYYY-MM-DD HH:MM — Korte titel
@@ -52,9 +53,19 @@ Iedere entry gebruikt deze structuur. Subkopjes mogen, hoeven niet.
 **Files:** path/naar/bestand1, path/naar/bestand2
 **Tags:** tag1, tag2
 
-Vrije tekst over Wat / Waarom / Effect. Subkopjes `### Wat`, `### Waarom`,
-`### Effect` zijn toegestaan maar niet verplicht.
+Eén tot drie zinnen: wat is besloten/gewijzigd, waarom, en het effect.
 ```
+
+### Drempel — wanneer wél, wanneer níét
+
+| Bestand | Wél loggen | Niet loggen |
+| --- | --- | --- |
+| `DECISIONS.md` | Ontwerp-/conceptkeuze met blijvende impact: lib-keuze, structuur, conventie, format-/proces-keuze | Kleine layout-aanpassingen, tekstuele content-tweaks, variable-renames, typo-fixes |
+| `RULES-CHANGELOG.md` | Rule toevoegen/verwijderen, of inhoudelijke wijziging (nieuw concept, andere drempel, ander gedrag) | Typo's, witregel-fixes, kleine voorbeeld-uitbreiding, herformulering zonder gedragsverandering |
+| `PROMPT-LOG.md` | Nieuwe of inhoudelijk gewijzigde system-/agent-prompt | Woord-vervanging, formatting, alleen variabele-naam in prompt-tekst |
+
+Bij twijfel: niet loggen. `AI-FAILURES.md` valt buiten deze drempel —
+gebruikt eigen format via `/ai-failure`.
 
 ### Per-file extra velden
 
@@ -63,8 +74,9 @@ Alleen waar de rubric ze afdwingt:
 - **`AI-FAILURES.md`**: `Severity: low | medium | high` (Q21 vraagt om
   oorzaak/effect — severity helpt prioriteren)
 - **`PROMPT-LOG.md`**: `Iteration: <N>`, `Replaces: v<N-1>` of `—` (Q25
-  vraagt om iteratie-ketens)
-- **`DECISIONS.md`**: `Status: Proposed | Accepted | Superseded by X | Deprecated`
+  vraagt om iteratie-ketens) + letterlijke prompt in een code-block
+- **`DECISIONS.md`**: geen extra velden. Bij latere herziening: italic
+  regel `_Superseded by [titel](#anchor)._` direct onder de heading.
 
 ## Vangnetten voor de gebruiker
 
