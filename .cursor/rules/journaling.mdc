@@ -1,176 +1,63 @@
 ---
-description: Verplichte journaling bij rule-, prompt- en architectuurwijzigingen (voor Deelopdracht 3 verantwoording)
-alwaysApply: true
+description: Logt rule-/prompt-/architectuur-/AI-failure-events direct in de juiste specialized file (voor Deelopdracht 3 verantwoording)
+globs: .cursor/rules/**, AGENTS.md, app/api/**, lib/**, docs/**, .cursor/commands/**
+alwaysApply: false
 ---
 
-# Journaling — verplichte documentatie bij wijzigingen
+# Journaling — één event, één bestand
 
-Dit project moet voor Deelopdracht 3 (Verantwoordingsdocument, 45% van
-het eindcijfer) gedocumenteerd worden. Daarvoor bestaat `docs/` met
-een chronologisch journal en 4 specialized files. Zie
-`docs/INDEX.md` voor de volledige werkstroom.
+Voor Deelopdracht 3 (Verantwoordingsdocument, 45%) bestaan vier specialized
+files in `docs/`. Elke noemenswaardige gebeurtenis krijgt **één** entry in
+**één** bestand. Geen mirror, geen dubbele administratie.
 
-**Je MOET deze regels volgen wanneer je in Agent-mode bestanden bewerkt
-die hieronder zijn aangewezen.**
+`docs/DEV-JOURNAL.md` is archief van de eerste week. Niet meer naartoe
+schrijven.
 
-## Trigger-regels — wanneer ook docs aanvullen
+## Trigger-tabel
 
-Wijzig je een bestand in deze lijst, schrijf dan ALTIJD ook een entry
-in het corresponderende docs-bestand vóór je je werk afsluit:
-
-| Bewerkt bestand / actie | Verplicht ook updaten |
+| Bewerkt / gebeurd | Schrijf in |
 | --- | --- |
-| **Eerste substantiële prompt van een sessie** (zie volgende sectie) | `docs/DEV-JOURNAL.md` — sessie-start entry |
-| `.cursor/rules/*.mdc` (toevoegen, wijzigen, verwijderen) | `docs/RULES-CHANGELOG.md` + `docs/DEV-JOURNAL.md` |
-| `AGENTS.md` | `docs/RULES-CHANGELOG.md` + `docs/DEV-JOURNAL.md` |
-| System prompt of agent-instructie in `app/api/**` of `lib/**` | `docs/PROMPT-LOG.md` + `docs/DEV-JOURNAL.md` |
-| Architectuur-/conventiekeuze (welke lib, welke structuur, welke aanpak) | `docs/DECISIONS.md` + `docs/DEV-JOURNAL.md` |
-| Onverwacht of fout AI-gedrag dat de gebruiker meldt | `docs/AI-FAILURES.md` + `docs/DEV-JOURNAL.md` |
-| `.cursor/commands/` bestand **toevoegen of verwijderen** | + `WERKWIJZE.md` ("Beschikbare slash commands" lijst) |
+| `.cursor/rules/*.mdc`, `AGENTS.md` toevoegen/wijzigen/verwijderen | `docs/RULES-CHANGELOG.md` |
+| System-/agent-prompt in `app/api/**` of `lib/**` | `docs/PROMPT-LOG.md` |
+| Bewuste architectuur-/conventiekeuze | `docs/DECISIONS.md` |
+| AI-failure die de gebruiker meldt | `docs/AI-FAILURES.md` |
+| `.cursor/commands/` bestand toevoegen of verwijderen | + `WERKWIJZE.md` "Beschikbare slash commands"-lijst |
 
-Bij twijfel: altijd minimaal een entry in `docs/DEV-JOURNAL.md`.
+Voor `/ai-failure` bestaat een aparte slash-command die het schrijven
+afhandelt. Voor de andere drie typen: schrijf direct na de wijziging.
 
-## WERKWIJZE.md sync
-
-`WERKWIJZE.md` in de project-root is een beknopt mens-leesbaar
-stappenplan. De enige dynamische sectie is **"Beschikbare slash commands"**;
-die lijst moet matchen met de bestanden in `.cursor/commands/*.md`.
-
-**NIET automatisch wijzigen in `WERKWIJZE.md`:**
-- De genummerde stappen (1 t/m 6) — die zijn handgeschreven werkwijze
-- "Voor de details" sectie aan het eind
-
-Als de gebruiker `/sync-werkwijze` aanroept, vergelijk je
-`.cursor/commands/*.md` met de "Beschikbare slash commands" sectie en
-update je verschillen.
-
-## Automatische sessie-start
-
-Voordat je begint aan een substantiële wijziging in een **nieuwe
-werksessie**, voeg je eerst een sessie-start entry toe onderaan
-`docs/DEV-JOURNAL.md`.
-
-### Wanneer is dit een "nieuwe sessie"?
-
-Check de meest recente entry onderaan `docs/DEV-JOURNAL.md`:
-
-- **Geen recente sessie-start (>3 uur geleden of helemaal geen)** → schrijf
-  een sessie-start entry
-- **Recente sessie-start bestaat al binnen ~3 uur** → géén nieuwe sessie-start
-  schrijven, je zit nog in dezelfde werksessie
-
-### Skip de sessie-start bij
-
-- Pure vragen om uitleg ("Wat doet deze functie?", "Hoe werkt X?")
-- Vertaal-/formatteer-verzoeken ("zet deze image om in tekst")
-- Trivia, korte typo-fixes
-- Wanneer de gebruiker expliciet zegt "geen journal entry"
-
-### Sessie-start template (lichte vorm)
-
-```markdown
-## YYYY-MM-DD HH:MM — Sessie-start: <korte titel afgeleid uit user-prompt>
-
-**Type:** observation
-**Tags:** session-start
-**Refs:** _no commit yet_
-
-Sessie geopend. Doel volgens eerste prompt:
-"<eerste ~120 chars van de user-prompt, letterlijk>..."
-```
-
-Schrijf de entry **voordat** je begint aan de inhoudelijke taak. Daarna
-verschijnen alle vervolg-entries van de sessie er logisch onder.
-
-In geval van twijfel: doe het wel. Een overbodige sessie-start is geen
-probleem; een gemiste sessie-start wel (rubric-vraag 16 vraagt om
-chronologische evolutie).
-
-## Het uniforme template
-
-Iedere entry heeft deze structuur. Geen velden weglaten — vul liever
-`_te bepalen_` of `_te observeren_` in.
+## Light template
 
 ```markdown
 ## YYYY-MM-DD HH:MM — Korte titel
 
-**Type:** rules-update | app-prompt | ai-failure | decision | observation
-**Files:** pad/naar/bestand1, pad/naar/bestand2
+**Files:** path/naar/bestand1, path/naar/bestand2
 **Tags:** tag1, tag2
-**Refs:** docs/AI-FAILURES.md#<anker>, commit:`<sha>` (of: _no commit yet_)
-**Duration:** ~N min
 
-### Wat
-Korte feitelijke beschrijving.
-
-### Waarom
-De reden / trigger / context.
-
-### Effect (of: verwacht effect)
-Wat veranderde aan output, code, of AI-gedrag. Bij eerste schrijf-moment
-is "verwacht effect" prima.
+Vrije tekst over Wat / Waarom / Effect. Subkopjes (`### Wat`, `### Waarom`,
+`### Effect`) mogen, maar zijn niet verplicht.
 ```
 
-## Per-bestand extra velden
+## Per-file extra velden (alleen waar rubric ze afdwingt)
 
-| Bestand | Extra velden |
-| --- | --- |
-| `RULES-CHANGELOG.md` | `Before:`, `After:` (1–2 zinnen per stuk) |
-| `PROMPT-LOG.md` | `Used in:`, `Iteration:`, `Replaces:`, plus de prompt-tekst letterlijk in een code-blok |
-| `AI-FAILURES.md` | `Severity:` (low/medium/high), `Cause:`, `Workaround:`, `Prevented by:` |
-| `DECISIONS.md` | `Status:` (proposed/accepted/superseded), secties: Context / Decision / Alternatives / Consequences |
-
-## Werkwijze bij wijzigingen
-
-1. **Voer de inhoudelijke wijziging uit** (bijvoorbeeld een rule
-   aanpassen).
-2. **Schrijf direct de journal-entries** zonder daar opnieuw expliciet
-   om gevraagd te hoeven worden. Voeg ze toe aan de **bovenste**
-   chronologische positie in elk relevant docs-bestand (omgekeerd of
-   onderaan, kies één conventie — dit project: onderaan toevoegen).
-3. **Genereer accurate timestamps** in het formaat `YYYY-MM-DD HH:MM`.
-   Als de exacte tijd niet bekend is, gebruik dan de huidige tijd.
-4. **Vul `_te observeren_`** voor velden waar het effect pas later
-   blijkt. Markeer NIET met "TBD" — gebruik schuingedrukt
-   `_te observeren_` zodat een latere search ze kan vinden.
-5. **Refs-veld**: link naar gerelateerde entries in andere docs-files
-   via `bestand#anker`. Als er nog geen commit is, schrijf
-   `_no commit yet_`.
-6. **Bevestig kort wat je geupdate hebt** in je antwoord aan de
-   gebruiker.
+- **`AI-FAILURES.md`**: `Severity: low | medium | high`
+- **`PROMPT-LOG.md`**: `Iteration: <N>`, `Replaces: v<N-1>` (of `—`)
+- **`DECISIONS.md`**: `Status: Proposed | Accepted | Superseded by X | Deprecated`
 
 ## Wat NIET autonoom invullen
 
-Sommige velden vereisen menselijke beoordeling. Vul ze niet zelf in;
-laat ze leeg met de placeholder en wijs de gebruiker erop:
+- **`Severity:`** — vraag de gebruiker met onderbouwing
+- **`Status: Accepted`** — alleen na expliciete bevestiging; anders `Proposed`
+- Subjectieve reflectie waarvan jij de intent niet kunt weten — markeer
+  `_door gebruiker aan te vullen_`
 
-- **`Severity:`** bij `AI-FAILURES` — vraag de gebruiker
-- **Subjectieve reflectie** in `### Waarom` of `### Effect` waarvan jij
-  de intent niet kunt weten — markeer `_door gebruiker aan te vullen_`
-- **`Status: Accepted`** in `DECISIONS` — alleen als de gebruiker
-  expliciet bevestigt dat dit geaccepteerd is; anders `Proposed`
+## Werkwijze
 
-## Anti-patterns — vermijd dit
+1. Voer de inhoudelijke wijziging uit.
+2. Schrijf direct één entry onderaan de relevante specialized file. Gebruik
+   `YYYY-MM-DD HH:MM` (huidige tijd is prima als exacte tijd onbekend is).
+3. Vermeld kort in je antwoord aan de gebruiker welk bestand je hebt
+   bijgewerkt.
 
-- Een wijziging doorvoeren zonder bijbehorende docs-entry: **niet doen**
-- Velden weglaten omdat ze "niet relevant lijken": **niet doen**, vul ze in
-- Eén grote samenvattings-entry voor 5 wijzigingen: **niet doen**, één
-  per logische change
-- Entries verzinnen voor wijzigingen die niet hebben plaatsgevonden:
-  **absoluut niet doen**
-- Bestaande entries achteraf aanpassen zonder de gebruiker daarover te
-  informeren: **niet doen** (behalve het invullen van eerder open
-  gelaten velden zoals commit-SHA of `_te observeren_`)
-
-## Vangnetten voor de gebruiker
-
-De gebruiker kan op elk moment vragen:
-
-- "Maak een DEV-JOURNAL entry voor wat we deze sessie hebben gedaan,
-  met commit-refs uit git log."
-- "Lift de belangrijkste journal-entries van deze week naar de
-  specialized files."
-- "Log dit als AI-failure, severity medium."
-- "Update alle `_no commit yet_` velden met de actuele commit-SHAs."
-
-Voer die uit volgens dezelfde template-regels.
+Geen DEV-JOURNAL-mirror. Geen `Duration:` veld. Geen `Refs:`-koppeling.
+Geen status-footer.

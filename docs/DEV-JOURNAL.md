@@ -1,11 +1,12 @@
 # Dev Journal
 
-Chronologisch logboek van het project. Alles wat noemenswaardig is komt
-hier eerst, in volgorde van gebeurtenis. Specialized files
-(`RULES-CHANGELOG`, `PROMPT-LOG`, `AI-FAILURES`, `DECISIONS`) trekken
-later de rubric-relevante entries hieruit.
-
-Zie [`INDEX.md`](./INDEX.md) voor template en werkstroom.
+> **Archief.** Tot 2026-05-27 schreven we hier alle gebeurtenissen
+> chronologisch, naast de specialized files. Sinds 2026-05-28 gaat elke
+> gebeurtenis direct naar de juiste specialized file
+> ([`RULES-CHANGELOG`](./RULES-CHANGELOG.md), [`PROMPT-LOG`](./PROMPT-LOG.md),
+> [`AI-FAILURES`](./AI-FAILURES.md), [`DECISIONS`](./DECISIONS.md)) — geen
+> mirror hier meer. De entries hieronder blijven staan als historische
+> context. Zie [`INDEX.md`](./INDEX.md) voor de nieuwe werkstroom.
 
 ---
 
