@@ -256,6 +256,29 @@ externe links.
 
 ---
 
+## 2026-05-28 09:54 — `protect-eindopdracht.mdc` aangemaakt
+
+**Files:** `.cursor/rules/protect-eindopdracht.mdc`
+**Tags:** rules, read-only, eindopdracht, safety, always-apply
+
+### Wat
+Nieuwe `alwaysApply: true` rule die `EINDOPDRACHT.md` markeert als
+read-only voor de AI-agent. Edit/write/delete/move op dat bestand is
+verboden; typo- en formattering-fixes ook. Lezen blijft toegestaan.
+
+### Waarom
+`EINDOPDRACHT.md` is de officiële Novi-opdrachtbeschrijving — bron-van-
+waarheid voor wat de docent beoordeelt. Een onbedoelde edit door de
+agent (bv. tijdens een refactor van docs/ of een "fix all typos" prompt)
+kan inhoudelijk afwijken van de geleverde opdracht. Eén rule is
+goedkoper dan elke keer alert moeten zijn.
+
+### Effect
+_Verwacht:_ als een toekomstige agent-flow `EINDOPDRACHT.md` als target
+zou kiezen, weigert de agent en wijst op de rule.
+
+---
+
 ## NOG TE DOEN — `Metadata` regels
 
 **Type:** rules-update (gepland)

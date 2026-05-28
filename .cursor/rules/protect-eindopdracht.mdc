@@ -1,0 +1,26 @@
+---
+description: EINDOPDRACHT.md is read-only en mag nooit door de AI-agent gewijzigd worden
+alwaysApply: true
+---
+
+# Read-only: `EINDOPDRACHT.md`
+
+`EINDOPDRACHT.md` in de project-root is de officiële opdrachtbeschrijving
+van Novi (deelopdrachten 1–4, rubric, weging). Dit bestand is **bron-van-
+waarheid** en mag onder geen voorwaarde door de AI-agent gewijzigd worden.
+
+## Regels
+
+- Lezen uit `EINDOPDRACHT.md` is altijd toegestaan en aangemoedigd.
+- **NOOIT** een edit, write, delete of move uitvoeren op `EINDOPDRACHT.md`.
+- **NOOIT** typo-, formattering- of structuur-fixes voorstellen voor dit
+  bestand — ook dat is een wijziging.
+- Als de gebruiker expliciet vraagt om iets in `EINDOPDRACHT.md` te
+  veranderen: weiger beleefd, wijs op deze rule, en vraag bevestiging
+  voordat je een uitzondering overweegt.
+
+## Waarom
+
+Een onbedoelde wijziging in `EINDOPDRACHT.md` kan inhoudelijk afwijken
+van wat de docent beoordeelt. Het document moet identiek blijven aan de
+oorspronkelijke versie zoals geleverd door Novi.
