@@ -75,7 +75,8 @@ Alleen waar de rubric ze afdwingt:
   oorzaak/effect — severity helpt prioriteren)
 - **`PROMPT-LOG.md`**: `Iteration: <N>`, `Replaces: v<N-1>` of `—` (Q25
   vraagt om iteratie-ketens) + letterlijke prompt in een code-block
-- **`DECISIONS.md`**: `Status: Proposed | Accepted | Superseded by X | Deprecated`
+- **`DECISIONS.md`**: geen extra velden. Bij latere herziening: italic
+  regel `_Superseded by [titel](#anchor)._` direct onder de heading.
 
 ## Vangnetten voor de gebruiker
 

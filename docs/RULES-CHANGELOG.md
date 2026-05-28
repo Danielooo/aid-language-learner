@@ -155,3 +155,16 @@ per file vastlegt wat wezenlijk genoeg is om te loggen. Voorkomt dat
 kleine layout-/tekst-wijzigingen het log opblazen. Onderbouwd in
 [DECISIONS](./DECISIONS.md#short-journaling-format); AI-FAILURES blijft
 buiten scope.
+
+---
+
+## 2026-05-28 11:25 — Bestaande journal-entries zijn read-only
+
+**Files:** `.cursor/rules/journaling.mdc`
+**Tags:** rules, methodology, immutability
+
+Nieuwe sectie "Bestaande entries zijn read-only": de agent mag oude
+entries niet typografisch of stilistisch wijzigen — alleen nieuwe entries
+toevoegen onderaan. Correcties lopen altijd via een nieuwe entry die de
+oude eventueel markeert met `_Superseded by …._`. Uitzondering: expliciet
+verzoek van de gebruiker.

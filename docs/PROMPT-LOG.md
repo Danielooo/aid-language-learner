@@ -1,8 +1,7 @@
 # Prompt Log
 
 System prompts, agent-instructies en model-input die in de **applicatie**
-zelf zitten. Niet de prompts die je in Cursor tikt — die staan
-(impliciet) in `RULES-CHANGELOG.md`.
+zelf zitten. Dus de prompts die de gebruiker in Cursor tikt
 
 Voedt direct rubric-vragen 24–29 ("Prompt design") en is bron voor de
 verplichte bijlage "alle gebruikte prompts binnen de applicatie".
@@ -30,7 +29,7 @@ direct een keten reconstrueren.
 
 ## Entries
 
-_Nog leeg. Eerste app-prompt komt zodra de Vercel AI SDK agent is opgezet._
+_Nog leeg_
 
 ---
 

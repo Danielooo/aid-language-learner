@@ -1,7 +1,6 @@
 # Decisions (mini-ADRs)
 
-Architectuurkeuzes, conventiekeuzes, en bewuste afwijkingen van
-cursusmateriaal. Voedt rubric-vraag 22 ("maatregelen voor
+Architectuurkeuzes, conventiekeuzes. Voedt rubric-vraag 22 ("maatregelen voor
 betrouwbaarheid"), 23 (top-3 inzichten) en 28 (welke prompt-onderdelen
 meeste invloed).
 
@@ -13,20 +12,10 @@ hier. Volledige rationale van eerdere ADRs blijft beschikbaar via
 
 ---
 
-## Status-legenda
-
-- **Proposed** — geformuleerd, nog niet uitgevoerd
-- **Accepted** — uitgevoerd, actief
-- **Superseded by X** — vervangen door beslissing X
-- **Deprecated** — niet meer relevant, ingetrokken
-
----
-
 ## Entries
 
 ### 2026-05-27 — `.cursor/rules/*.mdc` ipv single `.cursorrules`
 
-**Status:** Accepted
 **Files:** `.cursor/rules/*.mdc`
 **Tags:** rules, structure, methodology
 
@@ -39,7 +28,6 @@ file-edit). Vereist `docs/INDEX.md` als file-overzicht.
 
 ### 2026-05-27 — Components in `app/_components/`, geen top-level `components/` <a id="components-in-app-private-folders"></a>
 
-**Status:** Accepted
 **Files:** `.cursor/rules/nextjs-app-router.mdc`, `.cursor/rules/conventions.mdc`
 **Tags:** file-structure, components, deviation-from-coursebook
 
@@ -53,7 +41,8 @@ bewust af van cursusmateriaal — beide rules herhalen de waarschuwing.
 
 ### 2026-05-27 — Documentatiesysteem in `docs/` met capture → curate flow <a id="documentatiesysteem"></a>
 
-**Status:** Superseded by [Drop DEV-JOURNAL.md](#drop-dev-journal)
+_Superseded by [Drop DEV-JOURNAL.md](#drop-dev-journal)._
+
 **Files:** `docs/INDEX.md`, `docs/DEV-JOURNAL.md`, `docs/RULES-CHANGELOG.md`, `docs/PROMPT-LOG.md`, `docs/AI-FAILURES.md`, `docs/DECISIONS.md`, `.cursor/rules/journaling.mdc`
 **Tags:** documentation, methodology, eindopdracht, deelopdracht-3
 
@@ -67,7 +56,6 @@ opzet (zie [`drop-dev-journal`](#drop-dev-journal)).
 
 ### 2026-05-27 — Commit-strategie A: één commit per logische gebeurtenis <a id="commit-strategie-a"></a>
 
-**Status:** Accepted
 **Files:** `WERKWIJZE.md`, `.cursor/commands/commit.md`
 **Tags:** git, commits, methodology
 
@@ -81,7 +69,6 @@ gebruiker.
 
 ### 2026-05-27 — `/commit` met status-footer ipv apart `/sessie-eind` commando <a id="commit-met-status-footer"></a>
 
-**Status:** Accepted
 **Files:** `.cursor/commands/commit.md`, `.cursor/commands/sessie-eind.md` (verwijderd), `WERKWIJZE.md`
 **Tags:** workflow, slash-commands, methodology, ux
 
@@ -95,7 +82,6 @@ Aantal slash-commands: 4 → 3.
 
 ### 2026-05-28 — Drop SHA-refs in journal-entries <a id="drop-sha-refs"></a>
 
-**Status:** Accepted
 **Files:** `.cursor/rules/journaling.mdc`, `.cursor/commands/audit.md` (verwijderd), `.cursor/commands/commit.md`, `WERKWIJZE.md`, `docs/INDEX.md`
 **Tags:** documentation, methodology, simplification
 
@@ -109,7 +95,6 @@ Lichter template, één commando minder (4 → 3).
 
 ### 2026-05-28 — Drop `docs/DEV-JOURNAL.md` <a id="drop-dev-journal"></a>
 
-**Status:** Accepted
 **Files:** `docs/DEV-JOURNAL.md` (verwijderd), `.cursor/rules/journaling.mdc`, `docs/INDEX.md`, `WERKWIJZE.md`, `docs/PROMPT-LOG.md`, `.cursor/commands/ai-failure.md`
 **Tags:** documentation, methodology, simplification, deletion
 
@@ -123,7 +108,6 @@ en voegde niets toe. Verbreekt enkele anchor-links in oude ADRs
 
 ### 2026-05-28 — Tokenized design-system met semantische OKLCH-tokens <a id="design-tokens"></a>
 
-**Status:** Accepted
 **Files:** `app/globals.css`
 **Tags:** styling, tailwind, design-system, theming
 
@@ -137,7 +121,6 @@ gaat via één variabele. Class-based dark variant via
 
 ### 2026-05-28 — Toggleable dark mode via `next-themes` <a id="dark-mode-toggle"></a>
 
-**Status:** Accepted
 **Files:** `app/_components/theme-provider.tsx`, `app/_components/ui/theme-toggle.tsx`, `app/layout.tsx`, `app/globals.css`
 **Tags:** styling, theming, accessibility, dependency
 
@@ -152,7 +135,6 @@ toggle.
 
 ### 2026-05-28 — Hand-rolled UI-componenten i.p.v. shadcn/ui <a id="handrolled-ui"></a>
 
-**Status:** Accepted
 **Files:** `app/_components/ui/*`, `lib/utils.ts`
 **Tags:** components, design-system, dependency, scope
 
@@ -167,7 +149,6 @@ Radix toegevoegd.
 
 ### 2026-05-28 11:02 — Korter journaling-format en logging-drempel <a id="short-journaling-format"></a>
 
-**Status:** Accepted
 **Files:** `.cursor/rules/journaling.mdc`, `docs/INDEX.md`, `docs/DECISIONS.md`, `docs/RULES-CHANGELOG.md`, `docs/PROMPT-LOG.md`
 **Tags:** documentation, methodology, simplification
 
@@ -186,7 +167,6 @@ vanwege rubric-specifieke `Severity:`-velden.
 ```markdown
 ### YYYY-MM-DD — Korte beslissing-titel <a id="optionele-anchor"></a>
 
-**Status:** Proposed | Accepted | Superseded by ... | Deprecated
 **Files:** relevant paths
 **Tags:** <topic>, <area>
 
