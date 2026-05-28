@@ -15,7 +15,7 @@ files in `docs/`. Elke noemenswaardige gebeurtenis krijgt **één** entry in
 | Bewerkt / gebeurd | Schrijf in |
 | --- | --- |
 | `.cursor/rules/*.mdc`, `AGENTS.md` toevoegen/wijzigen/verwijderen | `docs/RULES-CHANGELOG.md` |
-| System-/agent-prompt in `app/api/**` of `lib/**` | `docs/PROMPT-LOG.md` |
+| App-interne system-/agent-prompt (Vercel AI SDK in `app/api/**` of `lib/**`) | `docs/PROMPT-LOG.md` |
 | Bewuste architectuur-/conventiekeuze | `docs/DECISIONS.md` |
 | AI-failure die de gebruiker meldt | `docs/AI-FAILURES.md` |
 | `.cursor/commands/` bestand toevoegen of verwijderen | + `WERKWIJZE.md` "Beschikbare slash commands"-lijst |
@@ -33,7 +33,7 @@ onbeduidende. Bij twijfel: niet loggen.
 | --- | --- | --- |
 | `DECISIONS.md` | Ontwerp-/conceptkeuze met blijvende impact: lib-keuze, structuur, conventie, format-/proces-keuze | Kleine layout-aanpassingen, tekstuele content-tweaks, variable-renames, typo-fixes |
 | `RULES-CHANGELOG.md` | Rule toevoegen/verwijderen, of inhoudelijke wijziging (nieuw concept, andere drempel, ander gedrag) | Typo's, witregel-fixes, kleine voorbeeld-uitbreiding, herformulering zonder gedragsverandering |
-| `PROMPT-LOG.md` | Nieuwe of inhoudelijk gewijzigde system-/agent-prompt | Woord-vervanging, formatting, alleen variabele-naam in prompt-tekst |
+| `PROMPT-LOG.md` | Nieuwe of inhoudelijk gewijzigde app-interne prompt (Vercel AI SDK system prompt, agent-instructie, model-input) | Cursor-chat prompts (landen impliciet in `RULES-CHANGELOG.md` bij rule-wijzigingen), woord-vervanging, formatting |
 
 ## Light template
 

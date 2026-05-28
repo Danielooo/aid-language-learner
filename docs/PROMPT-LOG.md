@@ -1,10 +1,13 @@
 # Prompt Log
 
 System prompts, agent-instructies en model-input die in de **applicatie**
-zelf zitten. Dus de prompts die de gebruiker in Cursor tikt
+zelf zitten — typisch de **Vercel AI SDK** agent in `app/api/**` en
+helpers in `lib/**`. Niet de prompts die je in Cursor tikt tijdens het
+ontwikkelen.
 
-Voedt direct rubric-vragen 24–29 ("Prompt design") en is bron voor de
-verplichte bijlage "alle gebruikte prompts binnen de applicatie".
+Voedt direct rubric-vragen 24–29 ("Prompt design", zie
+[EINDOPDRACHT.md § Deelopdracht 3](../EINDOPDRACHT.md)) en is bron voor
+de verplichte bijlage "alle gebruikte prompts binnen de applicatie".
 
 Format: light template (max 3 zinnen) + verplicht code-block met de
 letterlijke prompt. Zie [`INDEX.md`](./INDEX.md) en
@@ -29,7 +32,7 @@ direct een keten reconstrueren.
 
 ## Entries
 
-_Nog leeg_
+_Nog leeg. Eerste app-prompt komt zodra de Vercel AI SDK agent is opgezet._
 
 ---
 
