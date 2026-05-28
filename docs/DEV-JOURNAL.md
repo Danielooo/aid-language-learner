@@ -338,3 +338,35 @@ slash command voorkomt friction door staging + message + Refs-update in
 _Verwacht:_ ik tik na elke gebeurtenis `/commit`, krijg een
 message-voorstel, accepteer of pas aan, en de journal-Refs zijn meteen
 up-to-date. `/sessie-eind` blijft als vangnet voor losse eindjes.
+
+---
+
+## 2026-05-27 21:00 — `/sessie-eind` gemerged in `/commit` status-footer
+
+**Type:** decision
+**Files:** .cursor/commands/commit.md, .cursor/commands/sessie-eind.md (verwijderd), WERKWIJZE.md, docs/DECISIONS.md
+**Tags:** workflow, slash-commands, methodology, refinement
+**Refs:** _no commit yet_, zie [DECISIONS.md#commit-met-status-footer](./DECISIONS.md#commit-met-status-footer)
+**Duration:** ~10 min
+
+### Wat
+`/sessie-eind` commando verwijderd. De drie checks (uncommitted files,
+`_no commit yet_` entries, onvolledige `_te observeren_` velden) zijn
+verhuisd naar een status-footer aan het einde van `/commit` (nieuwe
+substappen in stap 8). WERKWIJZE.md stap 5 herschreven: "geen apart
+commando nodig". Slash-commands-lijst van 4 naar 3.
+
+### Waarom
+De grens tussen `/commit` en `/sessie-eind` was dun: na je laatste
+`/commit` doe je een sessie-eind-check, maar `/commit` weet nog niet
+of dit je laatste was. Twee commands waar één voldoet — en de check
+krijgt pas waarde aan het einde van de sessie, dus makkelijk te
+vergeten. Door de footer altijd te tonen komt de check automatisch,
+zonder dat de gebruiker eraan hoeft te denken.
+
+### Effect
+_Verwacht:_ minder commando's om te onthouden, status komt automatisch
+na élke commit, en het natuurlijke moment van "ik ben klaar" valt
+samen met "alle tellers staan op 0 in de footer". Mogelijke kanttekening:
+status-info kan dubbel voelen bij snel-opeenvolgende commits, maar de
+footer is compact genoeg.

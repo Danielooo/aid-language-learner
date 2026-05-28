@@ -193,8 +193,69 @@ commit voorstelt en direct de journal-entries koppelt.
 - WERKWIJZE.md stap 3 = `/commit` na elke logische gebeurtenis
 - `/commit` slash command aangemaakt om groepering + commit + Refs-update
   in één flow te doen
-- `/sessie-eind` controleert achteraf of er geen losse eindjes zijn
+- `/commit` toont na elke commit een status-footer met open eindjes
+  (uncommitted files, `_no commit yet_` entries, onvolledige velden),
+  waardoor een aparte sessie-eind-check overbodig is. Zie ADR
+  ["`/commit` met status-footer ipv apart `/sessie-eind` commando"](#commit-met-status-footer)
 - Bij twijfel over groepering: `/commit` vraagt de gebruiker
+
+---
+
+### 2026-05-27 — `/commit` met status-footer ipv apart `/sessie-eind` commando <a id="commit-met-status-footer"></a>
+
+**Type:** decision
+**Status:** Accepted
+**Files:** .cursor/commands/commit.md, .cursor/commands/sessie-eind.md (verwijderd), WERKWIJZE.md, docs/DECISIONS.md
+**Tags:** workflow, slash-commands, methodology, ux
+**Refs:** [DEV-JOURNAL.md](./DEV-JOURNAL.md), _no commit yet_
+
+#### Context
+Bij commit-strategie A doe je per logische gebeurtenis `/commit`. Er was
+ook een apart `/sessie-eind` commando dat aan het einde van de sessie
+checkt op uncommitted wijzigingen, `_no commit yet_` entries en
+onvolledige `_te observeren_` velden.
+
+In de praktijk overlappen die twee: na je laatste `/commit` doe je een
+sessie-eind-check, maar `/commit` weet nog niet of dit je laatste was.
+Twee commands waar één voldoet, en de check krijgt pas waarde aan het
+einde van de sessie — dus is hij makkelijk te vergeten.
+
+#### Decision
+`/sessie-eind` verwijderd. De drie checks (uncommitted files, open
+`_no commit yet_` entries, onvolledige velden) zijn toegevoegd als
+status-footer aan het einde van `/commit`. Elke commit toont nu
+informatief wat er nog open is, zonder iets te forceren.
+
+#### Alternatieven overwogen
+- **Twee aparte commands houden** — verworpen: dunne grens, en
+  sessie-eind wordt vergeten omdat het optioneel voelt
+- **`/sessie-eind` houden als read-only status-only commando** —
+  verworpen: dezelfde info kun je in natuurlijke taal vragen
+  (*"wat is mijn git-status?"*); commando voegt geen waarde toe
+- **`/commit` een `--final` flag geven** — verworpen: flag-based UX
+  is fiddly, en de footer is goedkoop genoeg om altijd te tonen
+
+#### Argumenten voor
+- Eén commando minder om te onthouden (3 ipv 4 slash commands)
+- Status-footer komt automatisch na élke commit, niet alleen als de
+  gebruiker eraan denkt
+- Minder cognitieve belasting: "is dit mijn laatste commit?" hoef je
+  niet meer te beantwoorden
+- Sluit aan op de realiteit: elke commit kán je laatste zijn
+
+#### Argumenten tegen
+- Wat info dubbel bij meerdere snel-opeenvolgende commits (status-footer
+  vier keer achter elkaar) — gemitigeerd doordat de footer compact is
+- Geen apart "eind-sessie" moment meer: discipline om bij `0 0 0` af te
+  sluiten ligt bij de gebruiker
+
+#### Consequences
+- `.cursor/commands/sessie-eind.md` verwijderd
+- `.cursor/commands/commit.md` stap 8 uitgebreid met status-footer
+- WERKWIJZE.md stap 5 ("Einde sessie") herschreven naar "geen apart
+  commando nodig"
+- Lijst beschikbare slash commands teruggebracht naar 3
+- Bovenstaande ADR "Commit-strategie A" Consequences-regel bijgewerkt
 
 ---
 

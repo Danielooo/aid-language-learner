@@ -104,14 +104,45 @@ Als alles gedaan is: ga naar stap 8.
 De gebruiker kan tussendoor zeggen "stop" — laat dan eventuele resterende
 open entries staan op `_no commit yet_`.
 
-### 8. Bevestig
+### 8. Bevestig + toon status-footer
 
 Vat samen:
 
 - Aantal commits gemaakt + de korte SHAs en messages
 - Aantal journal-entries bijgewerkt per docs-bestand
-- Eventueel: openstaande wijzigingen zonder commit ("nog X files modified,
-  geen commit voorgesteld")
+
+**Daarna**, draai parallel deze status-checks (vangt het werk op dat
+voorheen `/sessie-eind` deed):
+
+- `git status --porcelain` — resterende uncommitted wijzigingen
+- Zoek in `docs/*.md` naar resterende `_no commit yet_` regels
+- Zoek in `docs/*.md` naar resterende `_te observeren_` of
+  `_door gebruiker te bepalen_` velden
+
+Toon een compacte footer:
+
+```
+✅ Committed `<sha>` — <message>
+   Files: <files>
+   Journal-entries bijgewerkt: <n>
+
+📋 Status:
+   • Uncommitted wijzigingen: <n> files (<file-namen of "—">)
+   • Open `_no commit yet_` entries: <n>
+   • Onvolledige `_te observeren_` velden: <n>
+
+→ <vervolgsuggestie>
+```
+
+Voor de vervolgsuggestie:
+
+- Alle tellers `0` → `✓ Klaar voor volgende /commit of voor het einde van de sessie.`
+- Nog uncommitted files → `Nog X logische gebeurtenis(sen) open. Doe gerust /commit of laat staan voor volgende sessie.`
+- Open `_no commit yet_` zonder uncommitted files → `Er staan X entries op _no commit yet_ maar geen uncommitted files. Mogelijk al gecommit zonder Refs-update — wil je dat ik per entry een SHA voorstel?`
+- Onvolledige `_te observeren_` velden alleen → `X velden nog _te observeren_; laten staan voor week-recap is prima.`
+
+Forceer niets. De footer is informatief. De gebruiker beslist of er
+nóg een `/commit` volgt of dat de sessie hier eindigt.
 
 ## Belangrijk
 

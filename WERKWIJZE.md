@@ -23,8 +23,10 @@ Commit-strategie: **één commit per logische gebeurtenis** (zie
    ```
    /commit
    ```
-   Cursor stelt een commit-message voor, doet de commit, en koppelt de
-   bijbehorende journal-entries aan de nieuwe commit-SHA.
+   Cursor stelt een commit-message voor, doet de commit, koppelt de
+   bijbehorende journal-entries aan de nieuwe commit-SHA, en toont een
+   status-footer met eventuele open eindjes (uncommitted files,
+   `_no commit yet_` entries, onvolledige velden).
 
 4. **Als AI iets onverwachts of fout doet** **[JIJ]**
    Tik in de chat:
@@ -34,12 +36,11 @@ Commit-strategie: **één commit per logische gebeurtenis** (zie
    Optioneel met `severity low|medium|high` en korte beschrijving.
 
 5. **Einde sessie** **[JIJ]**
-   Tik in de chat:
-   ```
-   /sessie-eind
-   ```
-   Cursor checkt of alles is gecommit, of er nog open journal-velden zijn,
-   en biedt aan losse eindjes af te ronden.
+   Geen apart commando nodig. Na je laatste `/commit` heeft de
+   status-footer je al laten zien wat (eventueel) nog open is. Niets
+   meer te doen? Sluit Cursor af. Wel iets open dat nog moet? Vraag
+   het natuurlijk: *"wat is mijn git-status?"* of *"zijn er nog
+   `_no commit yet_` entries?"*.
 
 ## Wekelijks
 
@@ -55,8 +56,7 @@ Commit-strategie: **één commit per logische gebeurtenis** (zie
 
 ## Beschikbare slash commands
 
-- `/commit` — commit één logische gebeurtenis + koppel journal-entries aan de SHA
-- `/sessie-eind` — afsluitings-check voor de werksessie
+- `/commit` — commit één logische gebeurtenis + koppel journal-entries aan de SHA + status-footer
 - `/ai-failure` — log een AI-failure entry
 - `/sync-werkwijze` — sync dit bestand met de bronbestanden
 
