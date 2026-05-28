@@ -1,19 +1,15 @@
-import { ThemeToggle } from "@/app/_components/ui/theme-toggle";
 import { Container } from "@/app/_components/ui/container";
 
 export default function Home() {
   return (
     <Container className="flex flex-1 flex-col gap-12 py-16">
-      <header className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">
-            Eindopdracht AI Developer
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            AID Language Learner
-          </h1>
-        </div>
-        <ThemeToggle />
+      <header className="space-y-2">
+        <p className="text-sm font-medium text-muted-foreground">
+          Eindopdracht AI Developer
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          AID Language Learner
+        </h1>
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2">
