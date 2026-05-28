@@ -377,6 +377,156 @@ Een archief-bestand naast actieve files veroorzaakt drie issues:
 
 ---
 
+### 2026-05-28 — Tokenized design-system met semantische OKLCH-tokens <a id="design-tokens"></a>
+
+**Type:** decision
+**Status:** Accepted
+**Files:** `app/globals.css`
+**Tags:** styling, tailwind, design-system, theming
+
+#### Context
+Vóór feature-werk een design-baseline vastleggen. De standaard
+`create-next-app` template stelde alleen `--background` en `--foreground`
+in, zonder semantische namen voor primary/accent/muted/border/destructive.
+Dat dwingt later kleurkeuzes hard-coded in components af, waardoor een
+rebranding pijnlijk wordt.
+
+#### Decision
+Semantische CSS-variabelen in `:root` (light) + `.dark` (dark) met
+OKLCH-waarden, gemapt op `--color-*` in `@theme inline`. Tailwind v4
+maakt elke `--color-foo` automatisch tot utility (`bg-foo`, `text-foo`,
+`border-foo`), dus de tokens dragen zichzelf.
+
+Tokens: `background`, `foreground`, `card` + `-foreground`, `muted` +
+`-foreground`, `primary` + `-foreground`, `accent` + `-foreground`,
+`border`, `input`, `ring`, `destructive` + `-foreground`.
+
+#### Alternatieven overwogen
+- **Raw kleuren in components** (bv. `bg-zinc-50 dark:bg-zinc-900`) —
+  verworpen: rebranding wordt zoek-en-vervang door codebase
+- **Volledig shadcn/ui-token-schema** — niet relevant: we kiezen
+  hand-rolled (zie [Hand-rolled UI-componenten](#handrolled-ui))
+
+#### Argumenten voor
+- Eén plek (`globals.css`) voor alle kleuren
+- OKLCH geeft betere perceptuele uniformiteit dan HSL/RGB
+- Tailwind v4 genereert utilities automatisch — geen duplicatie
+
+#### Argumenten tegen
+- Tokens vereisen discipline: hard-coded `bg-blue-600` glipt anders alsnog
+  binnen. Mitigatie: eslint/review op feature-PR's
+
+#### Consequences
+- Class-based dark variant via `@custom-variant dark (&:where(.dark, .dark *))`
+  is noodzakelijk om de `.dark`-class te laten triggeren — zie
+  [Toggleable dark mode](#dark-mode-toggle)
+- Tailwind utility `bg-foreground/text-background` werkt buiten de doos
+
+---
+
+### 2026-05-28 — Toggleable dark mode via `next-themes` <a id="dark-mode-toggle"></a>
+
+**Type:** decision
+**Status:** Accepted
+**Files:** `app/_components/theme-provider.tsx`, `app/_components/ui/theme-toggle.tsx`, `app/layout.tsx`, `app/globals.css`
+**Tags:** styling, theming, accessibility, dependency
+
+#### Context
+Dark mode kan op drie manieren: (a) alleen OS-voorkeur volgen via
+`prefers-color-scheme`, (b) één modus afdwingen, of (c) een user-toggle
+met persistente keuze. Voor een educatieve consumer-app is (c) de
+verwachte UX, en het demonstreert ook expliciet de design-tokens.
+
+#### Decision
+Driestandentoggle (light / dark / system) via [`next-themes`](https://github.com/pacocoursey/next-themes),
+gewrapt in een eigen `ThemeProvider` zodat de lib-keuze op één plek
+zit. `<html suppressHydrationWarning lang="nl">` in `RootLayout`.
+`disableTransitionOnChange` voorkomt flash bij wisselen.
+
+#### Alternatieven overwogen
+- **Eigen cookie-based toggle + Server Component reader** — verworpen:
+  FOUC-bezwering niet-triviaal, kost meer maintenance dan een ~4 kB lib
+  bespaart
+- **Alleen `prefers-color-scheme`** — verworpen: geen user-control, geeft
+  ook geen tastbaar UX-element om in de presentatie te demonstreren
+- **Eén modus (alleen light of dark)** — verworpen: minder rijk
+  demonstratiemateriaal van het token-systeem
+
+#### Argumenten voor
+- ~4 kB, dé standaard voor App Router (>2M downloads/wk)
+- FOUC-vrij dankzij inline script
+- Werkt naadloos met `@custom-variant dark (&:where(.dark, .dark *))`
+
+#### Argumenten tegen
+- Extra dependency die meegroeit met React/Next-upgrades — gemitigeerd
+  doordat de wrapper-component één import-punt is
+
+#### Consequences
+- `ThemeToggle` rendert pas na hydrate (`mounted` guard) om
+  hydration-mismatches te voorkomen
+- Bij voegen van nieuwe themes (bv. high-contrast) volstaat een extra
+  selector + één extra optie in `ThemeToggle`
+
+---
+
+### 2026-05-28 — Hand-rolled UI-componenten i.p.v. shadcn/ui <a id="handrolled-ui"></a>
+
+**Type:** decision
+**Status:** Accepted
+**Files:** `app/_components/ui/*`, `lib/utils.ts`
+**Tags:** components, design-system, dependency, scope
+
+#### Context
+Voor de UI-laag waren twee kandidaten: (a) **shadcn/ui** — copy-paste
+componenten op Radix UI met een breed primitive-pakket, of (b)
+**hand-rolled** Tailwind componenten in `app/_components/ui/`. Shadcn
+zou tijd besparen op standaard primitives, maar trekt Radix UI en een
+eigen tokens-conventie de codebase binnen.
+
+#### Decision
+Hand-rolled. Componenten leven in `app/_components/ui/` (gedeeld) of
+`app/<segment>/_components/` (route-specifiek). Standaard helper
+`cn()` in [`lib/utils.ts`](../lib/utils.ts) (clsx + tailwind-merge).
+Eerste opgeleverde primitive: `Container`. Verdere primitives (Button,
+Input, Card) komen pas wanneer een feature ze écht nodig heeft — geen
+spec-anticipatie.
+
+#### Alternatieven overwogen
+- **shadcn/ui volledig** — verworpen: cursus-rubric eist eigen
+  TypeScript-/React-code (clean code-principes); shadcn-snippets
+  vervagen wat "zelf geschreven" is en zou ik in 3.5 (kritische
+  reflectie) moeten verantwoorden. Eigen componenten geven scherper
+  signaal van begrip.
+- **Hybride (alleen Radix-primitives voor a11y-kritische dingen)** —
+  uitgesteld: als blijkt dat focus-trap/positionering voor Dialog of
+  Popover non-triviaal wordt, kunnen we per-component Radix selectief
+  toevoegen zonder de rest van shadcn binnen te halen. ADR wordt dan
+  gesplitst.
+
+#### Argumenten voor
+- Past bij rubric 1.4 (schone, gestructureerde, **zelf-geschreven**
+  TypeScript- en Next.js-code) en bij 3.5 (kritisch reflecteren op
+  AI-gegenereerde code — minder copy-paste = makkelijker te verantwoorden)
+- Minimale dependency-voetafdruk: `clsx` + `tailwind-merge` zijn 2 kleine
+  utilities, geen Radix UI in `package.json`
+- Volledige controle over a11y-attributen, naamgeving en types
+
+#### Argumenten tegen
+- Meer werk per primitive — gemitigeerd doordat we ze pas bouwen wanneer
+  ze nodig zijn, niet bij voorbaat
+- Sommige a11y-patterns (focus-trap in Dialog, virtualized Listbox) zijn
+  niet-triviaal — opgelost door selectief Radix toe te voegen wanneer
+  dat speelt (zie alternatief 2)
+
+#### Consequences
+- `.cursor/rules/conventions.mdc` ("Components in `app/_components/ui/`
+  of `app/_components/features/`") blijft leidend
+- `cn()` is de canonieke manier voor conditionele classes in alle nieuwe
+  componenten
+- Bij toekomstige need voor Radix: ADR-splitsing per primitive
+
+---
+
 ## Template — kopieer & vul in
 
 ```markdown
