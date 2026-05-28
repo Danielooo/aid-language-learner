@@ -259,6 +259,67 @@ informatief wat er nog open is, zonder iets te forceren.
 
 ---
 
+### 2026-05-28 — Drop SHA-refs in journal-entries <a id="drop-sha-refs"></a>
+
+**Type:** decision
+**Status:** Accepted
+**Files:** `.cursor/rules/journaling.mdc`, `.cursor/commands/audit.md` (verwijderd), `.cursor/commands/commit.md`, `WERKWIJZE.md`, `docs/INDEX.md`
+**Tags:** documentation, methodology, simplification
+
+#### Context
+De rubric ([EINDOPDRACHT.md](../EINDOPDRACHT.md) § Deelopdracht 3, Q16–Q29)
+eist nergens dat journal-entries naar specifieke commits linken. Q1.5
+vraagt alleen om ≥20 zinvolle commits met messages — dat gaat over de
+git-history zélf, niet over verwijzingen vanuit het verantwoordingsdocument.
+
+Tijdstempels in entry-titels (`YYYY-MM-DD HH:MM`) + `git log`-tijden geven
+al een chronologische correlatie. Niemand (jij, docent) gaat tijdens
+nakijken een SHA in git invoeren om een entry te verifiëren.
+
+Het bijhouden van `Refs:` (handmatig of via `/audit`) kost onderhoud +
+tokens voor nul rubric-waarde.
+
+#### Decision
+- `Refs:` veld wordt verwijderd uit de light template (in
+  `.cursor/rules/journaling.mdc` + `docs/INDEX.md`).
+- Nieuwe entries krijgen geen `Refs:` veld meer.
+- Bestaande `_no commit yet_` regels in `RULES-CHANGELOG.md` en
+  `DEV-JOURNAL.md` blijven onaangetast staan als historisch artefact —
+  ze tonen impliciet "deze entry is geschreven vóór deze cleanup".
+- `/audit` slash-command vervalt; bestand verwijderd.
+
+#### Alternatieven overwogen
+- **Drop volledig + opruimen (16 entries)** — verworpen: cleanup-werk
+  zonder rubric-waarde, bestaande entries hebben historische context
+- **Keep als optioneel veld** — verworpen: half-half-aanpak houdt
+  `/audit`-infrastructuur in stand voor twijfelgevallen
+- **Cancel alleen audit-run, verder niets** — verworpen: lost het
+  onderliggende probleem (overhead per entry) niet op
+
+#### Argumenten voor
+- Lichter template = minder friction per entry
+- `/audit` weg = één slash-command minder om te onthouden + geen
+  wekelijkse taak meer
+- Bestaande entries als-is laten = geen retroactief sleutelen aan
+  historie
+
+#### Argumenten tegen
+- Subtiel inconsistent: oude entries hebben `Refs:` veld, nieuwe niet —
+  gemitigeerd door archief-banner in `DEV-JOURNAL.md` en het feit dat
+  `RULES-CHANGELOG.md` entries zonder SHA evengoed leesbaar zijn
+- Vermoeilijkt verificatie "welke commit hoort bij deze rule-wijziging"
+  — opgelost door `git log --since/--until` op de entry-timestamp
+
+#### Consequences
+- Eerdere ADR ["Commit-strategie A"](#commit-strategie-a)
+  Consequences-punt "Iedere journal-entry heeft precies één SHA →
+  eenvoudig te verifiëren" vervalt — strategie A zelf (één commit per
+  logische gebeurtenis voor de ≥20 commits eis) blijft.
+- `WERKWIJZE.md` Beschikbare slash commands: 4 → 3 (drop `/audit`).
+- 16 bestaande `_no commit yet_` entries blijven zichtbaar staan.
+
+---
+
 ## Template — kopieer & vul in
 
 ```markdown
