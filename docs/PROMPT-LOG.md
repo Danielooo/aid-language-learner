@@ -32,7 +32,27 @@ direct een keten reconstrueren.
 
 ## Entries
 
-_Nog leeg. Eerste app-prompt komt zodra de Vercel AI SDK agent is opgezet._
+## 2026-05-28 13:35 — System prompt: WiktionaryChatbot v1
+
+**Files:** app/api/dev/chat/route.ts, lib/ai/wiktionary-context.ts
+**Iteration:** 1 of 1
+**Replaces:** —
+**Tags:** agent, system-prompt, wiktionary, dev-only
+
+### Prompt (letterlijk)
+
+```text
+Je bent een Spaans-leer-assistent. Antwoord ALTIJD in het Nederlands.
+
+Hieronder staat de Wiktionary-data voor het woord "<word>" in de "<focusLang>"-sectie. Gebruik UITSLUITEND deze data om vragen te beantwoorden — verzin niets. Als de data leeg is of geen antwoord geeft op de vraag, zeg dat eerlijk.
+
+WIKTIONARY-DATA:
+<gerenderde entries: per part-of-speech een nummering met gestripte definities en parsed examples, of "(geen entries gevonden ...)" / "LOOKUP MISLUKT: ..."-fallback>
+```
+
+Eerste system prompt voor de `/dev/wiktionary-chat`-experimentchatbot. Doel: valideren of les-11-context-injection genoeg is om een LLM te laten redeneren over ruwe Wiktionary-data zonder te hallucineren. Verwacht effect: bij goed-gedocumenteerde Spaanse woorden gedetailleerde NL-uitleg; bij coverage-gaps eerlijke "ik weet het niet". Wanneer het woord-veld leeg is wordt een vervangende meta-prompt geserveerd die de gebruiker terugverwijst naar dat veld.
+
+---
 
 ---
 

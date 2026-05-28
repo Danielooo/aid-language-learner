@@ -38,6 +38,19 @@ export default function DevIndexPage() {
             </p>
           </Link>
         </li>
+        <li className="sm:col-span-2">
+          <Link
+            href="/dev/wiktionary-chat"
+            className="block rounded-lg border border-border bg-card p-5 text-card-foreground transition-colors hover:border-ring"
+          >
+            <h2 className="text-base font-semibold">Wiktionary-chatbot</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Vercel AI SDK demo (les 11). Stelt vragen over één woord;
+              Wiktionary-data wordt vooraf in de system prompt geplakt.
+              Inclusief raw-JSON debug-panels.
+            </p>
+          </Link>
+        </li>
       </ul>
     </div>
   );

@@ -162,6 +162,24 @@ vanwege rubric-specifieke `Severity:`-velden.
 
 ---
 
+### 2026-05-28 13:35 — Vercel AI SDK Wiktionary-chatbot in /dev <a id="wiktionary-chatbot-dev"></a>
+
+**Files:** `app/dev/wiktionary-chat/page.tsx`, `app/api/dev/chat/route.ts`, `app/api/dev/chat/preview/route.ts`, `lib/ai/wiktionary-context.ts`, `package.json`
+**Tags:** ai-sdk, architecture, experiment, dev-only
+
+Eerste integratie van Vercel AI SDK (`ai` v6 + `@ai-sdk/openai` v3 +
+`@ai-sdk/react` v3) als les-11-stijl experiment onder `/dev/`: één
+woord wordt vooraf via Wiktionary opgehaald en in de system prompt
+geplakt, antwoord komt via `streamText` + `useChat`. Bewust gekozen
+voor context-injection i.p.v. tool calling (les 12) om de minimale
+les-11-flow te valideren; aparte GET-preview-route hergebruikt
+dezelfde context-builder zodat de UI-debug-panels gegarandeerd
+laten zien wat de LLM ook daadwerkelijk ziet. v6 wijkt af van de
+lesstof (`@ai-sdk/react` i.p.v. `ai/react`, `toUIMessageStreamResponse`
+i.p.v. `toDataStreamResponse`, `convertToModelMessages` op de server).
+
+---
+
 ## Template — kopieer & vul in
 
 ```markdown
