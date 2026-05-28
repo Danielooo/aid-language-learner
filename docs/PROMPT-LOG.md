@@ -7,7 +7,10 @@ zelf zitten. Niet de prompts die je in Cursor tikt — die staan
 Voedt direct rubric-vragen 24–29 ("Prompt design") en is bron voor de
 verplichte bijlage "alle gebruikte prompts binnen de applicatie".
 
-Zie [`INDEX.md`](./INDEX.md) voor template.
+Format: light template (max 3 zinnen) + verplicht code-block met de
+letterlijke prompt. Zie [`INDEX.md`](./INDEX.md) en
+[`.cursor/rules/journaling.mdc`](../.cursor/rules/journaling.mdc) voor
+de drempel.
 
 ---
 
@@ -36,13 +39,10 @@ _Nog leeg. Eerste app-prompt komt zodra de Vercel AI SDK agent is opgezet._
 ```markdown
 ## YYYY-MM-DD HH:MM — System prompt: <AgentNaam> v<N>
 
-**Type:** app-prompt
-**Used in:** app/api/<route>/route.ts (regel <X-Y>)
+**Files:** app/api/<route>/route.ts
 **Iteration:** <N> of N
 **Replaces:** v<N-1> (of: —)
 **Tags:** agent, system-prompt, <feature>
-**Refs:** AI-FAILURES.md#<anker> (als deze versie reageert op een failure)
-**Duration:** ~<N> min schrijven
 
 ### Prompt (letterlijk)
 
@@ -50,14 +50,7 @@ _Nog leeg. Eerste app-prompt komt zodra de Vercel AI SDK agent is opgezet._
 Je bent een ...
 \`\`\`
 
-### Wat
-Doel van deze prompt in 1–2 zinnen.
-
-### Waarom
-Waarom dit nu, en wat verschilde van de vorige versie.
-Bij iteratie: link naar wat er met de vorige versie misging.
-
-### Effect / verwacht effect
-Wat veranderde aan modelgedrag of output-kwaliteit.
-Bij eerste versie: wat verwacht je?
+Eén tot drie zinnen: doel van deze prompt, waarom deze versie, en wat
+veranderde t.o.v. de vorige versie (bij eerste versie: verwacht
+effect).
 ```

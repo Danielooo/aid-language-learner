@@ -21,9 +21,24 @@ files in `docs/`. Elke noemenswaardige gebeurtenis krijgt **één** entry in
 | `.cursor/commands/` bestand toevoegen of verwijderen | + `WERKWIJZE.md` "Beschikbare slash commands"-lijst |
 
 Voor `/ai-failure` bestaat een aparte slash-command die het schrijven
-afhandelt. Voor de andere drie typen: schrijf direct na de wijziging.
+afhandelt; AI-FAILURES is daarmee uitgezonderd van de drempel- en
+format-regels hieronder.
+
+## Drempel — wanneer wél, wanneer níét
+
+Het verantwoordingsdocument heeft liever 8 sterke entries dan 30
+onbeduidende. Bij twijfel: niet loggen.
+
+| Bestand | Wél loggen | Niet loggen |
+| --- | --- | --- |
+| `DECISIONS.md` | Ontwerp-/conceptkeuze met blijvende impact: lib-keuze, structuur, conventie, format-/proces-keuze | Kleine layout-aanpassingen, tekstuele content-tweaks, variable-renames, typo-fixes |
+| `RULES-CHANGELOG.md` | Rule toevoegen/verwijderen, of inhoudelijke wijziging (nieuw concept, andere drempel, ander gedrag) | Typo's, witregel-fixes, kleine voorbeeld-uitbreiding, herformulering zonder gedragsverandering |
+| `PROMPT-LOG.md` | Nieuwe of inhoudelijk gewijzigde system-/agent-prompt | Woord-vervanging, formatting, alleen variabele-naam in prompt-tekst |
 
 ## Light template
+
+Maximaal 3 zinnen vrije tekst. Geen `### Wat` / `### Waarom` / `### Effect`
+sub-kopjes. Geen `Type:`-veld (impliciet via het bestand).
 
 ```markdown
 ## YYYY-MM-DD HH:MM — Korte titel
@@ -31,19 +46,17 @@ afhandelt. Voor de andere drie typen: schrijf direct na de wijziging.
 **Files:** path/naar/bestand1, path/naar/bestand2
 **Tags:** tag1, tag2
 
-Vrije tekst over Wat / Waarom / Effect. Subkopjes (`### Wat`, `### Waarom`,
-`### Effect`) mogen, maar zijn niet verplicht.
+Eén tot drie zinnen: wat is besloten/gewijzigd, waarom, en het effect.
 ```
 
 ## Per-file extra velden (alleen waar rubric ze afdwingt)
 
-- **`AI-FAILURES.md`**: `Severity: low | medium | high`
-- **`PROMPT-LOG.md`**: `Iteration: <N>`, `Replaces: v<N-1>` (of `—`)
-- **`DECISIONS.md`**: `Status: Proposed | Accepted | Superseded by X | Deprecated`
+- **`DECISIONS.md`**: `**Status:** Proposed | Accepted | Superseded by X | Deprecated`
+- **`PROMPT-LOG.md`**: `**Iteration:** N`, `**Replaces:** v(N-1)` (of `—`) + de letterlijke prompt in een code-block (rubric-bijlage)
+- **`AI-FAILURES.md`**: eigen format via `/ai-failure` slash-command
 
 ## Wat NIET autonoom invullen
 
-- **`Severity:`** — vraag de gebruiker met onderbouwing
 - **`Status: Accepted`** — alleen na expliciete bevestiging; anders `Proposed`
 - Subjectieve reflectie waarvan jij de intent niet kunt weten — markeer
   `_door gebruiker aan te vullen_`
@@ -51,9 +64,10 @@ Vrije tekst over Wat / Waarom / Effect. Subkopjes (`### Wat`, `### Waarom`,
 ## Werkwijze
 
 1. Voer de inhoudelijke wijziging uit.
-2. Schrijf direct één entry onderaan de relevante specialized file. Gebruik
+2. Check de drempel-tabel: is het wezenlijk genoeg?
+3. Zo ja: schrijf één entry onderaan de relevante specialized file. Gebruik
    `YYYY-MM-DD HH:MM` (huidige tijd is prima als exacte tijd onbekend is).
-3. Vermeld kort in je antwoord aan de gebruiker welk bestand je hebt
+4. Vermeld kort in je antwoord aan de gebruiker welk bestand je hebt
    bijgewerkt.
 
 Eén event = één entry = één bestand. Geen `Duration:` veld. Geen
