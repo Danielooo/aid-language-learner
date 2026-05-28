@@ -44,11 +44,33 @@ Commit-strategie: **één commit per logische gebeurtenis** (zie
 
 ## Wekelijks
 
-6. **Einde week — lift** **[JIJ]**
-   Tik tegen Cursor:
-   > "lift de belangrijkste journal-entries van deze week naar de specialized files"
+1. **Einde week — audit** **[JIJ]**
+   *(Voorheen "lift", maar in de praktijk een audit-stap geworden.)*
 
-7. **Einde week — sync-check** **[JIJ]**
+   Capture in `DEV-JOURNAL.md` én curate in de specialized files
+   gebeurt al tijdens je sessies, omdat de meta-rule
+   [`.cursor/rules/journaling.mdc`](.cursor/rules/journaling.mdc)
+   Cursor forceert om bij rule-edits, prompt-edits en architectuurkeuzes
+   meteen béide te updaten. Deze wekelijkse stap is daarom geen tweede
+   schrijfronde meer, maar een **audit/verificatie-pas**:
+
+   - Heeft de meta-rule echt overal meegeschreven?
+   - Zijn de cross-references (`Refs:`) consistent?
+   - Welke `_te observeren_` velden kun je nu invullen omdat het effect
+     bekend is?
+   - Welke AI-failures of prompt-iteraties heb je niet meteen gelogd
+     maar zou je achteraf nog willen vastleggen?
+
+   Tik tegen Cursor (Agent-mode):
+   > Lees alle nieuwe entries van deze week in `docs/DEV-JOURNAL.md`.
+   > Check of elke rubric-waardige entry een corresponderende entry
+   > heeft in de juiste specialized file (RULES-CHANGELOG / PROMPT-LOG
+   > / AI-FAILURES / DECISIONS) en of de cross-references kloppen. Vul
+   > `_te observeren_` velden in waar het effect inmiddels bekend is.
+   > Rapporteer ontbrekende of inconsistente entries — schrijf niets
+   > weg zonder mijn akkoord.
+
+2. **Einde week — sync-check** **[JIJ]**
    Tik in de chat:
    ```
    /sync-werkwijze

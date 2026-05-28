@@ -370,3 +370,52 @@ na élke commit, en het natuurlijke moment van "ik ben klaar" valt
 samen met "alle tellers staan op 0 in de footer". Mogelijke kanttekening:
 status-info kan dubbel voelen bij snel-opeenvolgende commits, maar de
 footer is compact genoeg.
+
+---
+
+## 2026-05-27 21:13 — Wekelijkse "lift"-stap herijkt naar "audit"-stap
+
+**Type:** decision
+**Files:** WERKWIJZE.md
+**Tags:** workflow, journaling, methodology, audit
+**Refs:** _no commit yet_
+**Duration:** ~5 min
+
+### Wat
+WERKWIJZE.md `## Wekelijks` stap 1 herschreven. Heette voorheen
+"Einde week — lift" met de prompt "lift de belangrijkste journal-entries
+van deze week naar de specialized files". Is nu "Einde week — audit"
+met een uitgebreidere audit-prompt die check op (a) compleetheid
+DEV-JOURNAL ↔ specialized files, (b) consistentie cross-references,
+(c) inmiddels bekende `_te observeren_` velden, (d) niet-gelogde
+AI-failures/prompt-iteraties.
+
+Daarnaast formatting-fixes in WERKWIJZE.md: backtick-omsloten markdown
+links (`` `[…](…)` ``) ontwikkeld naar gewone links, typo
+`app/api/)**` → `app/api/**`, ontbrekende `/commit` en `/ai-failure`
+code-blocks in stappen 3 en 4 hersteld, code-block indent in
+sync-check stap genormaliseerd.
+
+### Waarom
+Gemerkt tijdens het uitleggen van de lift-stap: door
+`.cursor/rules/journaling.mdc` (de meta-rule) schrijft Cursor tijdens
+de sessie al direct naar de specialized files. De "lift" als
+afzonderlijke curate-fase is daarmee vrijwel leeg. Wat overblijft is
+een verificatie/audit-rol: checken dat de meta-rule overal heeft
+meegeschreven, gaten dichten, `_te observeren_` velden achteraf
+invullen.
+
+Capture en curate gebeuren dus synchroon (i.p.v. capture nu, curate
+later) — en dat is een gevolg van de meta-rule die we eerder hebben
+opgezet, niet iets dat we expliciet hebben besloten. Door de stap nu
+te herijken sluit de werkwijze beter aan op de feitelijke flow.
+
+### Effect
+_Verwacht:_ aan einde van een week pakt de audit-prompt expliciet
+de zaken op die wél nog ontbreken (gemiste AI-failures, niet-ingevulde
+effecten) i.p.v. duplicate werk te doen voor entries die al in
+specialized files staan. Lift-fatigue voorkomen.
+
+_Te observeren:_ of de audit-stap iets oplevert dat de meta-rule
+zelf had moeten oppikken — als de meta-rule structureel iets mist,
+dán die rule aanscherpen i.p.v. de audit-stap te verzwaren.
