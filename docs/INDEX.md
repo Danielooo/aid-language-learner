@@ -12,7 +12,6 @@ Dit `docs/` directory is het verantwoordingssysteem voor de eindopdracht
 | [`PROMPT-LOG.md`](./PROMPT-LOG.md) | System prompts, agent-instructies (de prompts ín de applicatie) |
 | [`AI-FAILURES.md`](./AI-FAILURES.md) | Wanneer AI iets onverwachts/fout deed |
 | [`DECISIONS.md`](./DECISIONS.md) | Architectuurkeuzes (mini-ADRs) |
-| [`DEV-JOURNAL.md`](./DEV-JOURNAL.md) | **Archief** van de eerste week — geen nieuwe entries |
 
 ## Werkstroom: één event, één bestand
 
@@ -29,7 +28,7 @@ en de timestamps in `git log`; geen expliciete SHA-koppeling per entry.
 Zie [`DECISIONS.md#drop-sha-refs`](./DECISIONS.md#drop-sha-refs) voor de
 onderbouwing.
 
-Geen capture-vs-curate splitsing, geen DEV-JOURNAL-mirror. De
+Eén event = één entry = één bestand. De
 [`.cursor/rules/journaling.mdc`](../.cursor/rules/journaling.mdc) meta-rule
 forceert Cursor in Agent-mode om bij de juiste triggers automatisch de
 entry te schrijven.

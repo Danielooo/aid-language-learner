@@ -33,12 +33,9 @@ _Nog leeg. Capture momenten zoals ze voorkomen._
 ```markdown
 ## YYYY-MM-DD HH:MM — Korte beschrijving wat misging
 
-**Type:** ai-failure
 **Severity:** low | medium | high
 **Files:** path/naar/bestand(en) waar het gebeurde
 **Tags:** <feature>, <ai-model>, <type-error>
-**Refs:** DEV-JOURNAL.md#<datum-tijd>, RULES-CHANGELOG.md#<anker> (als rule was gemaakt om te voorkomen)
-**Duration:** ~<N> min om op te vangen
 
 ### Wat ging fout
 Concrete output of gedrag. Code-snippet als dat helpt.

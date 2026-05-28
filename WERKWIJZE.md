@@ -19,7 +19,7 @@ Commit-strategie: **één commit per logische gebeurtenis** (zie
    - System-/agent-prompt in `app/api/**` of `lib/**` → `docs/PROMPT-LOG.md`
    - Bewuste architectuur-/conventiekeuze → `docs/DECISIONS.md`
 
-   Eén event = één entry = één bestand. Geen DEV-JOURNAL-mirror.
+   Eén event = één entry = één bestand.
 
 3. **Na elke logische gebeurtenis** **[JIJ]**
    Tik:

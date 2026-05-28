@@ -279,6 +279,28 @@ zou kiezen, weigert de agent en wijst op de rule.
 
 ---
 
+## 2026-05-28 09:58 — `journaling.mdc` opgeschoond na verwijderen DEV-JOURNAL
+
+**Files:** `.cursor/rules/journaling.mdc`
+**Tags:** rules, cleanup, dev-journal
+
+### Wat
+Twee zinnen verwijderd/aangepast in `journaling.mdc`:
+- "`docs/DEV-JOURNAL.md` is archief van de eerste week. Niet meer naartoe schrijven." — volledig weg
+- "Geen DEV-JOURNAL-mirror." → "Eén event = één entry = één bestand."
+
+### Waarom
+`docs/DEV-JOURNAL.md` is verwijderd; zie [DECISIONS.md#drop-dev-journal](./DECISIONS.md#drop-dev-journal).
+De rule mag niet meer naar een niet-bestaand bestand verwijzen.
+
+### Effect
+_Verwacht:_ agent ziet alleen nog de vier actieve specialized files
+(`RULES-CHANGELOG`, `PROMPT-LOG`, `AI-FAILURES`, `DECISIONS`) in de
+trigger-tabel en raakt niet verward door een referentie naar een bestand
+dat er niet meer is.
+
+---
+
 ## NOG TE DOEN — `Metadata` regels
 
 **Type:** rules-update (gepland)

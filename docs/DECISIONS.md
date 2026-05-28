@@ -98,7 +98,7 @@ Components in `app/_components/{ui,features}/` (gedeeld) en
 ### 2026-05-27 — Documentatiesysteem in `docs/` met capture → curate flow <a id="documentatiesysteem"></a>
 
 **Type:** decision
-**Status:** Accepted
+**Status:** Superseded by [Drop DEV-JOURNAL.md](#drop-dev-journal)
 **Files:** `docs/INDEX.md`, `docs/DEV-JOURNAL.md`, `docs/RULES-CHANGELOG.md`, `docs/PROMPT-LOG.md`, `docs/AI-FAILURES.md`, `docs/DECISIONS.md`, `.cursor/rules/journaling.mdc`
 **Tags:** documentation, methodology, eindopdracht, deelopdracht-3
 **Refs:** [DEV-JOURNAL.md#2026-05-27-1944](./DEV-JOURNAL.md), [EINDOPDRACHT.md § Deelopdracht 3](../EINDOPDRACHT.md)
@@ -317,6 +317,63 @@ tokens voor nul rubric-waarde.
   logische gebeurtenis voor de ≥20 commits eis) blijft.
 - `WERKWIJZE.md` Beschikbare slash commands: 4 → 3 (drop `/audit`).
 - 16 bestaande `_no commit yet_` entries blijven zichtbaar staan.
+
+---
+
+### 2026-05-28 — Drop `docs/DEV-JOURNAL.md` <a id="drop-dev-journal"></a>
+
+**Type:** decision
+**Status:** Accepted
+**Files:** `docs/DEV-JOURNAL.md` (verwijderd), `.cursor/rules/journaling.mdc`, `docs/INDEX.md`, `WERKWIJZE.md`, `docs/PROMPT-LOG.md`, `.cursor/commands/ai-failure.md`
+**Tags:** documentation, methodology, simplification, deletion
+
+#### Context
+`DEV-JOURNAL.md` was sinds [Documentatiesysteem-ADR](#documentatiesysteem)
+de chronologische capture-file naast vier specialized files. Bij de
+[Versimpel journaling](#) refactor van 2026-05-28 is hij al gedegradeerd
+tot archief ("geen nieuwe entries meer hier"). De vier specialized files
+dekken inmiddels alle rubric-vragen volledig.
+
+Een archief-bestand naast actieve files veroorzaakt drie issues:
+1. Onduidelijkheid voor toekomstige agents (mag ik hier nog schrijven?)
+2. Statische omvang van ~420 regels die niets meer toevoegt
+3. Inconsistente cross-refs (broken anchors in oude ADRs)
+
+#### Decision
+- `docs/DEV-JOURNAL.md` is verwijderd uit de werkboom.
+- De inhoud blijft volledig leesbaar via `git log -- docs/DEV-JOURNAL.md`
+  en `git show <sha>:docs/DEV-JOURNAL.md` voor archiveringsdoeleinden.
+- Actieve regels en commands die nog naar `DEV-JOURNAL.md` verwezen zijn
+  bijgewerkt (`journaling.mdc`, `INDEX.md`, `WERKWIJZE.md`, `PROMPT-LOG.md`,
+  `ai-failure.md`).
+- Oude ADRs en `RULES-CHANGELOG.md` entries die `DEV-JOURNAL.md` als
+  cross-ref hebben, blijven onaangetast — die links zijn historische
+  anchors in een file die niet meer bestaat.
+
+#### Alternatieven overwogen
+- **In de repo houden als archief** — verworpen: confuseert agents, voegt
+  niets toe aan het verantwoordingsdocument
+- **Inhoud verplaatsen naar een `docs/archive/`-folder** — verworpen:
+  git-history is een betere archieflocatie, geen file-duplicatie
+- **Inhoud verspreiden over specialized files** — verworpen:
+  retroactief sleutelen aan historie + dubbele administratie
+
+#### Argumenten voor
+- Eén minder bestand om mentaal te tracken
+- `docs/` bevat nu alleen actieve, gebruikte files
+- Inhoud blijft 100% reproduceerbaar via git
+
+#### Argumenten tegen
+- Broken anchor-links in oude ADRs (bv. `[DEV-JOURNAL.md#2026-05-27-1944]`)
+  resolven niet meer — gemitigeerd door context binnen de ADR-tekst zelf
+- Hergebruik van historische context vereist nu `git show` ipv directe
+  file-read — acceptabele drempel
+
+#### Consequences
+- [Documentatiesysteem](#documentatiesysteem) ADR is gemarkeerd als
+  Superseded by deze ADR.
+- Toekomstige agents lezen `INDEX.md` en zien direct dat er 4 specialized
+  files zijn (geen DEV-JOURNAL meer).
 
 ---
 

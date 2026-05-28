@@ -3,8 +3,8 @@ description: Log een AI-failure entry in docs/AI-FAILURES.md
 ---
 
 Log de zojuist gemelde AI-failure als entry in `docs/AI-FAILURES.md`.
-Eén event = één entry = één bestand (geen DEV-JOURNAL-mirror; zie
-[`docs/DECISIONS.md#drop-sha-refs`](../../docs/DECISIONS.md#drop-sha-refs)).
+Eén event = één entry = één bestand. Zie
+[`docs/DECISIONS.md#drop-sha-refs`](../../docs/DECISIONS.md#drop-sha-refs).
 
 ## Wat ging er mis
 
@@ -69,4 +69,4 @@ later aangevuld worden.
   mag analyse zijn, maar wees voorzichtig — als je niet zeker bent, vraag)
 - Verzin GEEN failure die niet heeft plaatsgevonden — als je niets
   vindt om te loggen, vraag de gebruiker eerst om uitleg
-- Geen mirror naar `docs/DEV-JOURNAL.md`. Geen `Refs:`/`Duration:` velden.
+- Geen `Refs:`/`Duration:` velden — die zijn afgeschaft.

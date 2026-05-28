@@ -2,7 +2,7 @@
 
 System prompts, agent-instructies en model-input die in de **applicatie**
 zelf zitten. Niet de prompts die je in Cursor tikt — die staan
-(impliciet) in `RULES-CHANGELOG.md` en `DEV-JOURNAL.md`.
+(impliciet) in `RULES-CHANGELOG.md`.
 
 Voedt direct rubric-vragen 24–29 ("Prompt design") en is bron voor de
 verplichte bijlage "alle gebruikte prompts binnen de applicatie".

@@ -10,9 +10,6 @@ Voor Deelopdracht 3 (Verantwoordingsdocument, 45%) bestaan vier specialized
 files in `docs/`. Elke noemenswaardige gebeurtenis krijgt **één** entry in
 **één** bestand. Geen mirror, geen dubbele administratie.
 
-`docs/DEV-JOURNAL.md` is archief van de eerste week. Niet meer naartoe
-schrijven.
-
 ## Trigger-tabel
 
 | Bewerkt / gebeurd | Schrijf in |
@@ -59,5 +56,5 @@ Vrije tekst over Wat / Waarom / Effect. Subkopjes (`### Wat`, `### Waarom`,
 3. Vermeld kort in je antwoord aan de gebruiker welk bestand je hebt
    bijgewerkt.
 
-Geen DEV-JOURNAL-mirror. Geen `Duration:` veld. Geen `Refs:`-koppeling.
-Geen status-footer.
+Eén event = één entry = één bestand. Geen `Duration:` veld. Geen
+`Refs:`-koppeling. Geen status-footer.
