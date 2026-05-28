@@ -1,8 +1,10 @@
 ---
-description: Log een AI-failure entry in docs/AI-FAILURES.md en docs/DEV-JOURNAL.md
+description: Log een AI-failure entry in docs/AI-FAILURES.md
 ---
 
-Log de zojuist gemelde AI-failure als entry in beide journals.
+Log de zojuist gemelde AI-failure als entry in `docs/AI-FAILURES.md`.
+Eén event = één entry = één bestand (geen DEV-JOURNAL-mirror; zie
+[`docs/DECISIONS.md#drop-sha-refs`](../../docs/DECISIONS.md#drop-sha-refs)).
 
 ## Wat ging er mis
 
@@ -35,12 +37,9 @@ Voeg onderaan de "Entries" sectie toe (boven het "Template" gedeelte):
 ```markdown
 ## YYYY-MM-DD HH:MM — <korte titel: wat ging fout>
 
-**Type:** ai-failure
 **Severity:** <low|medium|high>
 **Files:** <relevante files, of: —>
 **Tags:** <relevante tags>
-**Refs:** docs/DEV-JOURNAL.md#YYYY-MM-DD-HHMM, _no commit yet_
-**Duration:** ~<N> min om op te vangen
 
 ### Wat ging fout
 <concrete beschrijving van het AI-gedrag + code-snippet als dat helpt>
@@ -57,23 +56,7 @@ ambiguë prompt? te brede context?>
 `_door gebruiker te bepalen_` als nog open>
 ```
 
-### 3. Spiegel naar `docs/DEV-JOURNAL.md`
-
-Voeg een korte entry onderaan toe die terugverwijst:
-
-```markdown
-## YYYY-MM-DD HH:MM — AI-failure: <zelfde korte titel>
-
-**Type:** ai-failure
-**Files:** <zelfde>
-**Tags:** ai-failure, <severity>
-**Refs:** docs/AI-FAILURES.md#YYYY-MM-DD-HHMM
-**Duration:** ~<N> min
-
-Zie volledige analyse in [AI-FAILURES.md](./AI-FAILURES.md).
-```
-
-### 4. Sluit af
+### 3. Sluit af
 
 Bevestig kort in 2 regels wat je hebt geschreven. Wijs de gebruiker
 expliciet op velden waar `_door gebruiker te bepalen_` staat zodat die
@@ -86,3 +69,4 @@ later aangevuld worden.
   mag analyse zijn, maar wees voorzichtig — als je niet zeker bent, vraag)
 - Verzin GEEN failure die niet heeft plaatsgevonden — als je niets
   vindt om te loggen, vraag de gebruiker eerst om uitleg
+- Geen mirror naar `docs/DEV-JOURNAL.md`. Geen `Refs:`/`Duration:` velden.
