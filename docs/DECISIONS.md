@@ -156,7 +156,7 @@ auto-entries te schrijven.
 **Status:** Accepted
 **Files:** WERKWIJZE.md, .cursor/commands/commit.md, .cursor/commands/sessie-eind.md
 **Tags:** git, commits, methodology
-**Refs:** [DEV-JOURNAL.md](./DEV-JOURNAL.md), _no commit yet_
+**Refs:** [DEV-JOURNAL.md](./DEV-JOURNAL.md), commit:`20dfb25`
 
 #### Context
 De eindopdracht vraagt om minimaal 20 kleine commits met zinvolle
@@ -207,7 +207,7 @@ commit voorstelt en direct de journal-entries koppelt.
 **Status:** Accepted
 **Files:** .cursor/commands/commit.md, .cursor/commands/sessie-eind.md (verwijderd), WERKWIJZE.md, docs/DECISIONS.md
 **Tags:** workflow, slash-commands, methodology, ux
-**Refs:** [DEV-JOURNAL.md](./DEV-JOURNAL.md), _no commit yet_
+**Refs:** [DEV-JOURNAL.md](./DEV-JOURNAL.md), commit:`385e180`
 
 #### Context
 Bij commit-strategie A doe je per logische gebeurtenis `/commit`. Er was

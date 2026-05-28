@@ -217,7 +217,7 @@ imports, een matcher, en geen poging tot full-auth in proxy.
 **Before:** Geen regels over `<Image>` of `<Link>` — agent zou waarschijnlijk rauwe `<img>`/`<a>` produceren
 **After:** Nieuwe sectie "Next.js components — geen rauwe HTML" (~75 regels) tussen `proxy.ts` en `Server vs Client Components`
 **Tags:** components, image, link, performance, prefetch
-**Refs:** _no commit yet_, zie [DEV-JOURNAL.md](./DEV-JOURNAL.md#2026-05-27-2013)
+**Refs:** commit:`ee63145`, zie [DEV-JOURNAL.md](./DEV-JOURNAL.md#2026-05-27-2013)
 
 ### Wat
 Sectie toegevoegd met twee subsecties:

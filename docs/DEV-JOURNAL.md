@@ -275,7 +275,7 @@ herinneren. Zie DECISIONS voor de afweging.
 **Type:** rules-update
 **Files:** .cursor/rules/nextjs-app-router.mdc
 **Tags:** rules, components, image, link, performance
-**Refs:** _no commit yet_, zie [RULES-CHANGELOG.md](./RULES-CHANGELOG.md#2026-05-27-2013--nextimage-en-nextlink-sectie-toegevoegd)
+**Refs:** commit:`ee63145`, zie [RULES-CHANGELOG.md](./RULES-CHANGELOG.md#2026-05-27-2013--nextimage-en-nextlink-sectie-toegevoegd)
 **Duration:** ~10 min
 
 ### Wat
@@ -317,7 +317,7 @@ te configureren bij remote images.
 **Type:** decision
 **Files:** WERKWIJZE.md, .cursor/commands/commit.md, .cursor/commands/sessie-eind.md, docs/DECISIONS.md
 **Tags:** git, commits, slash-commands, methodology
-**Refs:** [DECISIONS.md#commit-strategie-a](./DECISIONS.md#commit-strategie-a), _no commit yet_
+**Refs:** [DECISIONS.md#commit-strategie-a](./DECISIONS.md#commit-strategie-a), commit:`20dfb25`
 
 ### Wat
 Drie wijzigingen:
@@ -346,7 +346,7 @@ up-to-date. `/sessie-eind` blijft als vangnet voor losse eindjes.
 **Type:** decision
 **Files:** .cursor/commands/commit.md, .cursor/commands/sessie-eind.md (verwijderd), WERKWIJZE.md, docs/DECISIONS.md
 **Tags:** workflow, slash-commands, methodology, refinement
-**Refs:** _no commit yet_, zie [DECISIONS.md#commit-met-status-footer](./DECISIONS.md#commit-met-status-footer)
+**Refs:** commit:`385e180`, zie [DECISIONS.md#commit-met-status-footer](./DECISIONS.md#commit-met-status-footer)
 **Duration:** ~10 min
 
 ### Wat
@@ -378,7 +378,7 @@ footer is compact genoeg.
 **Type:** decision
 **Files:** WERKWIJZE.md
 **Tags:** workflow, journaling, methodology, audit
-**Refs:** _no commit yet_
+**Refs:** commit:`9ba4a81`
 **Duration:** ~5 min
 
 ### Wat
