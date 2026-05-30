@@ -212,11 +212,10 @@ function MessageBubble({ message }: { message: UIMessage }) {
   const isUser = message.role === "user";
   return (
     <div
-      className={`rounded-md border px-3 py-2 ${
-        isUser
+      className={`rounded-md border px-3 py-2 ${isUser
           ? "border-accent/40 bg-accent/10"
           : "border-border bg-background"
-      }`}
+        }`}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {message.role}
@@ -241,10 +240,10 @@ function DebugPanels({
 }) {
   const openAiInput = preview
     ? {
-        model: preview.model,
-        system: preview.systemPrompt,
-        messages,
-      }
+      model: preview.model,
+      system: preview.systemPrompt,
+      messages,
+    }
     : null;
 
   return (

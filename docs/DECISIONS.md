@@ -180,6 +180,51 @@ i.p.v. `toDataStreamResponse`, `convertToModelMessages` op de server).
 
 ---
 
+### 2026-05-30 12:29 — Geen NL/EN native-taal-filter voor Wiktionary <a id="no-native-taal-filter-wiktionary"></a>
+
+**Files:** `lib/api/wiktionary.ts`, `app/dev/wiktionary/page.tsx`, `app/dev/wiktionary-chat/page.tsx`
+**Tags:** wiktionary, scope, dev-only
+
+Onderzocht of NL Wiktionary bruikbaar is voor Spaans→Nederlands als
+alternatief voor de huidige EN-flow: `nl.wiktionary.org/api/rest_v1/page/definition/{word}`
+blijft 501 retourneren. Geen native-taal-dropdown NL en ENG in de playground of chat implementeren. Blijft voor nu alleen ENG;
+
+
+---
+
+### 2026-05-30 12:42 — Tatoeba-quiz in /dev: lenient compare + localStorage <a id="tatoeba-quiz-dev"></a>
+
+**Files:** `app/dev/tatoeba-quiz/page.tsx`, `app/dev/tatoeba-quiz/_components/quiz.tsx`, `app/dev/tatoeba-quiz/_components/use-quiz-storage.ts`, `app/api/dev/tatoeba-quiz/route.ts`, `lib/quiz/compare.ts`
+**Tags:** tatoeba, quiz, ux, scope, dev-only, localStorage
+
+Eerste interactieve feature (kernfunctionaliteit 3 uit `IDEEFASE.md`)
+bewust onder `/dev/` gestart, met basic-lenient compare (lowercase +
+leestekens + whitespace strippen, géén accent-normalisatie of fuzzy)
+en `localStorage` als persistentie achter een dunne hook
+(`useQuizStorage`). Score en historie kunnen later 1-op-1 naar
+Supabase verplaatsen door alleen die hook te vervangen; de quiz UI en
+compare-utility blijven onaangetast. Match telt tegen *alle*
+NL-vertalingen die Tatoeba teruggeeft, omdat Tatoeba meerdere
+gelijkwaardige vertalingen per zin levert.
+
+---
+
+### 2026-05-30 23:05 — Eerste Supabase-tabel: `dev_exercises` zonder RLS, dev-only <a id="dev-exercises-no-rls"></a>
+
+**Files:** `supabase/migrations/0001_dev_exercises.sql`, `lib/supabase/admin.ts`, `app/api/dev/exercises/route.ts`, `app/dev/exercise-generator/page.tsx`
+**Tags:** supabase, schema, scope, dev-only, ai-sdk, tool-calling
+
+Eerste Supabase-aanraking: aparte `dev_` prefix-tabel zonder `user_id`/RLS,
+geschreven via service-role uit `/api/dev/*`. De productie-feature (later)
+krijgt een eigen `exercises`-tabel mét `user_id` + RLS — bewust géén
+retrofit van de dev-tabel, omdat dev-content vaak weg-geredesigned wordt
+en mengen met user-data risico geeft. AI-generatie via `streamText` +
+`tool({ inputSchema: zod })` met `stopWhen: hasToolCall(...)`: één
+gestructureerde tool-call vervangt vrije-tekst-output, zodat de UI
+gegarandeerd renderbare JSON krijgt.
+
+---
+
 ## Template — kopieer & vul in
 
 ```markdown

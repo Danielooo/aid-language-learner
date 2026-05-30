@@ -52,9 +52,8 @@ function renderSystemPrompt(
 ): string {
   const dataBlock = result.ok
     ? renderEntries(result.data[focusLang])
-    : `LOOKUP MISLUKT: ${result.error.type}${
-        result.error.detail ? ` — ${result.error.detail}` : ""
-      }`;
+    : `LOOKUP MISLUKT: ${result.error.type}${result.error.detail ? ` — ${result.error.detail}` : ""
+    }`;
 
   return [
     "Je bent een Spaans-leer-assistent. Antwoord ALTIJD in het Nederlands.",

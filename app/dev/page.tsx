@@ -51,6 +51,33 @@ export default function DevIndexPage() {
             </p>
           </Link>
         </li>
+        <li className="sm:col-span-2">
+          <Link
+            href="/dev/exercise-generator"
+            className="block rounded-lg border border-border bg-card p-5 text-card-foreground transition-colors hover:border-ring"
+          >
+            <h2 className="text-base font-semibold">Oefeningen-generator</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Vercel AI SDK met tool-calling. Vraag de chatbot om N
+              Spaans→Nederlands vertaalzinnen voor een onderwerp; review en
+              persist naar Supabase. Vier debug-panels: in/uit voor zowel
+              OpenAI als Supabase.
+            </p>
+          </Link>
+        </li>
+        <li className="sm:col-span-2">
+          <Link
+            href="/dev/tatoeba-quiz"
+            className="block rounded-lg border border-border bg-card p-5 text-card-foreground transition-colors hover:border-ring"
+          >
+            <h2 className="text-base font-semibold">Tatoeba-quiz</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Random Spaanse zin vertalen naar het Nederlands. Lenient
+              vergelijking (hoofdletters/leestekens negeren), score en
+              historie in localStorage.
+            </p>
+          </Link>
+        </li>
       </ul>
     </div>
   );
