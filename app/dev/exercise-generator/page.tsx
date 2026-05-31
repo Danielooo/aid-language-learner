@@ -155,8 +155,13 @@ export default function ExerciseGeneratorPage() {
           onderwerp. De LLM roept de tool{" "}
           <code className="font-mono text-xs">proposeExercises</code> aan met
           gestructureerde JSON; jij reviewt en klikt &quot;Opslaan&quot; om ze
-          in <code className="font-mono text-xs">dev_exercises</code> te
+          in <code className="font-mono text-xs">exercises</code> te
           persisten. Vier debug-panels onderaan tonen alle JSON heen-en-weer.
+        </p>
+        <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          <strong className="font-semibold text-foreground">Alleen jij</strong>{" "}
+          ziet de oefeningen die je hier opslaat — ze worden gekoppeld aan
+          jouw account. De seed-set is gedeeld met alle users.
         </p>
       </header>
 

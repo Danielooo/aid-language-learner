@@ -1,13 +1,13 @@
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-// Random oefening uit `dev_exercises` voor de generator-quiz. Eén plek
-// die de tabel kent; client component praat alleen met deze route.
+// Random oefening uit `exercises` voor de generator-quiz. RLS filtert
+// automatisch op (`owner_id is null` OR `owner_id = auth.uid()`), dus
+// de user ziet de seed-set + zijn eigen gegenereerde oefeningen.
 //
 // Random select via 2 roundtrips: eerst `count` op (eventueel topic-
 // gefilterde) rijen, dan `select limit 1 offset N` met N willekeurig.
-// Geen `order by random()` of RPC: voor een dev-tabeltje van max een
-// paar honderd rijen is dit ruim snel genoeg en hoeven we geen migratie
-// toe te voegen.
+// Geen `order by random()` of RPC: voor een tabel van max een paar
+// honderd rijen per user is dit ruim snel genoeg.
 
 export const dynamic = "force-dynamic";
 
@@ -29,20 +29,16 @@ export async function GET(req: Request) {
       ? topicParam.trim()
       : null;
 
-  let supabase;
-  try {
-    supabase = getSupabaseAdmin();
-  } catch (err) {
-    return Response.json(
-      {
-        error: err instanceof Error ? err.message : "Supabase client init faalde.",
-      },
-      { status: 500 },
-    );
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return Response.json({ error: "Niet ingelogd." }, { status: 401 });
   }
 
   const countQuery = supabase
-    .from("dev_exercises")
+    .from("exercises")
     .select("id", { count: "exact", head: true });
 
   const { count, error: countError } = topic
@@ -50,10 +46,7 @@ export async function GET(req: Request) {
     : await countQuery;
 
   if (countError) {
-    return Response.json(
-      { error: countError.message },
-      { status: 500 },
-    );
+    return Response.json({ error: countError.message }, { status: 500 });
   }
 
   if (!count || count === 0) {
@@ -61,7 +54,7 @@ export async function GET(req: Request) {
       {
         error: topic
           ? `Geen oefeningen gevonden voor topic "${topic}".`
-          : "Nog geen oefeningen in dev_exercises. Genereer er eerst een paar via /dev/exercise-generator.",
+          : "Nog geen oefeningen beschikbaar. Genereer er eerst een paar via /dev/exercise-generator.",
       },
       { status: 404 },
     );
@@ -70,7 +63,7 @@ export async function GET(req: Request) {
   const offset = Math.floor(Math.random() * count);
 
   const rowQuery = supabase
-    .from("dev_exercises")
+    .from("exercises")
     .select("id, source_text, target_text, topic, created_at")
     .range(offset, offset);
 

@@ -18,5 +18,6 @@ De applicatie moet het makkelijk maken voor de gebruiker om Spaans te leren. De 
 - ~~In dev/ gegenereerde oefeningen quiz feature bouwen~~
 - ~~In dev/ oefeningen maken op basis van Supabase data~~
 - ~~In dev/ dashboard maken op basis van gemaakte oefeningen~~
-- In dev/ oefeningen quiz chat functie toevoegen waar je vragen kan stellen over de oefening
-- In dev/ inlog maken, account waar je persoonlijke dashboard, oefeningen zijn te zien
+- ~~In dev/ oefeningen quiz chat functie toevoegen waar je vragen kan stellen over de oefening~~
+- ~~In dev/ inlog maken, account waar je persoonlijke dashboard, oefeningen zijn te zien~~
+- markAsAlsoCorrect functie binnen quiz

@@ -1,11 +1,13 @@
 import { z } from "zod";
 
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-// CRUD voor `dev_quiz_attempts`. Eén plek die de tabel kent; de quiz-
+// CRUD voor `quiz_attempts`. Eén plek die de tabel kent; de quiz-
 // hook (`useQuizStorage`) en het dashboard praten alleen met deze
-// route. Geen auth/RLS — dev-only, service-role (consistent met de
-// rest van `/dev/`).
+// route. Sinds auth ingevoerd is staan alle CRUD onder RLS-policy
+// `user_id = auth.uid()`. We checken zelf ook expliciet op user
+// zodat we 401 kunnen geven (RLS zou anders een lege array
+// teruggeven, wat moeilijker te debuggen is).
 //
 // Vorm van de GET-payload is bewust identiek aan het bestaande
 // `QuizAttempt`-type uit `use-quiz-storage.ts`, zodat de pure helpers
@@ -31,10 +33,10 @@ const DEFAULT_LIMIT = 500;
 const MAX_LIMIT = 5000;
 
 // PostgREST embed via FK. Bij een eenduidige FK (exercise_id →
-// dev_exercises.id) returnt het de relatie als single object,
-// niet als array.
+// exercises.id) returnt het de relatie als single object, niet als
+// array.
 const SELECT_WITH_EXERCISE =
-  "id, exercise_id, user_answer, is_correct, created_at, dev_exercises ( source_text, target_text, topic )";
+  "id, exercise_id, user_answer, is_correct, created_at, exercises ( source_text, target_text, topic )";
 
 type AttemptRowWithExercise = {
   id: string;
@@ -42,7 +44,7 @@ type AttemptRowWithExercise = {
   user_answer: string;
   is_correct: boolean;
   created_at: string;
-  dev_exercises: {
+  exercises: {
     source_text: string;
     target_text: string;
     topic: string | null;
@@ -56,14 +58,11 @@ const postSchema = z.object({
 });
 
 function toDto(row: AttemptRowWithExercise): QuizAttemptDto {
-  // Defensieve fallbacks: als de FK toch ooit zou ontbreken (kan niet
-  // door `on delete cascade`, maar TS weet dat niet), zorgen we dat
-  // het dashboard niet crashed op een null-relatie.
   return {
     exerciseId: row.exercise_id,
-    source_text: row.dev_exercises?.source_text ?? "",
-    target_text: row.dev_exercises?.target_text ?? "",
-    topic: row.dev_exercises?.topic ?? null,
+    source_text: row.exercises?.source_text ?? "",
+    target_text: row.exercises?.target_text ?? "",
+    topic: row.exercises?.topic ?? null,
     userAnswer: row.user_answer,
     isCorrect: row.is_correct,
     at: new Date(row.created_at).getTime(),
@@ -79,22 +78,20 @@ export async function GET(req: Request) {
       ? Math.min(parsedLimit, MAX_LIMIT)
       : DEFAULT_LIMIT;
 
-  let supabase;
-  try {
-    supabase = getSupabaseAdmin();
-  } catch (err) {
-    return Response.json(
-      {
-        error:
-          err instanceof Error ? err.message : "Supabase client init faalde.",
-      },
-      { status: 500 },
-    );
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return Response.json({ error: "Niet ingelogd." }, { status: 401 });
   }
 
+  // RLS filtert al op user_id = auth.uid(); de extra .eq is verbose maar
+  // maakt de query expliciet en future-proof als RLS ooit zou wijzigen.
   const { data, error } = await supabase
-    .from("dev_quiz_attempts")
+    .from("quiz_attempts")
     .select(SELECT_WITH_EXERCISE)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -130,28 +127,26 @@ export async function POST(req: Request) {
     );
   }
 
-  const { exerciseId, userAnswer, isCorrect } = parseResult.data;
-
-  let supabase;
-  try {
-    supabase = getSupabaseAdmin();
-  } catch (err) {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     return Response.json(
-      {
-        ok: false,
-        error:
-          err instanceof Error ? err.message : "Supabase client init faalde.",
-      },
-      { status: 500 },
+      { ok: false, error: "Niet ingelogd." },
+      { status: 401 },
     );
   }
 
+  const { exerciseId, userAnswer, isCorrect } = parseResult.data;
+
   const { data, error } = await supabase
-    .from("dev_quiz_attempts")
+    .from("quiz_attempts")
     .insert({
       exercise_id: exerciseId,
       user_answer: userAnswer,
       is_correct: isCorrect,
+      user_id: user.id,
     })
     .select(SELECT_WITH_EXERCISE)
     .single();
@@ -168,27 +163,23 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE() {
-  let supabase;
-  try {
-    supabase = getSupabaseAdmin();
-  } catch (err) {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     return Response.json(
-      {
-        ok: false,
-        error:
-          err instanceof Error ? err.message : "Supabase client init faalde.",
-      },
-      { status: 500 },
+      { ok: false, error: "Niet ingelogd." },
+      { status: 401 },
     );
   }
 
-  // `delete` zonder filter wordt door PostgREST geblokkeerd. We geven
-  // een filter dat altijd waar is — gen_random_uuid() heeft geen
-  // negatieve match, dus `not.eq.<some-zero-uuid>` matcht alle rijen.
+  // Filter expliciet op user_id zodat we — ook als RLS faalt — alleen
+  // eigen rijen wissen. PostgREST eist een filter op DELETE.
   const { error, count } = await supabase
-    .from("dev_quiz_attempts")
+    .from("quiz_attempts")
     .delete({ count: "exact" })
-    .neq("id", "00000000-0000-0000-0000-000000000000");
+    .eq("user_id", user.id);
 
   if (error) {
     return Response.json(

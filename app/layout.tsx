@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 
-import { SiteHeader } from "@/app/_components/site-header";
+import { SiteHeaderServer } from "@/app/_components/site-header-server";
 import { ThemeProvider } from "@/app/_components/theme-provider";
 
 import type { Metadata, Viewport } from "next";
@@ -46,7 +46,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col font-sans">
         <ThemeProvider>
-          <SiteHeader />
+          <SiteHeaderServer />
           {children}
         </ThemeProvider>
       </body>

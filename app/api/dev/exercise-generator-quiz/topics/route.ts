@@ -1,9 +1,10 @@
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-// Distinct topic-lijst uit `dev_exercises` voor de topic-dropdown in
+// Distinct topic-lijst uit `exercises` voor de topic-dropdown in
 // de generator-quiz. PostgREST kent geen DISTINCT; we halen alle
-// `topic`-kolommen op en deduppen JS-side. Tabel is dev-only en klein,
-// dus dat is prima — wel `not.is null` om vroeg te filteren.
+// `topic`-kolommen op en deduppen JS-side. RLS zorgt dat we alleen
+// publieke seed-rijen + eigen rijen zien — dus de dropdown bevat
+// nooit topics van andere users.
 
 export const dynamic = "force-dynamic";
 
@@ -12,20 +13,16 @@ export type TopicsResponse = {
 };
 
 export async function GET() {
-  let supabase;
-  try {
-    supabase = getSupabaseAdmin();
-  } catch (err) {
-    return Response.json(
-      {
-        error: err instanceof Error ? err.message : "Supabase client init faalde.",
-      },
-      { status: 500 },
-    );
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return Response.json({ error: "Niet ingelogd." }, { status: 401 });
   }
 
   const { data, error } = await supabase
-    .from("dev_exercises")
+    .from("exercises")
     .select("topic")
     .not("topic", "is", null);
 

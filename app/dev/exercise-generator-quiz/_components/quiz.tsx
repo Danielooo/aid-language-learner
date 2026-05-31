@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { isAnswerCorrect } from "@/lib/quiz/compare";
 
+import { ExerciseChat } from "./exercise-chat";
 import { useQuizStorage } from "./use-quiz-storage";
 
 import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
@@ -160,7 +161,7 @@ export function Quiz() {
         </h1>
         <p className="text-sm text-muted-foreground">
           Random oefening uit{" "}
-          <code className="font-mono text-xs">dev_exercises</code> via{" "}
+          <code className="font-mono text-xs">exercises</code> via{" "}
           <code className="font-mono text-xs">
             GET /api/dev/exercise-generator-quiz
           </code>
@@ -266,6 +267,15 @@ export function Quiz() {
           </form>
         )}
       </section>
+
+      {!loading && !error && item && (
+        <ExerciseChat
+          key={item.id}
+          exercise={item}
+          feedback={feedback}
+          userAnswer={answer}
+        />
+      )}
 
       <details
         className="rounded-md border border-border bg-card text-card-foreground"
