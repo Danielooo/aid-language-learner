@@ -2,7 +2,7 @@
 
 import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   EXERCISE_CHAT_MODEL,
@@ -432,9 +432,36 @@ function DebugPanels({
   const supabaseSent = persistState.requestBody;
   const supabaseReceived = persistState.response;
 
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // ⌘+/ toggelt alle 4 de panels tegelijk. Werkt op de actuele DOM-state
+  // (leest `details.open` per tick) zodat het de individuele klik-state
+  // van elk panel niet vasthoudt in React; zo blijft elk panel ook nog
+  // los te klappen via een gewone klik op het summary.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!e.metaKey || e.key !== "/") return;
+      const sec = sectionRef.current;
+      if (!sec) return;
+      e.preventDefault();
+      const detailsList = sec.querySelectorAll("details");
+      const anyOpen = Array.from(detailsList).some((d) => d.open);
+      detailsList.forEach((d) => {
+        d.open = !anyOpen;
+      });
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
-    <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-foreground">Debug-panels</h2>
+    <section ref={sectionRef} className="space-y-3">
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        Debug-panels
+        <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] font-normal text-muted-foreground/70">
+          ⌘ /
+        </kbd>
+      </h2>
 
       <DetailsPanel title="1. Verzonden naar OpenAI (system + messages + tools)">
         <JsonBlock data={openAiInput} />

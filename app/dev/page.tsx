@@ -13,7 +13,7 @@ export default function DevIndexPage() {
         </p>
       </header>
 
-      <ul className="grid gap-3 sm:grid-cols-2">
+      <ul className="grid gap-3">
         <li>
           <Link
             href="/dev/tatoeba"
@@ -23,6 +23,20 @@ export default function DevIndexPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               Zinnen-corpus met vertalingen. Filter op brontaal, vereiste
               vertaling, tag en zoekterm.
+            </p>
+          </Link>
+        </li>
+
+        <li>
+          <Link
+            href="/dev/tatoeba-quiz"
+            className="block rounded-lg border border-border bg-card p-5 text-card-foreground transition-colors hover:border-ring"
+          >
+            <h2 className="text-base font-semibold">Tatoeba-quiz</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Random Spaanse zin vertalen naar het Nederlands. Lenient
+              vergelijking (hoofdletters/leestekens negeren), score en
+              historie in localStorage.
             </p>
           </Link>
         </li>
@@ -38,7 +52,7 @@ export default function DevIndexPage() {
             </p>
           </Link>
         </li>
-        <li className="sm:col-span-2">
+        <li>
           <Link
             href="/dev/wiktionary-chat"
             className="block rounded-lg border border-border bg-card p-5 text-card-foreground transition-colors hover:border-ring"
@@ -51,7 +65,7 @@ export default function DevIndexPage() {
             </p>
           </Link>
         </li>
-        <li className="sm:col-span-2">
+        <li>
           <Link
             href="/dev/exercise-generator"
             className="block rounded-lg border border-border bg-card p-5 text-card-foreground transition-colors hover:border-ring"
@@ -65,16 +79,30 @@ export default function DevIndexPage() {
             </p>
           </Link>
         </li>
-        <li className="sm:col-span-2">
+        <li>
           <Link
-            href="/dev/tatoeba-quiz"
+            href="/dev/exercise-generator-quiz"
             className="block rounded-lg border border-border bg-card p-5 text-card-foreground transition-colors hover:border-ring"
           >
-            <h2 className="text-base font-semibold">Tatoeba-quiz</h2>
+            <h2 className="text-base font-semibold">
+              Oefeningen-generator-quiz
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Random Spaanse zin vertalen naar het Nederlands. Lenient
-              vergelijking (hoofdletters/leestekens negeren), score en
-              historie in localStorage.
+              Quiz op je gegenereerde oefeningen uit Supabase. Topic-filter,
+              lenient vergelijking, score en historie in localStorage.
+            </p>
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/dev/dashboard"
+            className="block rounded-lg border border-border bg-card p-5 text-card-foreground transition-colors hover:border-ring"
+          >
+            <h2 className="text-base font-semibold">Dashboard</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Prestatie-overzicht op basis van je oefen-historie uit de
+              generator-quiz: totalen, accuracy per topic, zwakke oefeningen
+              en een 7-daagse trend.
             </p>
           </Link>
         </li>
