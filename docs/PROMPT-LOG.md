@@ -82,7 +82,7 @@ Geef geen vrije-tekst-uitleg vooraf — roep direct de tool aan. De UI rendert d
 
 System prompt voor de `/dev/exercise-generator` playground. Bewust geen vrije-tekst-output toegestaan: `stopWhen: hasToolCall("proposeExercises")` dwingt de chat na de tool-call af, zodat de UI gegarandeerd gestructureerde JSON krijgt om kaartjes te renderen. Het MOET-imperatief is bewust hard om te voorkomen dat de LLM zinnen in vrije tekst uitspuugt zonder de tool te raadplegen.
 
----
+<!-- INSERT-NEW-ENTRY-ABOVE -->
 
 ## Template — kopieer & vul in
 

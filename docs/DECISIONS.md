@@ -223,7 +223,7 @@ en mengen met user-data risico geeft. AI-generatie via `streamText` +
 gestructureerde tool-call vervangt vrije-tekst-output, zodat de UI
 gegarandeerd renderbare JSON krijgt.
 
----
+<!-- INSERT-NEW-ENTRY-ABOVE -->
 
 ## Template — kopieer & vul in
 

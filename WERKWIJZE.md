@@ -12,14 +12,25 @@ Commit-strategie: **één commit per logische gebeurtenis** (zie
    Open Cursor en begin met je eerste prompt. Geen aparte sessie-start
    journal-entry — die zijn afgeschaft.
 
-2. **Tijdens werken** **[AUTO]**
-   Bij elke rule-/prompt-/architectuurwijziging logt Cursor één entry in
-   de juiste specialized file:
+2. **Tijdens werken — entry loggen** **[AUTO]** of **[JIJ]**
+   Bij elke rule-/prompt-/architectuurwijziging hoort één entry in de
+   juiste specialized file:
    - Cursor-rule (`.cursor/rules/*.mdc` of `AGENTS.md`) → `docs/RULES-CHANGELOG.md`
    - System-/agent-prompt in `app/api/**` of `lib/**` → `docs/PROMPT-LOG.md`
    - Bewuste architectuur-/conventiekeuze → `docs/DECISIONS.md`
 
-   Eén event = één entry = één bestand.
+   **[AUTO]** Als de `journaling`-rule actief is, doet Cursor dit zelf.
+
+   **[JIJ]** Anders (of expliciet) tik je per file één van:
+
+   ```
+   /log-rule <steekwoorden>
+   /log-prompt <steekwoorden>
+   /log-decision <steekwoorden>
+   ```
+
+   Cursor maakt er lopende zinnen van, vult metadata in en vraagt akkoord
+   voor wegschrijven. Eén event = één entry = één bestand.
 
 3. **Na elke logische gebeurtenis** **[JIJ]**
    Tik:
@@ -66,6 +77,9 @@ Commit-strategie: **één commit per logische gebeurtenis** (zie
 
 - `/commit` — stage relevante files + conventional-commit message + commit
 - `/ai-failure` — log een AI-failure entry in `docs/AI-FAILURES.md`
+- `/log-decision` — log een entry in `docs/DECISIONS.md`
+- `/log-prompt` — log een entry in `docs/PROMPT-LOG.md` (scant `app/api/**` + `lib/ai/**` voor de letterlijke prompt)
+- `/log-rule` — log een entry in `docs/RULES-CHANGELOG.md`
 - `/sync-werkwijze` — synct WERKWIJZE.md met `.cursor/commands/`
 
 ## Voor de details
