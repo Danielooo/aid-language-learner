@@ -30,31 +30,47 @@ doorschrijft. Bijvoorbeeld:
 > Severity-voorstel: **medium** omdat de code werkte maar via een
 > verouderde Next.js conventie (middleware.ts ipv proxy.ts). Akkoord?
 
-### 2. Schrijf entry in `docs/AI-FAILURES.md`
+### 2. Schrijf entry in `docs/AI-FAILURES.md` (tokenzuinig — geen full Read)
 
-Voeg onderaan de "Entries" sectie toe (boven het "Template" gedeelte):
+Gebruik het stabiele invoeg-anker `<!-- INSERT-NEW-ENTRY-ABOVE -->` dat
+direct boven `## Template — kopieer & vul in` staat. Werkwijze:
 
-```markdown
-## YYYY-MM-DD HH:MM — <korte titel: wat ging fout>
+1. `Read` `docs/AI-FAILURES.md` met `offset: -15, limit: 15` (voldoet
+   aan Read-before-Edit én bevat de marker + Template-blok ter
+   referentie).
+2. `StrReplace` met:
+   - `old_string`: `<!-- INSERT-NEW-ENTRY-ABOVE -->`
+   - `new_string`:
 
-**Severity:** <low|medium|high>
-**Files:** <relevante files, of: —>
-**Tags:** <relevante tags>
+     ```
+     ---
 
-### Wat ging fout
-<concrete beschrijving van het AI-gedrag + code-snippet als dat helpt>
+     ## YYYY-MM-DD HH:MM — <korte titel: wat ging fout>
 
-### Vermoedelijke oorzaak
-<analyse, niet verwijt: ontbrekende rule? verouderde training data?
-ambiguë prompt? te brede context?>
+     **Severity:** <low|medium|high>
+     **Files:** <relevante files, of: —>
+     **Tags:** <relevante tags>
 
-### Workaround / fix
-<wat is er gedaan om het te herstellen>
+     ### Wat ging fout
+     <concrete beschrijving van het AI-gedrag + code-snippet als dat helpt>
 
-### Prevented by
-<welke rule/prompt-aanpassing is gemaakt om dit te voorkomen, OF:
-`_door gebruiker te bepalen_` als nog open>
-```
+     ### Vermoedelijke oorzaak
+     <analyse, niet verwijt: ontbrekende rule? verouderde training data?
+     ambiguë prompt? te brede context?>
+
+     ### Workaround / fix
+     <wat is er gedaan om het te herstellen>
+
+     ### Prevented by
+     <welke rule/prompt-aanpassing is gemaakt om dit te voorkomen, OF:
+     `_door gebruiker te bepalen_` als nog open>
+
+     <!-- INSERT-NEW-ENTRY-ABOVE -->
+     ```
+
+NOOIT de volledige `docs/AI-FAILURES.md` lezen om de invoegpositie te
+vinden. Zie [`.cursor/rules/journaling.mdc`](../rules/journaling.mdc) →
+"Tokenzuinig appenden in docs/".
 
 ### 3. Sluit af
 

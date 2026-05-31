@@ -168,3 +168,5 @@ entries niet typografisch of stilistisch wijzigen — alleen nieuwe entries
 toevoegen onderaan. Correcties lopen altijd via een nieuwe entry die de
 oude eventueel markeert met `_Superseded by …._`. Uitzondering: expliciet
 verzoek van de gebruiker.
+
+<!-- INSERT-NEW-ENTRY-ABOVE -->

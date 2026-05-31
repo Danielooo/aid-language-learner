@@ -1,6 +1,6 @@
 ---
-description: Logt rule-/prompt-/architectuur-/AI-failure-events direct in de juiste specialized file (voor Deelopdracht 3 verantwoording)
-globs: .cursor/rules/**, AGENTS.md, app/api/**, lib/**, docs/**, .cursor/commands/**
+# description: Logt rule-/prompt-/architectuur-/AI-failure-events direct in de juiste specialized file (voor Deelopdracht 3 verantwoording)
+# globs: .cursor/rules/**, AGENTS.md, app/api/**, lib/**, docs/**, .cursor/commands/**
 alwaysApply: false
 ---
 
@@ -89,3 +89,29 @@ bestaande entry aan te passen. Weiger anders en wijs op deze regel.
 
 Eén event = één entry = één bestand. Geen `Duration:` veld. Geen
 `Refs:`-koppeling. Geen status-footer.
+
+## Tokenzuinig appenden in docs/
+
+Voor de vier journal-files in `docs/` geldt: **lees nooit de volledige
+body** om een entry toe te voegen. Elk journal heeft een stabiel
+invoeg-anker `<!-- INSERT-NEW-ENTRY-ABOVE -->`. Bij files mét Template
+staat het anker direct boven de Template-sectie; bij
+`RULES-CHANGELOG.md` (geen Template) staat het anker aan het einde van
+het bestand.
+
+Werkwijze bij een append:
+
+1. `Read` met `offset: -15, limit: 15` op de doelfile. Dit voldoet aan
+   de "Read before Edit"-eis, bevat het anker, en (bij files mét
+   Template) het format ter referentie.
+2. `StrReplace` met:
+   - `old_string`: `<!-- INSERT-NEW-ENTRY-ABOVE -->`
+   - `new_string`: `---\n\n<nieuwe entry>\n\n<!-- INSERT-NEW-ENTRY-ABOVE -->`
+
+Headers-scan in `PROMPT-LOG.md` (bv. om versie-nummer van een
+agent-prompt te vinden): gebruik `Grep` met patroon
+`^## .* — System prompt: ` ipv `Read` op de hele file.
+
+Een full `Read` van een journal-file is alleen toegestaan als de
+gebruiker **expliciet** vraagt om de inhoud te samen-vatten of te
+analyseren — nooit voor een routine-append.

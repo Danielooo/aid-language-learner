@@ -24,9 +24,7 @@ Minimum-target voor verantwoordingsdocument: **3 onderbouwde entries**
 
 ## Entries
 
-_Nog leeg. Capture momenten zoals ze voorkomen._
-
----
+<!-- INSERT-NEW-ENTRY-ABOVE -->
 
 ## Template — kopieer & vul in
 

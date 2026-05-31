@@ -78,6 +78,15 @@ Alleen waar de rubric ze afdwingt:
 - **`DECISIONS.md`**: geen extra velden. Bij latere herziening: italic
   regel `_Superseded by [titel](#anchor)._` direct onder de heading.
 
+### Invoeg-anker per file (agent-detail)
+
+Elke journal-file heeft een HTML-comment `<!-- INSERT-NEW-ENTRY-ABOVE -->`
+als stabiel invoeg-punt. De slash-commands gebruiken dit anker met een
+tail-`Read` + `StrReplace` om entries toe te voegen **zonder de hele file
+te lezen** — bespaart context-window. Niet aanraken; volledige werkwijze
+staat in [`.cursor/rules/journaling.mdc`](../.cursor/rules/journaling.mdc)
+→ "Tokenzuinig appenden in docs/".
+
 ## Vangnetten voor de gebruiker
 
 De gebruiker kan op elk moment vragen:
