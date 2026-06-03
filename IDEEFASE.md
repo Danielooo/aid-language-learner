@@ -43,9 +43,18 @@ Voor het geval een externe databron nodig is, wordt de **TATUBA API** gekoppeld 
 - ~~In dev/ dashboard maken op basis van gemaakte oefeningen~~
 - ~~In dev/ oefeningen quiz chat functie toevoegen waar je vragen kan stellen over de oefening~~
 - ~~In dev/ inlog maken, account waar je persoonlijke dashboard, oefeningen zijn te zien~~
+- Tatoeba audio files ophalen
+   Mogelijk om in Bucket te zetten?
+   Mogelijk om altijd te refereren naar directe url?
+- Admin knop die Tatoeba audio files verrijkt
+   Transcript ophalen
+   Verrijken met meer metadata zoals categorie/onderwerp
+   Toevoegen in exerciseses
+
+Updaten Ideefase functionaliteiten
 
 ## Nice to haves
-- markAsAlsoCorrect functie binnen quiz
+- markAsAlsoCorrect functie binnen quiz. Alternatieve vertalingen
 - Inloggen met SSO 
    (Login knop met Google, of Github). 
    (Kan ook EU: Zitadel of LogTo)
