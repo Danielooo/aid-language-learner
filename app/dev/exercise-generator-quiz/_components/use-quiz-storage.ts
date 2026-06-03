@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-// Bron-van-waarheid voor quiz-historie is nu Supabase (tabel
-// `dev_quiz_attempts`). Was eerst localStorage; verplaatst zodat het
-// `/dev/dashboard` met echte server-data werkt en historie meegaat
-// tussen apparaten. Public API is bewust ongewijzigd zodat callers
-// (`quiz.tsx`, `dashboard.tsx`) niets hoeven aan te passen.
+// Bron-van-waarheid voor quiz-historie is Supabase (tabel
+// `quiz_attempts`). RLS scope't naar `user_id = auth.uid()`, dus elke
+// ingelogde user ziet alleen eigen pogingen. Public API is bewust
+// ongewijzigd zodat callers (`quiz.tsx`, `dashboard.tsx`) niets hoeven
+// aan te passen.
 //
 // Strategie:
 //   * GET op mount → vul `attempts`

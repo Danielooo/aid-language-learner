@@ -1,22 +1,60 @@
 # [In Progress] IDEEFASE
 
-## Doel
 
-De applicatie moet het makkelijk maken voor de gebruiker om Spaans te leren. De gebruiker moet (random) oefeningen voorgeschoteld krijgen. De gebruiker moet zijn voortgang en scores kunnen zien. De gebruiker moet kunnen oefenen op de zwakke plekken
+#### **Doel van de applicatie**
+De applicatie helpt gebruikers op een praktische manier om Spaans te leren door middel van Nederlandse en Spaanse woord- en zinscombinaties. Gebruikers kunnen oefenen, hun eigen leermateriaal laten genereren met de AI SDK en toevoegen aan de set oefeningen
 
-## Kernfunctionaliteiten
+#### **Opgelost probleem**
+Bestaande apps zoals Babbel of Duolingo bieden slechts de oefeningen en categorieën die zij zelf hebben bedacht. Als je bijvoorbeeld iets specifieks gaat doen in het buitenland — zoals een medische afspraak of werkgerelateerde communicatie — kun je niet je eigen categorie aanmaken of je oefeneningen afstemmen op jouw situatie.  
+Dat is de toegevoegde waarde van deze applicatie
 
-1. Inloggen registreren
-2. AI chat functie (AI SDK van Vercel) - Geef extra uitleg over de zinnen (wat is grammatica van bepaald werkwoord, wat betekent specifiek woord)
-3. Random spaanse zinnen met NL vertaling (Tatoeba API)
-4. Dashboard: hoeveel zinnen geleerd. Hoeveel goed / fout
-5. Zelf gegenereerde oefeningen toevoegen (via seed script? of andere methode injecteren in Supabase)
-6. Chatfunctie binnen de oefening | doel: uitleg krijgen, vragen stellen over het antwoord. (Sterke guardrail maken die alleen vragen beantwoord over de specifieke vraag)
+#### **Belangrijkste functionaliteiten**
+1. **Registreren en inloggen**  
+   Gebruikers kunnen een persoonlijk account aanmaken. Via Supabase wordt authenticatie en autorisatie geregeld. 
+
+2. **Vooraf gegenereerde oefeningen**  
+   De applicatie bevat een database met vooraf samengestelde oefeningen (Nederlands–Spaans). Gebruikers kunnen deze ophalen en maken. Antwoorden en resultaten worden opgeslagen in Supabase, zodat voortgang later inzichtelijk is.
+
+3. **Zelf oefeningen toevoegen**  
+   Gebruikers kunnen eigen oefeningen genereren en toevoegen. Deze kunnen privé blijven of ter goedkeuring aangeboden worden voor de algemene publieke database. Op deze manier kunnen gebruikers hun eigen categorieën bouwen.
+
+4. **AI-chatfunctie binnen oefeningen**  
+   Tijdens of na een oefening kan een gebruiker vragen stellen aan een geïntegreerde AI-chat. De AI geeft uitleg over grammatica, vervoegingen of alternatieve vertalingen. Zo wordt taal leren interactiever en persoonlijker. Er worden guardrails ingesteld die zorgen dat de vraag alleen over de specifieke oefening kan gaan
+
+5. **Voortgangsdashboard**  
+   Een persoonlijk dashboard laat zien hoeveel woorden en zinnen de gebruiker heeft geleerd, welke thema’s goed gaan en waar nog verbetering mogelijk is. Dit is gebaseerd op opgeslagen scores en oefenresultaten in Supabase.
+
+6. **Fallback functionaliteit:**
+   Voor het geval een externe databron vereist is voor de eindopdracht, wordt de **TATOEBA API** gekoppeld om willekeurige Spaanse zinnen op te halen. Deze API levert alleen zinnen en vertalingen; Supabase wordt dan ingezet om  de scores en voortgang te beheren. Dat wordt dan gekoppeld aan het id van het Tatoeba oefening
+
+
+#### **Technische opzet**
+De backend en database draaien op **Supabase**, waar tabellen voor gebruikers, oefeningen, resultaten en feedback aanwezig zijn. RLS-policies waarborgen dat gebruikers alleen hun eigen voortgang en privé-oefeningen kunnen beheren. De AI-functionaliteit wordt ingebouwd via **OpenAI**.
+Voor het geval een externe databron nodig is, wordt de **TATUBA API** gekoppeld om willekeurige Spaanse zinnen op te halen. Deze API levert de zinnen en vertalingen; Supabase beheert de scores en voortgang.
+
+
+---
+
 
 ## TODO
 
 - ~~In dev/ gegenereerde oefeningen quiz feature bouwen~~
 - ~~In dev/ oefeningen maken op basis van Supabase data~~
 - ~~In dev/ dashboard maken op basis van gemaakte oefeningen~~
-- In dev/ oefeningen quiz chat functie toevoegen waar je vragen kan stellen over de oefening
-- In dev/ inlog maken, account waar je persoonlijke dashboard, oefeningen zijn te zien
+- ~~In dev/ oefeningen quiz chat functie toevoegen waar je vragen kan stellen over de oefening~~
+- ~~In dev/ inlog maken, account waar je persoonlijke dashboard, oefeningen zijn te zien~~
+
+## Nice to haves
+- markAsAlsoCorrect functie binnen quiz
+- Inloggen met SSO 
+   (Login knop met Google, of Github). 
+   (Kan ook EU: Zitadel of LogTo)
+- 
+
+
+## Gesprek met Tim:
+Kernfunctionaliteiten uitbouwen (Must haves)
+- taboeba api wel gebruiken
+- audio files gebruiken / ophalen. 1 knop als admin
+- metadata ervan verrijken
+- doorzoekbaar maken, toolcalling op los kunnen laten

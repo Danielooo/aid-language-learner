@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { signOut } from "@/app/(auth)/actions";
 import { Container } from "@/app/_components/ui/container";
 import { ThemeToggle } from "@/app/_components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -16,13 +17,20 @@ const navItems = [
 const navLinkClasses =
   "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground";
 
-const loginButtonClasses =
+const buttonClasses =
   "inline-flex min-h-9 cursor-pointer items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90";
 
-// Site-wide sticky header. Client component vanwege de open-state van het
-// mobile menu; ThemeToggle is zelf ook een client component en wordt hier
-// hergebruikt voor zowel desktop als het uitgeklapte mobiele paneel.
-export function SiteHeader() {
+const ghostButtonClasses =
+  "inline-flex min-h-9 cursor-pointer items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted";
+
+type SiteHeaderProps = {
+  username: string | null;
+};
+
+// Client component houdt alleen het mobile-menu open/dicht. Auth-state
+// komt als prop binnen via [site-header-server.tsx](./site-header-server.tsx)
+// — ServerComponent leest sessie uit cookies en geeft username door.
+export function SiteHeader({ username }: SiteHeaderProps) {
   const [open, setOpen] = useState(false);
 
   const closeMenu = () => setOpen(false);
@@ -50,9 +58,7 @@ export function SiteHeader() {
               </Link>
             ))}
             <ThemeToggle />
-            <button type="button" className={loginButtonClasses}>
-              Inloggen
-            </button>
+            <AuthControls username={username} onAfterClick={closeMenu} />
           </nav>
 
           <button
@@ -93,15 +99,59 @@ export function SiteHeader() {
               ))}
               <div className="mt-2 flex flex-col gap-3 border-t border-border pt-4">
                 <ThemeToggle />
-                <button type="button" className={loginButtonClasses}>
-                  Inloggen
-                </button>
+                <AuthControls username={username} onAfterClick={closeMenu} />
               </div>
             </nav>
           </Container>
         </div>
       )}
     </header>
+  );
+}
+
+function AuthControls({
+  username,
+  onAfterClick,
+}: {
+  username: string | null;
+  onAfterClick?: () => void;
+}) {
+  if (username) {
+    return (
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-medium text-foreground">
+          @{username}
+        </span>
+        <form action={signOut}>
+          <button
+            type="submit"
+            onClick={onAfterClick}
+            className={ghostButtonClasses}
+          >
+            Uitloggen
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Link
+        href="/login"
+        onClick={onAfterClick}
+        className={ghostButtonClasses}
+      >
+        Inloggen
+      </Link>
+      <Link
+        href="/register"
+        onClick={onAfterClick}
+        className={buttonClasses}
+      >
+        Registreren
+      </Link>
+    </div>
   );
 }
 

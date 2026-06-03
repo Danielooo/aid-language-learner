@@ -1,11 +1,13 @@
 import { z } from "zod";
 
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-// Persist-route voor de /dev/exercise-generator playground.
-// Accepteert een batch oefeningen die de user (na review van de
-// chat-output) wil opslaan, en bulk-insert ze in `dev_exercises`.
-// Geen auth/RLS — dev-only, service-role.
+// Persist-route voor de oefeningen-generator. Accepteert een batch
+// vertaaloefeningen die de user (na review van de chat-output) wil
+// opslaan. Sinds auth ingevoerd is wordt elke nieuwe rij eigenaar
+// van de huidige user via `owner_id`. RLS dwingt sowieso af dat
+// `owner_id = auth.uid()`, maar we sturen 'm expliciet mee voor
+// duidelijke fouten en voor het debug-panel.
 //
 // Returnt zowel de echo van de request body als de Supabase-response,
 // zodat de UI beide in debug-panels kan tonen ("verzonden naar Supabase",
@@ -50,6 +52,17 @@ export async function POST(req: Request) {
     );
   }
 
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return Response.json(
+      { ok: false, error: "Niet ingelogd." },
+      { status: 401 },
+    );
+  }
+
   const { topic, exercises } = parseResult.data;
   const requestBody = parseResult.data;
 
@@ -57,25 +70,13 @@ export async function POST(req: Request) {
     source_text: ex.source_text,
     target_text: ex.target_text,
     topic: topic ?? null,
+    owner_id: user.id,
   }));
 
-  let supabase;
-  try {
-    supabase = getSupabaseAdmin();
-  } catch (err) {
-    return Response.json(
-      {
-        ok: false,
-        error: err instanceof Error ? err.message : "Supabase client init faalde.",
-      },
-      { status: 500 },
-    );
-  }
-
   const { data, error, status, statusText, count } = await supabase
-    .from("dev_exercises")
+    .from("exercises")
     .insert(rowsToInsert)
-    .select("id, source_text, target_text, topic, created_at");
+    .select("id, source_text, target_text, topic, owner_id, created_at");
 
   // Volledige Supabase-response retourneren zodat de UI het debug-panel kan vullen.
   const supabaseResponse = { data, error, status, statusText, count };

@@ -4,15 +4,16 @@ import { createClient } from "@supabase/supabase-js";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Service-role client. Omzeilt RLS — gebruik UITSLUITEND in route handlers
-// of server-only modules, NOOIT importeren vanuit een client component.
-// Gemarkeerd met `import "server-only"` zodat een per-ongeluk import in
-// client-bundle een build-error geeft i.p.v. een gelekte secret.
+// Service-role client. Omzeilt RLS — gebruik UITSLUITEND voor
+// admin-achtige operaties: seed-scripts en de signUp-action waar we
+// `auth.admin.createUser({ email_confirm: true })` aanroepen om de
+// e-mailbevestiging te skippen voor synthetische `*.aid.local`-emails.
+// NOOIT importeren vanuit een client component. `import "server-only"`
+// gooit anders een build-error i.p.v. een gelekte secret.
 //
-// Voor de /dev/exercise-generator playground is dit prima: de tabel
-// `dev_exercises` heeft geen user_id en geen RLS. In de productie-feature
-// (later) gebruiken we de cookie-based server client met anon key zodat
-// RLS de policies afdwingt.
+// Voor user-data (exercises, quiz_attempts) gebruiken we
+// [getSupabaseServerClient](./server.ts) — die respecteert RLS via
+// de session-cookie van de ingelogde user.
 
 let cached: SupabaseClient | null = null;
 
