@@ -7,8 +7,8 @@ import { usePathname } from "next/navigation";
 // op /dev zelf om een no-op-link te voorkomen. Client-component vanwege
 // usePathname; verder ultradun.
 export function BackToDevButton() {
-  const pathname = usePathname();
-  if (pathname === "/dev") return null;
+  // const pathname = usePathname();
+  // if (pathname === "/dev") return null;
 
   return (
     <Link

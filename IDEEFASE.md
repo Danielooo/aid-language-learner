@@ -43,15 +43,22 @@ Voor het geval een externe databron nodig is, wordt de **TATUBA API** gekoppeld 
 - ~~In dev/ dashboard maken op basis van gemaakte oefeningen~~
 - ~~In dev/ oefeningen quiz chat functie toevoegen waar je vragen kan stellen over de oefening~~
 - ~~In dev/ inlog maken, account waar je persoonlijke dashboard, oefeningen zijn te zien~~
-- Tatoeba audio files ophalen
-   Mogelijk om in Bucket te zetten?
+- **Tatoeba audio files ophalen**
+   Alle audio file metadata ophalen en in een filterbare tabel zet in de UI
+   Bij de oefening de auteur + bron + license vermelden
+   Mogelijk om audio files in Bucket van Supabase te zetten?
    Mogelijk om altijd te refereren naar directe url?
-- Admin knop die Tatoeba audio files verrijkt
-   Transcript ophalen
-   Verrijken met meer metadata zoals categorie/onderwerp
-   Toevoegen in exerciseses
-
-Updaten Ideefase functionaliteiten
+- **Admin-knop:**  
+  Haalt in één keer 100 Tatoeba audio files op en verrijkt de bijbehorende metadata.
+  - Transcript ophalen:
+    Voor elke audio file wordt indien mogelijk automatisch het transcript opgehaald.
+  - Verrijken met categorie/onderwerp:
+    - Bestaande categorieën ophalen uit Supabase.
+    - Met de AI SDK categorieën toewijzen aan de nieuwe audio files, zoveel mogelijk uit de bestaande categorieën.
+    - Gekozen categorie (label/tag) toevoegen aan de audio file metadata.
+  - Batch toevoeging in database: 
+    Voeg alle verrijkte audio files in bulk toe aan Supabase. Deze batch valt binnen het bereik "algemeen toegankelijk".
+- **Updaten Ideefase functionaliteiten**
 
 ## Nice to haves
 - markAsAlsoCorrect functie binnen quiz. Alternatieve vertalingen
@@ -59,6 +66,10 @@ Updaten Ideefase functionaliteiten
    (Login knop met Google, of Github). 
    (Kan ook EU: Zitadel of LogTo)
 - 
+
+
+## Settings
+- Naar sandbox
 
 
 ## Gesprek met Tim:

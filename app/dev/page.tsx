@@ -42,6 +42,21 @@ export default function DevIndexPage() {
         </li>
         <li>
           <Link
+            href="/dev/tatoeba-audio"
+            className="block rounded-lg border border-border bg-card p-5 text-card-foreground transition-colors hover:border-ring"
+          >
+            <h2 className="text-base font-semibold">Tatoeba-audio</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Verkent wat er mogelijk is met audio-bestanden van Tatoeba:
+              ophalen via twee endpoints (audio-eerst én zin-eerst),
+              afspelen via de CDN-URL, en doorzetten naar de publieke
+              Supabase-bucket <code className="font-mono">tatoeba-audio</code>.
+              Zes debug-panels tonen alle JSON heen-en-weer.
+            </p>
+          </Link>
+        </li>
+        <li>
+          <Link
             href="/dev/wiktionary"
             className="block rounded-lg border border-border bg-card p-5 text-card-foreground transition-colors hover:border-ring"
           >
