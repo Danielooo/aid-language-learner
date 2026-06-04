@@ -38,6 +38,8 @@ Voor het geval een externe databron nodig is, wordt de **TATUBA API** gekoppeld 
 
 ## TODO
 
+Gebleven bij execute plan: /Users/daniel/.cursor/plans/tatoeba_audio_translate_26f4fa35.plan.md 
+
 - ~~In dev/ gegenereerde oefeningen quiz feature bouwen~~
 - ~~In dev/ oefeningen maken op basis van Supabase data~~
 - ~~In dev/ dashboard maken op basis van gemaakte oefeningen~~

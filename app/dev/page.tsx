@@ -57,6 +57,23 @@ export default function DevIndexPage() {
         </li>
         <li>
           <Link
+            href="/dev/tatoeba-audio-search"
+            className="block rounded-lg border border-border bg-card p-5 text-card-foreground transition-colors hover:border-ring"
+          >
+            <h2 className="text-base font-semibold">Tatoeba audio-zoeken</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Semantische zoekmachine over een lokaal corpus van 500
+              Tatoeba-zinnen. Eenmalig ophalen + embedden via{" "}
+              <code className="font-mono">text-embedding-3-small</code>{" "}
+              (gecached in localStorage), daarna in natuurlijke taal
+              zoeken met cosine-similarity en optionele AI-rerank via
+              <code className="font-mono"> gpt-4o-mini</code>. Multi-turn
+              met undo-stack op de selectie.
+            </p>
+          </Link>
+        </li>
+        <li>
+          <Link
             href="/dev/wiktionary"
             className="block rounded-lg border border-border bg-card p-5 text-card-foreground transition-colors hover:border-ring"
           >

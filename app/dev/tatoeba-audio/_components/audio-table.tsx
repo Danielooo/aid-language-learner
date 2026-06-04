@@ -1,20 +1,32 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+
+import { AudioResultTable } from "@/app/dev/_components/audio-result-table";
+import { useTranslationCache } from "@/lib/hooks/use-translation-cache";
 
 import type {
   AudioListResponse,
   AudioRow,
 } from "@/app/api/dev/tatoeba-audio/list/route";
+import type { TranslateResponse } from "@/app/api/dev/tatoeba-audio/translate/route";
+import type { TranslateRowState } from "@/app/dev/_components/audio-result-table";
 
 // Tabelweergave: één klik laadt audios uit /unstable/audios. De
 // limit is onbegrensd: de server-route pagineert intern tot de
 // gevraagde hoeveelheid is bereikt of Tatoeba geen volgende pagina
-// meer heeft. Naast de bestaande kaarten-secties.
+// meer heeft.
 //
-// Filteren gebeurt volledig client-side. De licentie-kolomheader
-// werkt als drop-down: klikken opent een popover met alle distincte
-// licenties uit de geladen rijen + 'Alle'.
+// De "rich" tabel zelf (sort, license-dropdown, mp3-toggle, FilterBar
+// auteur/zin/herbruikbaar, vertaal-kolom) zit in het gedeelde
+// [<AudioResultTable>](../../_components/audio-result-table.tsx) — gebruikt
+// door zowel deze pagina als /dev/tatoeba-audio-search.
+//
+// Vertaal-flow: per-rij knop in de tabel of batch-knop in de TranslateBar
+// hieronder → POST naar /api/dev/tatoeba-audio/translate (max 50 items/
+// batch, parallel chunked vanaf de client). Resultaten worden gecachet
+// in localStorage via `useTranslationCache` — overleeft refresh, scoped
+// op audio_id.
 
 const LANG_OPTIONS = [
   { value: "spa", label: "Spaans (spa)" },
@@ -24,16 +36,11 @@ const LANG_OPTIONS = [
   { value: "deu", label: "Duits (deu)" },
 ] as const;
 
-// Sentinel om "geen filter" te onderscheiden van een lege-string licentie
-// (= 'no-reuse').
-const LICENSE_FILTER_ALL = "__all__";
+// Aantal items per /translate-call. Moet matchen met de cap in de
+// route ([app/api/dev/tatoeba-audio/translate/route.ts](app/api/dev/tatoeba-audio/translate/route.ts)).
+const TRANSLATE_CHUNK_SIZE = 50;
 
-function licenseDisplay(license: string): string {
-  return license.trim() === "" ? "no-reuse" : license;
-}
-
-type SortKey = "audio_id" | "sentence_id" | "created";
-type SortDir = "asc" | "desc";
+const TARGET_LANG = "nld";
 
 // Snapshot van de request zoals de browser hem naar onze /api-route
 // stuurde — handig voor het debug-panel zodat we precies zien welke
@@ -41,6 +48,19 @@ type SortDir = "asc" | "desc";
 type RequestSnapshot = {
   url: string;
   params: Record<string, string>;
+};
+
+// Snapshot van de laatste translate-batch voor het debug-panel.
+type TranslateDebugSnapshot = {
+  request: { url: string; body: { items: TranslateBatchItem[] } };
+  response: unknown;
+  ok: boolean;
+};
+
+type TranslateBatchItem = {
+  audio_id: number;
+  source_text: string;
+  source_lang: string;
 };
 
 type LoadState =
@@ -67,15 +87,13 @@ export function AudioTable() {
   const [limit, setLimit] = useState<number>(100);
   const [load, setLoad] = useState<LoadState>({ status: "idle" });
 
-  const [licenseFilter, setLicenseFilter] = useState<string>(LICENSE_FILTER_ALL);
-  const [authorQuery, setAuthorQuery] = useState<string>("");
-  const [textQuery, setTextQuery] = useState<string>("");
-  const [reusableOnly, setReusableOnly] = useState<boolean>(false);
-
-  const [sortKey, setSortKey] = useState<SortKey>("audio_id");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-
-  const [showMp3Url, setShowMp3Url] = useState<boolean>(false);
+  const translationCache = useTranslationCache();
+  const [translateState, setTranslateState] = useState<
+    Record<number, TranslateRowState>
+  >({});
+  const [translateDebug, setTranslateDebug] =
+    useState<TranslateDebugSnapshot | null>(null);
+  const [batchRunning, setBatchRunning] = useState(false);
 
   async function handleLoad() {
     setLoad({ status: "loading" });
@@ -104,9 +122,6 @@ export function AudioTable() {
         request,
         rawResponse: json,
       });
-      // Reset op "Alle" zodat een stale selectie (bv. na taalwissel)
-      // niet onbedoeld alle rijen wegfiltert.
-      setLicenseFilter(LICENSE_FILTER_ALL);
     } catch (e) {
       setLoad({
         status: "error",
@@ -116,48 +131,173 @@ export function AudioTable() {
     }
   }
 
-  const baseRows = load.status === "loaded" ? load.rows : [];
+  // Memoiseer zodat baseRows een stabiele referentie heeft zolang de
+  // load-status hetzelfde is — anders triggert een nieuw `[]` literal
+  // elke render `batchTargets` opnieuw.
+  const baseRows = useMemo(
+    () => (load.status === "loaded" ? load.rows : []),
+    [load],
+  );
 
-  const availableLicenses = useMemo(() => {
-    const set = new Set<string>();
-    for (const row of baseRows) set.add(row.license);
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [baseRows]);
+  // Stuurt één chunk naar /translate. Apart zodat we 'm vanuit zowel de
+  // per-rij knop (met 1 item) als de batch-knop (met 50 items) kunnen
+  // hergebruiken. Gooit nooit; returnt altijd een TranslateResponse.
+  const callTranslateBatch = useCallback(
+    async (items: TranslateBatchItem[]): Promise<TranslateResponse> => {
+      const url = "/api/dev/tatoeba-audio/translate";
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items }),
+        });
+        const json = (await res.json()) as TranslateResponse;
+        setTranslateDebug({
+          request: { url, body: { items } },
+          response: json,
+          ok: res.ok && json.ok,
+        });
+        return json;
+      } catch (e) {
+        const failure: TranslateResponse = {
+          ok: false,
+          error: e instanceof Error ? e.message : "Onbekende netwerkfout.",
+          reason: "openai_error",
+        };
+        setTranslateDebug({
+          request: { url, body: { items } },
+          response: failure,
+          ok: false,
+        });
+        return failure;
+      }
+    },
+    [],
+  );
 
-  const filteredRows = useMemo(() => {
-    if (baseRows.length === 0) return baseRows;
-    const author = authorQuery.trim().toLowerCase();
-    const text = textQuery.trim().toLowerCase();
+  // Start een vertaling voor een lijst rijen. Filter zelf niet — caller
+  // bepaalt welke rijen hier binnenkomen (per-rij = 1, batch = N).
+  const translateRows = useCallback(
+    async (rows: AudioRow[]) => {
+      const items: TranslateBatchItem[] = rows.map((r) => ({
+        audio_id: r.audio_id,
+        source_text: r.sentence_text,
+        source_lang: r.lang,
+      }));
+
+      // Markeer alle rijen als loading vóór we netwerk-werk starten —
+      // anders flashed de UI tussen idle en loading bij snel klikken.
+      setTranslateState((prev) => {
+        const next = { ...prev };
+        for (const item of items) {
+          next[item.audio_id] = { status: "loading" };
+        }
+        return next;
+      });
+
+      // Splits in chunks van TRANSLATE_CHUNK_SIZE en stuur parallel.
+      const chunks: TranslateBatchItem[][] = [];
+      for (let i = 0; i < items.length; i += TRANSLATE_CHUNK_SIZE) {
+        chunks.push(items.slice(i, i + TRANSLATE_CHUNK_SIZE));
+      }
+
+      const results = await Promise.all(
+        chunks.map((chunk) => callTranslateBatch(chunk)),
+      );
+
+      const successEntries: Array<{
+        audio_id: number;
+        translation: string;
+        source_text: string;
+        lang: string;
+        cached_at: string;
+      }> = [];
+      const erroredIds = new Map<number, string>();
+
+      // Map elk chunk-resultaat terug naar de rijen die we wilden vertalen
+      // voor dat chunk. Bij missing_translations krijgen die specifieke
+      // audio_ids een error; de geslaagde gaan alsnog naar de cache.
+      results.forEach((result, idx) => {
+        const chunk = chunks[idx];
+        if (result.ok) {
+          const sourceById = new Map(
+            chunk.map((c) => [c.audio_id, c.source_text]),
+          );
+          const langById = new Map(chunk.map((c) => [c.audio_id, c.source_lang]));
+          for (const t of result.translations) {
+            successEntries.push({
+              audio_id: t.audio_id,
+              translation: t.translation,
+              source_text: sourceById.get(t.audio_id) ?? "",
+              lang: langById.get(t.audio_id) ?? "",
+              cached_at: new Date().toISOString(),
+            });
+          }
+        } else {
+          // Hele chunk faalde: alle audio_ids in deze chunk krijgen error.
+          // Bij "missing_translations" specifiek alleen die ID's, anders alles.
+          const ids =
+            result.reason === "missing_translations" && result.missing_audio_ids
+              ? result.missing_audio_ids
+              : chunk.map((c) => c.audio_id);
+          for (const id of ids) {
+            erroredIds.set(id, result.error);
+          }
+        }
+      });
+
+      if (successEntries.length > 0) {
+        translationCache.bulkSet(successEntries);
+      }
+
+      // Update state: success-rows verwijderen uit translateState (cache
+      // toont 'm nu), error-rows naar error.
+      setTranslateState((prev) => {
+        const next = { ...prev };
+        for (const e of successEntries) {
+          delete next[e.audio_id];
+        }
+        for (const [id, err] of erroredIds.entries()) {
+          next[id] = { status: "error", error: err };
+        }
+        return next;
+      });
+    },
+    [callTranslateBatch, translationCache],
+  );
+
+  const handleTranslateRow = useCallback(
+    async (row: AudioRow) => {
+      await translateRows([row]);
+    },
+    [translateRows],
+  );
+
+  // Batch-button: alle geladen rijen die nog géén bruikbare cache-hit
+  // hebben en niet de target-taal als bron hebben. (Vroeger filterden
+  // we op "zichtbaar in de tabel"; sinds de FilterBar is verhuisd naar
+  // het gedeelde component bezit deze parent geen filter-state meer.
+  // Operate-on-all is ook intuïtiever: je vult de cache in één keer.)
+  const batchTargets = useMemo(() => {
     return baseRows.filter((row) => {
-      if (reusableOnly && row.license.trim() === "") return false;
-      if (licenseFilter !== LICENSE_FILTER_ALL && row.license !== licenseFilter)
-        return false;
-      if (author && !row.author.toLowerCase().includes(author)) return false;
-      if (text && !row.sentence_text.toLowerCase().includes(text)) return false;
+      if (row.lang === TARGET_LANG) return false;
+      const cached = translationCache.get(row.audio_id, row.sentence_text);
+      if (cached) return false;
+      const state = translateState[row.audio_id];
+      if (state?.status === "loading") return false;
       return true;
     });
-  }, [baseRows, authorQuery, textQuery, reusableOnly, licenseFilter]);
+  }, [baseRows, translationCache, translateState]);
 
-  const sortedRows = useMemo(() => {
-    if (filteredRows.length === 0) return filteredRows;
-    const dir = sortDir === "asc" ? 1 : -1;
-    return [...filteredRows].sort((a, b) => {
-      const va = sortKey === "created" ? (a.created ?? "") : a[sortKey];
-      const vb = sortKey === "created" ? (b.created ?? "") : b[sortKey];
-      if (va < vb) return -1 * dir;
-      if (va > vb) return 1 * dir;
-      return 0;
-    });
-  }, [filteredRows, sortKey, sortDir]);
-
-  function toggleSort(key: SortKey) {
-    if (key === sortKey) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
+  const handleBatchTranslate = useCallback(async () => {
+    if (batchTargets.length === 0 || batchRunning) return;
+    setBatchRunning(true);
+    try {
+      await translateRows(batchTargets);
+    } finally {
+      setBatchRunning(false);
     }
-  }
+  }, [batchTargets, batchRunning, translateRows]);
 
   return (
     <section className="space-y-3 rounded-lg border border-border bg-card p-5 text-card-foreground">
@@ -251,30 +391,26 @@ export function AudioTable() {
             response={load.rawResponse}
           />
 
-          <FilterBar
-            authorQuery={authorQuery}
-            onAuthorChange={setAuthorQuery}
-            textQuery={textQuery}
-            onTextChange={setTextQuery}
-            reusableOnly={reusableOnly}
-            onReusableOnlyChange={setReusableOnly}
+          {translateDebug && (
+            <TranslateDebugPanel snapshot={translateDebug} />
+          )}
+
+          <TranslateBar
+            pendingCount={batchTargets.length}
+            onTranslateAll={handleBatchTranslate}
+            onClearCache={translationCache.clearAll}
+            cacheSize={Object.keys(translationCache.cache).length}
+            running={batchRunning}
           />
 
-          <ResultTable
-            rows={sortedRows}
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSort={toggleSort}
-            showMp3Url={showMp3Url}
-            onToggleMp3Url={() => setShowMp3Url((v) => !v)}
-            licenseFilter={licenseFilter}
-            availableLicenses={availableLicenses}
-            onLicenseFilterChange={setLicenseFilter}
+          <AudioResultTable
+            rows={baseRows}
+            translation={{
+              cache: translationCache,
+              state: translateState,
+              onTranslateRow: handleTranslateRow,
+            }}
           />
-
-          <p className="text-[10px] text-muted-foreground">
-            Getoond {sortedRows.length} van {load.rows.length} rijen.
-          </p>
         </>
       )}
 
@@ -329,330 +465,99 @@ function RequestDebugPanel({
   );
 }
 
-function FilterBar({
-  authorQuery,
-  onAuthorChange,
-  textQuery,
-  onTextChange,
-  reusableOnly,
-  onReusableOnlyChange,
+// Bovenste actie-bar boven de tabel: één klik vertaalt alle geladen
+// rijen die nog geen cache-hit hebben en niet al NL zijn. Toont ook
+// hoeveel vertalingen momenteel gecachet zijn + een knop om die cache
+// te wissen (handig tijdens dev / het aanpassen van het system-prompt).
+function TranslateBar({
+  pendingCount,
+  onTranslateAll,
+  onClearCache,
+  cacheSize,
+  running,
 }: {
-  authorQuery: string;
-  onAuthorChange: (v: string) => void;
-  textQuery: string;
-  onTextChange: (v: string) => void;
-  reusableOnly: boolean;
-  onReusableOnlyChange: (v: boolean) => void;
+  pendingCount: number;
+  onTranslateAll: () => void;
+  onClearCache: () => void;
+  cacheSize: number;
+  running: boolean;
 }) {
+  const disabled = pendingCount === 0 || running;
   return (
-    <div className="grid gap-3 rounded-md border border-border bg-background/40 p-3 sm:grid-cols-3">
-      <label className="flex flex-col gap-1">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          Auteur bevat
-        </span>
-        <input
-          type="text"
-          value={authorQuery}
-          onChange={(e) => onAuthorChange(e.target.value)}
-          placeholder="bv. CK"
-          className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
-        />
-      </label>
-
-      <label className="flex flex-col gap-1">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          Zin bevat
-        </span>
-        <input
-          type="text"
-          value={textQuery}
-          onChange={(e) => onTextChange(e.target.value)}
-          placeholder="bv. comer"
-          className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
-        />
-      </label>
-
-      <label className="flex items-center gap-2 pt-4 text-xs text-muted-foreground">
-        <input
-          type="checkbox"
-          checked={reusableOnly}
-          onChange={(e) => onReusableOnlyChange(e.target.checked)}
-          className="h-4 w-4 rounded border-input"
-        />
-        Alleen herbruikbaar
-      </label>
-    </div>
-  );
-}
-
-function ResultTable({
-  rows,
-  sortKey,
-  sortDir,
-  onSort,
-  showMp3Url,
-  onToggleMp3Url,
-  licenseFilter,
-  availableLicenses,
-  onLicenseFilterChange,
-}: {
-  rows: AudioRow[];
-  sortKey: SortKey;
-  sortDir: SortDir;
-  onSort: (key: SortKey) => void;
-  showMp3Url: boolean;
-  onToggleMp3Url: () => void;
-  licenseFilter: string;
-  availableLicenses: string[];
-  onLicenseFilterChange: (v: string) => void;
-}) {
-  if (rows.length === 0) {
-    return (
-      <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-4 text-center text-xs text-muted-foreground">
-        Geen rijen voor deze filtercombinatie.
-      </p>
-    );
-  }
-
-  return (
-    <div className="overflow-auto rounded-md border border-border">
-      <table className="w-full border-collapse text-left text-xs">
-        <thead className="sticky top-0 bg-muted/60 text-[10px] uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <SortableHeader
-              label="audio_id"
-              sortKey="audio_id"
-              currentKey={sortKey}
-              dir={sortDir}
-              onSort={onSort}
-            />
-            <SortableHeader
-              label="sentence_id"
-              sortKey="sentence_id"
-              currentKey={sortKey}
-              dir={sortDir}
-              onSort={onSort}
-            />
-            <th className="px-3 py-2 font-semibold">sentence_text</th>
-            <th className="px-3 py-2 font-semibold">lang</th>
-            <th className="px-3 py-2 font-semibold">author</th>
-            <LicenseHeader
-              licenseFilter={licenseFilter}
-              availableLicenses={availableLicenses}
-              onChange={onLicenseFilterChange}
-            />
-            <SortableHeader
-              label="created"
-              sortKey="created"
-              currentKey={sortKey}
-              dir={sortDir}
-              onSort={onSort}
-            />
-            <th className="px-3 py-2 font-semibold">
-              <div className="flex items-center gap-2">
-                <span>mp3</span>
-                <button
-                  type="button"
-                  onClick={onToggleMp3Url}
-                  title={
-                    showMp3Url
-                      ? "Toon link-tekst i.p.v. de volledige URL"
-                      : "Toon de volledige URL i.p.v. de link-tekst"
-                  }
-                  className="rounded border border-border bg-background px-1.5 py-0.5 text-[9px] font-medium normal-case tracking-normal text-muted-foreground hover:bg-muted hover:text-foreground"
-                >
-                  {showMp3Url ? "link" : "url"}
-                </button>
-              </div>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.audio_id}
-              className="border-t border-border align-top hover:bg-muted/30"
-            >
-              <td className="px-3 py-2 font-mono">{row.audio_id}</td>
-              <td className="px-3 py-2 font-mono">{row.sentence_id}</td>
-              <td className="px-3 py-2">{row.sentence_text}</td>
-              <td className="px-3 py-2 font-mono uppercase">{row.lang}</td>
-              <td className="px-3 py-2">{row.author}</td>
-              <td className="px-3 py-2 font-mono text-[10px]">
-                {licenseDisplay(row.license)}
-              </td>
-              <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
-                {row.created ?? "—"}
-              </td>
-              <td className="px-3 py-2">
-                <a
-                  href={row.mp3_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-mono text-[10px] break-all text-accent underline-offset-2 hover:underline"
-                  title={row.mp3_url}
-                >
-                  {showMp3Url ? row.mp3_url : "open mp3"}
-                </a>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function SortableHeader({
-  label,
-  sortKey,
-  currentKey,
-  dir,
-  onSort,
-}: {
-  label: string;
-  sortKey: SortKey;
-  currentKey: SortKey;
-  dir: SortDir;
-  onSort: (key: SortKey) => void;
-}) {
-  const active = sortKey === currentKey;
-  const arrow = active ? (dir === "asc" ? " ▲" : " ▼") : "";
-  return (
-    <th className="px-3 py-2 font-semibold">
+    <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-background/40 px-3 py-2">
       <button
         type="button"
-        onClick={() => onSort(sortKey)}
-        className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-foreground ${active ? "text-foreground" : ""
-          }`}
+        onClick={onTranslateAll}
+        disabled={disabled}
+        className="inline-flex h-9 cursor-pointer items-center justify-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {label}
-        {arrow}
+        {running
+          ? "Vertalen..."
+          : pendingCount === 0
+            ? "Alle rijen vertaald"
+            : `Vertaal ${pendingCount} rij${pendingCount === 1 ? "" : "en"} naar NL`}
       </button>
-    </th>
-  );
-}
 
-// Klikbare kolomheader voor 'license': opent een dropdown met alle
-// distincte licentie-waarden in de geladen rijen + "Alle". Sluit
-// automatisch bij een klik buiten de header (mousedown-listener op
-// document) of met Escape.
-function LicenseHeader({
-  licenseFilter,
-  availableLicenses,
-  onChange,
-}: {
-  licenseFilter: string;
-  availableLicenses: string[];
-  onChange: (v: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const isFiltered = licenseFilter !== LICENSE_FILTER_ALL;
+      <span className="text-[10px] text-muted-foreground">
+        Cache: {cacheSize} vertaling
+        {cacheSize === 1 ? "" : "en"} in localStorage
+      </span>
 
-  useEffect(() => {
-    if (!open) return;
-    function handlePointerDown(e: MouseEvent) {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [open]);
-
-  function pick(value: string) {
-    onChange(value);
-    setOpen(false);
-  }
-
-  return (
-    <th className="px-3 py-2 font-semibold">
-      <div ref={wrapperRef} className="relative inline-block">
+      {cacheSize > 0 && (
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
-          className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-foreground ${isFiltered ? "text-foreground" : ""
-            }`}
-          title={
-            isFiltered
-              ? `Gefilterd op ${licenseDisplay(licenseFilter)} — klik om te wijzigen`
-              : "Klik om op licentie te filteren"
-          }
+          onClick={onClearCache}
+          disabled={running}
+          className="ml-auto text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
         >
-          license
-          <span className="text-[8px]">{open ? "▲" : "▼"}</span>
-          {isFiltered && (
-            <span className="rounded bg-accent/20 px-1 py-0.5 font-mono text-[9px] normal-case text-accent">
-              {licenseDisplay(licenseFilter)}
-            </span>
-          )}
+          Wis vertaal-cache
         </button>
-
-        {open && (
-          <div
-            role="menu"
-            className="absolute left-0 top-full z-10 mt-1 min-w-[200px] rounded-md border border-border bg-card py-1 text-card-foreground shadow-lg"
-          >
-            <LicenseMenuItem
-              label="Alle"
-              isActive={!isFiltered}
-              onClick={() => pick(LICENSE_FILTER_ALL)}
-            />
-            {availableLicenses.length > 0 && (
-              <div className="my-1 border-t border-border" />
-            )}
-            {availableLicenses.map((lic) => (
-              <LicenseMenuItem
-                key={lic}
-                label={licenseDisplay(lic)}
-                isActive={licenseFilter === lic}
-                onClick={() => pick(lic)}
-              />
-            ))}
-            {availableLicenses.length === 0 && (
-              <p className="px-3 py-2 text-[10px] normal-case tracking-normal text-muted-foreground">
-                Geen rijen — niets om te filteren.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-    </th>
+      )}
+    </div>
   );
 }
 
-function LicenseMenuItem({
-  label,
-  isActive,
-  onClick,
+// Toont de laatste /translate-batch in collapsible details — consistent
+// met RequestDebugPanel hierboven.
+function TranslateDebugPanel({
+  snapshot,
 }: {
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
+  snapshot: TranslateDebugSnapshot;
 }) {
   return (
-    <button
-      type="button"
-      role="menuitemradio"
-      aria-checked={isActive}
-      onClick={onClick}
-      className={`flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs normal-case tracking-normal hover:bg-muted ${isActive ? "font-medium text-foreground" : "text-muted-foreground"
-        }`}
-    >
-      <span className="font-mono">{label}</span>
-      {isActive && <span className="text-accent">✓</span>}
-    </button>
+    <section className="space-y-2">
+      <h3 className="text-xs font-semibold text-muted-foreground">
+        Debug — laatste vertaal-batch{" "}
+        <span
+          className={`ml-2 rounded px-1.5 py-0.5 text-[9px] font-medium ${snapshot.ok ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}
+        >
+          {snapshot.ok ? "OK" : "FOUT"}
+        </span>
+      </h3>
+
+      <details className="rounded-md border border-border bg-card text-card-foreground">
+        <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-muted-foreground">
+          Request — POST {snapshot.request.url} (
+          {snapshot.request.body.items.length} item
+          {snapshot.request.body.items.length === 1 ? "" : "s"})
+        </summary>
+        <div className="px-4 pb-4">
+          <pre className="max-h-[400px] overflow-auto rounded bg-muted/40 p-3 font-mono text-xs">
+            {JSON.stringify(snapshot.request.body, null, 2)}
+          </pre>
+        </div>
+      </details>
+
+      <details className="rounded-md border border-border bg-card text-card-foreground">
+        <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-muted-foreground">
+          Response — JSON
+        </summary>
+        <div className="px-4 pb-4">
+          <pre className="max-h-[400px] overflow-auto rounded bg-muted/40 p-3 font-mono text-xs">
+            {JSON.stringify(snapshot.response, null, 2)}
+          </pre>
+        </div>
+      </details>
+    </section>
   );
 }
-
