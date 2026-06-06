@@ -21,7 +21,13 @@ Dat is de toegevoegde waarde van deze applicatie
 4. **AI-chatfunctie binnen oefeningen**  
    Tijdens of na een oefening kan een gebruiker vragen stellen aan de AI SDK. De AI geeft uitleg over grammatica, vervoegingen of alternatieve vertalingen. Zo wordt taal leren interactiever en persoonlijker. Er worden guardrails ingesteld die zorgen dat de vraag alleen over de specifieke oefening kan gaan
 
-5. **Voortgangsdashboard**  
+5. **Taaloefeningen kunnen maken**
+   Een UI om oefeningengroepen te kunnen kiezen om te maken. Opties flashcards en zelf typen (met evt hint). 
+
+6. **Oefeningen herhalen met eerder zwak resultaat**
+   Spaced repetition, optie om oefening niet meer te doen.
+
+7. **Voortgangsdashboard**  
    Een persoonlijk dashboard laat zien hoeveel woorden en zinnen de gebruiker heeft geleerd, welke thema’s goed gaan en waar nog verbetering mogelijk is. Dit is gebaseerd op opgeslagen scores en oefenresultaten in Supabase.
 
 
@@ -40,20 +46,14 @@ Gebleven bij execute plan: /Users/daniel/.cursor/plans/tatoeba_audio_translate_2
 - ~~In dev/ oefeningen quiz chat functie toevoegen waar je vragen kan stellen over de oefening~~
 - ~~In dev/ inlog maken, account waar je persoonlijke dashboard, oefeningen zijn te zien~~
 - **Tatoeba audio files ophalen**
-   Alle audio file metadata ophalen en in een filterbare tabel zet in de UI
-   Bij de oefening de auteur + bron + license vermelden
-   Mogelijk om audio files in Bucket van Supabase te zetten?
-   Mogelijk om altijd te refereren naar directe url?
-- **Admin-knop:**  
-  Haalt in één keer 100 Tatoeba audio files op en verrijkt de bijbehorende metadata.
-  - Transcript ophalen:
-    Voor elke audio file wordt indien mogelijk automatisch het transcript opgehaald.
-  - Verrijken met categorie/onderwerp:
-    - Bestaande categorieën ophalen uit Supabase.
-    - Met de AI SDK categorieën toewijzen aan de nieuwe audio files, zoveel mogelijk uit de bestaande categorieën.
-    - Gekozen categorie (label/tag) toevoegen aan de audio file metadata.
-  - Batch toevoeging in database: 
-    Voeg alle verrijkte audio files in bulk toe aan Supabase. Deze batch valt binnen het bereik "algemeen toegankelijk".
+   ~~Alle audio file metadata ophalen en in een filterbare tabel zet in de UI~~  
+   ~~Bij de oefening de auteur + bron + license vermelden~~  
+   ~~Mogelijk om audio files in Bucket van Supabase te zetten?~~  
+   ~~Mogelijk om altijd te refereren naar directe url?~~
+   AI moet ook topic en tags toevoegen
+   Alleen toegankelijk maken voor admin
+   
+
 - **Updaten Ideefase functionaliteiten**
 
 ## Nice to haves
