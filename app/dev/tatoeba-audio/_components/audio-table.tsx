@@ -410,6 +410,7 @@ export function AudioTable() {
               state: translateState,
               onTranslateRow: handleTranslateRow,
             }}
+            tableScope="playground"
           />
         </>
       )}

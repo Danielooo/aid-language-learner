@@ -1,9 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AudioRow } from "@/app/api/dev/tatoeba-audio/list/route";
 import type { useTranslationCache } from "@/lib/hooks/use-translation-cache";
+
+// Selection-API: optioneel. Als de parent dit object niet meelevert
+// wordt geen checkbox-kolom gerenderd → bestaande pagina's blijven
+// pixel-identiek. De parent bezit de Set zelf (controlled state) zodat
+// een persist-knop boven de tabel synchroon kan reageren op wijzigingen.
+export type AudioResultTableSelection = {
+  selectedIds: Set<number>;
+  onToggle: (audioId: number) => void;
+  // Toggle-all-zichtbare: krijgt de id-lijst zoals deze ná filter +
+  // sort op het scherm verschijnt, zodat de parent niet hoeft te
+  // dupliceren wat de tabel zelf al heeft uitgerekend.
+  onToggleAllVisible: (visibleIds: number[]) => void;
+};
 
 
 
@@ -24,6 +37,53 @@ import type { useTranslationCache } from "@/lib/hooks/use-translation-cache";
 
 export type SortKey = "audio_id" | "sentence_id" | "created";
 export type SortDir = "asc" | "desc";
+
+// Identifiers voor de togglebare kolommen. `sentence_text`, `vertaling`,
+// `mp3` en de checkbox-kolom zijn structureel en staan niet in deze
+// lijst — die kun je niet verbergen zonder de tabel onbruikbaar te
+// maken.
+export type ColumnKey =
+  | "audio_id"
+  | "sentence_id"
+  | "edited"
+  | "alternatives"
+  | "lang"
+  | "author"
+  | "license"
+  | "created"
+  | "cosine"
+  | "reason";
+
+// Label dat in het kolommen-menu en (waar van toepassing) in de header
+// gebruikt wordt. Bewaar in één plek zodat we niet uit sync raken.
+const COLUMN_LABELS: Record<ColumnKey, string> = {
+  audio_id: "audio_id",
+  sentence_id: "sentence_id",
+  edited: "aangepast?",
+  alternatives: "alternatieven",
+  lang: "lang",
+  author: "author",
+  license: "license",
+  created: "created",
+  cosine: "cosine",
+  reason: "reden",
+};
+
+// Vaste presentatie-volgorde voor het menu (= visuele volgorde van de
+// kolommen in de tabel). Pure UI; de feitelijke render-volgorde leeft
+// in de JSX hieronder.
+const COLUMN_ORDER: ColumnKey[] = [
+  "audio_id",
+  "sentence_id",
+  "edited",
+  "alternatives",
+  "lang",
+  "author",
+  "license",
+  "created",
+  "cosine",
+  "reason",
+];
 
 // Per-rij vertaal-status. Succesvolle vertalingen leven in de
 // `useTranslationCache`-hook (localStorage), niet in deze map —
@@ -53,6 +113,16 @@ export type AudioResultTableProps = {
   // Default true. Search-page kan FilterBar uitzetten als de chat
   // al filter-genoeg is. Voor nu staat 'ie overal aan.
   showFilterBar?: boolean;
+  // Optioneel: enable per-rij checkboxes. Parent bezit de selectie-set
+  // zodat een persist-knop buiten de tabel kan reageren.
+  selection?: AudioResultTableSelection;
+  // Sleutel voor de localStorage-persistentie van de kolom-zichtbaar-
+  // heid. Verschillende pagina's krijgen onafhankelijke voorkeuren.
+  // Ontbreekt → geen persistentie (alleen in-memory).
+  tableScope?: string;
+  // Initiële verborgen kolommen wanneer er nog niets in localStorage
+  // staat. Wordt genegeerd zodra de gebruiker zelf iets aanpast.
+  defaultHiddenColumns?: ColumnKey[];
 };
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -63,6 +133,37 @@ const LICENSE_FILTER_ALL = "__all__";
 
 // Bron is al de doel-taal van de vertaling → geen knop tonen.
 const TARGET_LANG = "nld";
+
+// localStorage-prefix voor de kolom-zichtbaarheid-voorkeur. Per
+// `tableScope` (search / playground) krijg je een eigen sleutel zodat
+// de twee /dev-pagina's elkaar niet overschrijven.
+const HIDDEN_COLS_KEY_PREFIX = "aid:audio-table:cols:";
+
+function hiddenColsStorageKey(scope: string | undefined): string | null {
+  if (!scope) return null;
+  return `${HIDDEN_COLS_KEY_PREFIX}${scope}`;
+}
+
+// Parse helper: tolereert onbekende/buggy waarden door alleen geldige
+// ColumnKey-strings te accepteren. Stille fallback naar lege set.
+function readHiddenCols(key: string): Set<ColumnKey> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw === null) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const set = new Set<ColumnKey>();
+    for (const v of parsed) {
+      if (typeof v === "string" && (COLUMN_ORDER as string[]).includes(v)) {
+        set.add(v as ColumnKey);
+      }
+    }
+    return set;
+  } catch {
+    return null;
+  }
+}
 
 function licenseDisplay(license: string): string {
   return license.trim() === "" ? "no-reuse" : license;
@@ -80,6 +181,9 @@ export function AudioResultTable({
   translation,
   searchEnrichments,
   showFilterBar = true,
+  selection,
+  tableScope,
+  defaultHiddenColumns,
 }: AudioResultTableProps) {
   const [licenseFilter, setLicenseFilter] = useState<string>(LICENSE_FILTER_ALL);
   const [authorQuery, setAuthorQuery] = useState<string>("");
@@ -88,6 +192,84 @@ export function AudioResultTable({
   const [sortKey, setSortKey] = useState<SortKey>("audio_id");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [showMp3Url, setShowMp3Url] = useState<boolean>(false);
+
+  // Kolom-zichtbaarheid. Init met de defaults om hydration-mismatch
+  // te vermijden; in een effect na mount mergen we de localStorage-
+  // voorkeur erin (overschrijft de defaults wanneer aanwezig).
+  const [hiddenColumns, setHiddenColumns] = useState<Set<ColumnKey>>(
+    () => new Set(defaultHiddenColumns ?? []),
+  );
+  // Pas pas op nadat de localStorage-restore is uitgevoerd. Voorkomt
+  // dat we de defaults overschrijven met een lege set zodra een user
+  // (zonder voorkeur) de pagina opent.
+  const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    const key = hiddenColsStorageKey(tableScope);
+    if (!key) {
+      hydratedRef.current = true;
+      return;
+    }
+    const restored = readHiddenCols(key);
+    if (restored !== null) {
+      setHiddenColumns(restored);
+    }
+    hydratedRef.current = true;
+  }, [tableScope]);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const key = hiddenColsStorageKey(tableScope);
+    if (!key || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        key,
+        JSON.stringify(Array.from(hiddenColumns)),
+      );
+    } catch {
+      // Stil falen: quota / private mode / etc. is niet kritiek voor
+      // een /dev-tool.
+    }
+  }, [hiddenColumns, tableScope]);
+
+  const isHidden = useCallback(
+    (key: ColumnKey) => hiddenColumns.has(key),
+    [hiddenColumns],
+  );
+
+  const toggleColumn = useCallback((key: ColumnKey) => {
+    setHiddenColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  // Eén verborgen <audio> voor de hele tabel: maximaal één rij speelt
+  // tegelijk. Bij klik op een andere ▶ stoppen we de huidige eerst.
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playingAudioId, setPlayingAudioId] = useState<number | null>(null);
+
+  const handlePlayToggle = useCallback((audioId: number, mp3Url: string) => {
+    const node = audioRef.current;
+    if (!node) return;
+    setPlayingAudioId((current) => {
+      if (current === audioId) {
+        node.pause();
+        return null;
+      }
+      // Switch source + start. Bij dezelfde URL niet noodzakelijk
+      // herzetten, maar het simpelste blijft één code-pad.
+      if (node.src !== mp3Url) node.src = mp3Url;
+      void node.play().catch(() => {
+        // Browser kan play() weigeren (bv. user-gesture-policy bij
+        // page-load). Reset state zodat de ▶-knop weer beschikbaar is.
+        setPlayingAudioId(null);
+      });
+      return audioId;
+    });
+  }, []);
 
   const availableLicenses = useMemo(() => {
     const set = new Set<string>();
@@ -106,10 +288,36 @@ export function AudioResultTable({
       : LICENSE_FILTER_ALL;
   }, [licenseFilter, availableLicenses]);
 
+  // Bouw één matcher voor de zin-tekst-filter zodat we 'm in de filter-
+  // loop niet opnieuw hoeven uit te rekenen. Twee modes:
+  //   - default: substring-match op de hele query (bv. "auto rijden"
+  //     matcht alleen rijen waarin die exacte volgorde voorkomt).
+  //   - "/"-prefix: tokenized AND-match. "/auto rijden" matcht rijen
+  //     waarin zowel "auto" als "rijden" als substring voorkomen,
+  //     ongeacht de volgorde of woordafstand. Handig om rond losse
+  //     woorden te zoeken zonder de exacte zinsbouw te kennen.
+  const textMatcher = useMemo(() => {
+    const raw = textQuery.trim();
+    if (!raw) return null;
+    if (raw.startsWith("/")) {
+      const tokens = raw
+        .slice(1)
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((t) => t.length > 0);
+      if (tokens.length === 0) return null;
+      return (sentence: string) => {
+        const lower = sentence.toLowerCase();
+        return tokens.every((t) => lower.includes(t));
+      };
+    }
+    const lowered = raw.toLowerCase();
+    return (sentence: string) => sentence.toLowerCase().includes(lowered);
+  }, [textQuery]);
+
   const filteredRows = useMemo(() => {
     if (rows.length === 0) return rows;
     const author = authorQuery.trim().toLowerCase();
-    const text = textQuery.trim().toLowerCase();
     return rows.filter((row) => {
       if (reusableOnly && row.license.trim() === "") return false;
       if (
@@ -118,10 +326,10 @@ export function AudioResultTable({
       )
         return false;
       if (author && !row.author.toLowerCase().includes(author)) return false;
-      if (text && !row.sentence_text.toLowerCase().includes(text)) return false;
+      if (textMatcher && !textMatcher(row.sentence_text)) return false;
       return true;
     });
-  }, [rows, authorQuery, textQuery, reusableOnly, effectiveLicenseFilter]);
+  }, [rows, authorQuery, textMatcher, reusableOnly, effectiveLicenseFilter]);
 
   const sortedRows = useMemo(() => {
     if (filteredRows.length === 0) return filteredRows;
@@ -146,23 +354,88 @@ export function AudioResultTable({
 
   // Conditioneel kolommen tonen: cosine/reden alleen als de search-page
   // ze daadwerkelijk heeft (anders 'staan ze leeg' op audio-playground).
-  const showCosine =
+  const hasCosine =
     !!searchEnrichments && Object.keys(searchEnrichments.cosineById).length > 0;
-  const showReason =
+  const hasReason =
     !!searchEnrichments && Object.keys(searchEnrichments.reasonsById).length > 0;
+
+  // Combineer "is de kolom überhaupt leverbaar?" met "heeft de user 'm
+  // niet verstopt?". Cosine/reden zonder enrichments worden überhaupt
+  // niet getoond (en staan ook niet in het menu).
+  const showAudioId = !isHidden("audio_id");
+  const showSentenceId = !isHidden("sentence_id");
+  const showEdited = !isHidden("edited");
+  const showAlternatives = !isHidden("alternatives");
+  const showLang = !isHidden("lang");
+  const showAuthor = !isHidden("author");
+  const showLicense = !isHidden("license");
+  const showCreated = !isHidden("created");
+  const showCosine = hasCosine && !isHidden("cosine");
+  const showReason = hasReason && !isHidden("reason");
+
+  // Lijst voor het kolommen-menu: alleen kolommen waarvoor het toggle
+  // ook zin heeft. Op de playground-pagina verschijnen `cosine`/`reden`
+  // niet in het menu (geen data).
+  const menuColumns = useMemo<ColumnKey[]>(() => {
+    return COLUMN_ORDER.filter((key) => {
+      if (key === "cosine") return hasCosine;
+      if (key === "reason") return hasReason;
+      return true;
+    });
+  }, [hasCosine, hasReason]);
+
+  // Afgeleide selectie-stats voor de header-checkbox. We rekenen alleen
+  // over de zichtbare-na-filter rijen (sortedRows): "select all" doet
+  // anders rare dingen als de user gefilterd heeft.
+  const visibleIds = useMemo(
+    () => sortedRows.map((r) => r.audio_id),
+    [sortedRows],
+  );
+  const visibleSelectedCount = useMemo(() => {
+    if (!selection) return 0;
+    let n = 0;
+    for (const id of visibleIds) {
+      if (selection.selectedIds.has(id)) n += 1;
+    }
+    return n;
+  }, [selection, visibleIds]);
+  const allVisibleSelected =
+    selection !== undefined &&
+    visibleIds.length > 0 &&
+    visibleSelectedCount === visibleIds.length;
+  const someVisibleSelected =
+    selection !== undefined &&
+    visibleSelectedCount > 0 &&
+    visibleSelectedCount < visibleIds.length;
+
+  // Aantal actieve filters voor de badge op de Filter-knop.
+  const activeFilterCount =
+    (authorQuery.trim().length > 0 ? 1 : 0) +
+    (textQuery.trim().length > 0 ? 1 : 0) +
+    (reusableOnly ? 1 : 0);
 
   return (
     <div className="space-y-3">
-      {showFilterBar && (
-        <FilterBar
-          authorQuery={authorQuery}
-          onAuthorChange={setAuthorQuery}
-          textQuery={textQuery}
-          onTextChange={setTextQuery}
-          reusableOnly={reusableOnly}
-          onReusableOnlyChange={setReusableOnly}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {showFilterBar ? (
+          <FilterToggle
+            activeCount={activeFilterCount}
+            authorQuery={authorQuery}
+            onAuthorChange={setAuthorQuery}
+            textQuery={textQuery}
+            onTextChange={setTextQuery}
+            reusableOnly={reusableOnly}
+            onReusableOnlyChange={setReusableOnly}
+          />
+        ) : (
+          <span />
+        )}
+        <ColumnVisibilityMenu
+          columns={menuColumns}
+          hiddenColumns={hiddenColumns}
+          onToggle={toggleColumn}
         />
-      )}
+      </div>
 
       {sortedRows.length === 0 ? (
         <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-4 text-center text-xs text-muted-foreground">
@@ -175,36 +448,70 @@ export function AudioResultTable({
           <table className="w-full border-collapse text-left text-xs">
             <thead className="sticky top-0 bg-muted/60 text-[10px] uppercase tracking-wide text-muted-foreground">
               <tr>
-                <SortableHeader
-                  label="audio_id"
-                  sortKey="audio_id"
-                  currentKey={sortKey}
-                  dir={sortDir}
-                  onSort={toggleSort}
-                />
-                <SortableHeader
-                  label="sentence_id"
-                  sortKey="sentence_id"
-                  currentKey={sortKey}
-                  dir={sortDir}
-                  onSort={toggleSort}
-                />
+                {selection && (
+                  <SelectAllHeader
+                    allChecked={allVisibleSelected}
+                    indeterminate={someVisibleSelected}
+                    onToggle={() => selection.onToggleAllVisible(visibleIds)}
+                    visibleCount={visibleIds.length}
+                  />
+                )}
+                {showAudioId && (
+                  <SortableHeader
+                    label="audio_id"
+                    sortKey="audio_id"
+                    currentKey={sortKey}
+                    dir={sortDir}
+                    onSort={toggleSort}
+                  />
+                )}
+                {showSentenceId && (
+                  <SortableHeader
+                    label="sentence_id"
+                    sortKey="sentence_id"
+                    currentKey={sortKey}
+                    dir={sortDir}
+                    onSort={toggleSort}
+                  />
+                )}
                 <th className="px-3 py-2 font-semibold">sentence_text</th>
-                <th className="px-3 py-2 font-semibold">vertaling (NL)</th>
-                <th className="px-3 py-2 font-semibold">lang</th>
-                <th className="px-3 py-2 font-semibold">author</th>
-                <LicenseHeader
-                  licenseFilter={effectiveLicenseFilter}
-                  availableLicenses={availableLicenses}
-                  onChange={setLicenseFilter}
-                />
-                <SortableHeader
-                  label="created"
-                  sortKey="created"
-                  currentKey={sortKey}
-                  dir={sortDir}
-                  onSort={toggleSort}
-                />
+                <th
+                  className="px-3 py-2 font-semibold"
+                  title="Dubbelklik op de tekst om handmatig aan te passen. + om alternatieve vertalingen toe te voegen."
+                >
+                  vertaling (NL)
+                </th>
+                {showEdited && (
+                  <th
+                    className="px-3 py-2 font-semibold"
+                    title="Is de auto-vertaling handmatig aangepast door dubbelklik?"
+                  >
+                    aangepast?
+                  </th>
+                )}
+                {showAlternatives && (
+                  <th className="px-3 py-2 font-semibold">alternatieven</th>
+                )}
+                {showLang && <th className="px-3 py-2 font-semibold">lang</th>}
+                {showAuthor && (
+                  <th className="px-3 py-2 font-semibold">author</th>
+                )}
+                {showLicense && (
+                  <LicenseHeader
+                    licenseFilter={effectiveLicenseFilter}
+                    availableLicenses={availableLicenses}
+                    onChange={setLicenseFilter}
+                  />
+                )}
+                {showCreated && (
+                  <SortableHeader
+                    label="created"
+                    sortKey="created"
+                    currentKey={sortKey}
+                    dir={sortDir}
+                    onSort={toggleSort}
+                  />
+                )}
                 {showCosine && (
                   <th className="px-3 py-2 font-semibold">cosine</th>
                 )}
@@ -234,13 +541,33 @@ export function AudioResultTable({
               {sortedRows.map((row) => {
                 const cosine = searchEnrichments?.cosineById[row.audio_id];
                 const reason = searchEnrichments?.reasonsById[row.audio_id];
+                const isSelected = selection?.selectedIds.has(row.audio_id);
                 return (
                   <tr
                     key={row.audio_id}
-                    className="border-t border-border align-top hover:bg-muted/30"
+                    className={`border-t border-border align-top hover:bg-muted/30 ${
+                      isSelected ? "bg-accent/5" : ""
+                    }`}
                   >
-                    <td className="px-3 py-2 font-mono">{row.audio_id}</td>
-                    <td className="px-3 py-2 font-mono">{row.sentence_id}</td>
+                    {selection && (
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={!!isSelected}
+                          onChange={() => selection.onToggle(row.audio_id)}
+                          className="h-4 w-4 rounded border-input"
+                          aria-label={`Selecteer audio ${row.audio_id}`}
+                        />
+                      </td>
+                    )}
+                    {showAudioId && (
+                      <td className="px-3 py-2 font-mono">{row.audio_id}</td>
+                    )}
+                    {showSentenceId && (
+                      <td className="px-3 py-2 font-mono">
+                        {row.sentence_id}
+                      </td>
+                    )}
                     <td className="px-3 py-2">{row.sentence_text}</td>
                     <td className="px-3 py-2">
                       <TranslationCell
@@ -250,14 +577,40 @@ export function AudioResultTable({
                         onTranslate={translation.onTranslateRow}
                       />
                     </td>
-                    <td className="px-3 py-2 font-mono uppercase">{row.lang}</td>
-                    <td className="px-3 py-2">{row.author}</td>
-                    <td className="px-3 py-2 font-mono text-[10px]">
-                      {licenseDisplay(row.license)}
-                    </td>
-                    <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
-                      {row.created ?? "—"}
-                    </td>
+                    {showEdited && (
+                      <td className="px-3 py-2">
+                        <EditedBadgeCell
+                          row={row}
+                          translationCache={translation.cache}
+                        />
+                      </td>
+                    )}
+                    {showAlternatives && (
+                      <td className="px-3 py-2">
+                        <AlternativesCell
+                          row={row}
+                          translationCache={translation.cache}
+                        />
+                      </td>
+                    )}
+                    {showLang && (
+                      <td className="px-3 py-2 font-mono uppercase">
+                        {row.lang}
+                      </td>
+                    )}
+                    {showAuthor && (
+                      <td className="px-3 py-2">{row.author}</td>
+                    )}
+                    {showLicense && (
+                      <td className="px-3 py-2 font-mono text-[10px]">
+                        {licenseDisplay(row.license)}
+                      </td>
+                    )}
+                    {showCreated && (
+                      <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
+                        {row.created ?? "—"}
+                      </td>
+                    )}
                     {showCosine && (
                       <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
                         {cosine !== undefined ? cosine.toFixed(3) : "—"}
@@ -269,21 +622,57 @@ export function AudioResultTable({
                       </td>
                     )}
                     <td className="px-3 py-2">
-                      <a
-                        href={row.mp3_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-mono text-[10px] break-all text-accent underline-offset-2 hover:underline"
-                        title={row.mp3_url}
-                      >
-                        {showMp3Url ? row.mp3_url : "open mp3"}
-                      </a>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handlePlayToggle(row.audio_id, row.mp3_url)
+                          }
+                          aria-label={
+                            playingAudioId === row.audio_id
+                              ? "Pauzeer audio"
+                              : "Speel audio af"
+                          }
+                          title={
+                            playingAudioId === row.audio_id
+                              ? "Pauzeer"
+                              : "Direct afspelen in de tabel"
+                          }
+                          className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 text-[11px] hover:bg-accent hover:text-accent-foreground"
+                        >
+                          {playingAudioId === row.audio_id ? "⏸" : "▶"}
+                        </button>
+                        <a
+                          href={row.mp3_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono text-[10px] break-all text-accent underline-offset-2 hover:underline"
+                          title={row.mp3_url}
+                        >
+                          {showMp3Url ? row.mp3_url : "open"}
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+          <audio
+            ref={audioRef}
+            preload="none"
+            onEnded={() => setPlayingAudioId(null)}
+            onPause={() =>
+              setPlayingAudioId((current) => {
+                // Alleen resetten als de pauze niet door onze eigen
+                // toggle al doorgevoerd is — voorkomt dat een externe
+                // pauze (bv. via bron-control) de UI uit sync trekt.
+                if (audioRef.current && audioRef.current.paused) return null;
+                return current;
+              })
+            }
+            className="hidden"
+          />
         </div>
       )}
 
@@ -297,6 +686,99 @@ export function AudioResultTable({
 }
 
 // ── Sub-components (intern) ───────────────────────────────────────
+
+// "Filter ▼"-knop met dropdown-paneel met de FilterBar erin. Volgt
+// hetzelfde patroon als ColumnVisibilityMenu en LicenseHeader. Toont
+// een badge met het aantal actieve filters zodat een verstopte filter
+// nooit onopgemerkt blijft. Auto-open zolang er een actief filter is.
+function FilterToggle({
+  activeCount,
+  authorQuery,
+  onAuthorChange,
+  textQuery,
+  onTextChange,
+  reusableOnly,
+  onReusableOnlyChange,
+}: {
+  activeCount: number;
+  authorQuery: string;
+  onAuthorChange: (v: string) => void;
+  textQuery: string;
+  onTextChange: (v: string) => void;
+  reusableOnly: boolean;
+  onReusableOnlyChange: (v: boolean) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: MouseEvent) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  const hasActive = activeCount > 0;
+
+  return (
+    <div ref={wrapperRef} className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium hover:bg-muted ${
+          hasActive
+            ? "border-accent/40 bg-accent/10 text-foreground"
+            : "border-border bg-background text-muted-foreground hover:text-foreground"
+        }`}
+        title={
+          hasActive
+            ? `${activeCount} actief filter${activeCount === 1 ? "" : "s"} — klik om te bewerken`
+            : "Filter op auteur, zin of licentie"
+        }
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        Filter
+        {hasActive && (
+          <span className="rounded bg-accent/20 px-1 py-0.5 font-mono text-[9px] text-accent">
+            {activeCount}
+          </span>
+        )}
+        <span className="text-[8px]">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-0 top-full z-10 mt-1 w-[420px] max-w-[90vw] rounded-md border border-border bg-card p-2 text-card-foreground shadow-lg"
+        >
+          <FilterBar
+            authorQuery={authorQuery}
+            onAuthorChange={onAuthorChange}
+            textQuery={textQuery}
+            onTextChange={onTextChange}
+            reusableOnly={reusableOnly}
+            onReusableOnlyChange={onReusableOnlyChange}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 function FilterBar({
   authorQuery,
@@ -314,7 +796,7 @@ function FilterBar({
   onReusableOnlyChange: (v: boolean) => void;
 }) {
   return (
-    <div className="grid gap-3 rounded-md border border-border bg-background/40 p-3 sm:grid-cols-3">
+    <div className="space-y-2 p-1">
       <label className="flex flex-col gap-1">
         <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Auteur bevat
@@ -329,19 +811,33 @@ function FilterBar({
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Zin bevat
+          <span
+            role="img"
+            aria-label="Uitleg zin-filter"
+            tabIndex={0}
+            title={
+              "Standaard: matcht rijen waarin de hele zoektekst als aaneengesloten substring voorkomt.\n\n" +
+              "Begin de zoektekst met / om op losse woorden te zoeken (AND-match): bijvoorbeeld\n" +
+              "  /auto rijden\n" +
+              "matcht rijen waarin zowel 'auto' als 'rijden' voorkomen, ongeacht volgorde of woordafstand."
+            }
+            className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-border bg-background text-[9px] font-semibold normal-case text-muted-foreground hover:text-foreground"
+          >
+            i
+          </span>
         </span>
         <input
           type="text"
           value={textQuery}
           onChange={(e) => onTextChange(e.target.value)}
-          placeholder="bv. comer"
+          placeholder="bv. comer  (of /auto rijden)"
           className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
         />
       </label>
 
-      <label className="flex items-center gap-2 pt-4 text-xs text-muted-foreground">
+      <label className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
         <input
           type="checkbox"
           checked={reusableOnly}
@@ -349,6 +845,15 @@ function FilterBar({
           className="h-4 w-4 rounded border-input"
         />
         Alleen herbruikbaar
+        <span
+          role="img"
+          aria-label="Uitleg licentie-filter"
+          tabIndex={0}
+          title="Verbergt audio-records waarvan de licentie hergebruik buiten Tatoeba verbiedt (lege license-string). Alleen herbruikbare records (CC0 / CC BY) kunnen naar Supabase gepersist worden."
+          className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-border bg-background text-[9px] font-semibold text-muted-foreground hover:text-foreground"
+        >
+          i
+        </span>
       </label>
     </div>
   );
@@ -381,6 +886,93 @@ function SortableHeader({
         {arrow}
       </button>
     </th>
+  );
+}
+
+// "Kolommen ▼"-knop met dropdown van checkboxes — laat de user
+// kolommen verbergen/tonen. Volgt het outside-click + Escape-patroon
+// van LicenseHeader. Toont een teller (zichtbaar/totaal) zodat
+// gebruikers snel zien dat er nog kolommen verstopt zijn.
+function ColumnVisibilityMenu({
+  columns,
+  hiddenColumns,
+  onToggle,
+}: {
+  columns: ColumnKey[];
+  hiddenColumns: Set<ColumnKey>;
+  onToggle: (key: ColumnKey) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: MouseEvent) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  const visibleCount = columns.filter((c) => !hiddenColumns.has(c)).length;
+  const totalCount = columns.length;
+
+  return (
+    <div ref={wrapperRef} className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        title="Toon/verberg kolommen"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        Kolommen
+        <span className="font-mono text-[10px] text-muted-foreground/70">
+          {visibleCount}/{totalCount}
+        </span>
+        <span className="text-[8px]">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-10 mt-1 min-w-[180px] rounded-md border border-border bg-card py-1 text-card-foreground shadow-lg"
+        >
+          {columns.map((key) => {
+            const checked = !hiddenColumns.has(key);
+            return (
+              <label
+                key={key}
+                className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted"
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggle(key)}
+                  className="h-3.5 w-3.5 rounded border-input"
+                />
+                <span className="font-mono normal-case">
+                  {COLUMN_LABELS[key]}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -483,6 +1075,47 @@ function LicenseHeader({
   );
 }
 
+// Header-checkbox die "alle zichtbare rijen" toggle't. We zetten
+// `indeterminate` via een ref omdat HTML/React dat attribuut niet
+// declaratief ondersteunt — alleen via de DOM-property.
+function SelectAllHeader({
+  allChecked,
+  indeterminate,
+  onToggle,
+  visibleCount,
+}: {
+  allChecked: boolean;
+  indeterminate: boolean;
+  onToggle: () => void;
+  visibleCount: number;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate]);
+
+  return (
+    <th className="px-3 py-2 font-semibold">
+      <input
+        ref={inputRef}
+        type="checkbox"
+        checked={allChecked}
+        onChange={onToggle}
+        disabled={visibleCount === 0}
+        className="h-4 w-4 rounded border-input disabled:opacity-30"
+        aria-label="Selecteer alle zichtbare rijen"
+        title={
+          allChecked
+            ? "Deselecteer alle zichtbare rijen"
+            : "Selecteer alle zichtbare rijen"
+        }
+      />
+    </th>
+  );
+}
+
 function LicenseMenuItem({
   label,
   isActive,
@@ -507,11 +1140,14 @@ function LicenseMenuItem({
   );
 }
 
-// Per-rij cel die de vertaling rendert. Vier statussen:
+// Per-rij cel die de vertaling rendert. Vijf statussen:
 // 1. Bron is al NL → em-dash (geen knop, niets om te vertalen).
 // 2. Loading → spinner.
-// 3. Cache-hit → tekst + klein '↻' om opnieuw te vertalen.
+// 3. Cache-hit → tekst (dubbelklik = edit-mode) + verticale knop-rij
+//    (↻ hervertaal, + alternatieve vertaling toevoegen).
 // 4. Geen cache → 'Vertaal'-knop (of error-state met Opnieuw).
+// 5. Edit-mode → textarea + ✓/✕ acties (Cmd/Ctrl+Enter = save, Esc =
+//    cancel, blur = save).
 function TranslationCell({
   row,
   translationCache,
@@ -523,6 +1159,50 @@ function TranslationCell({
   state: TranslateRowState | undefined;
   onTranslate: (row: AudioRow) => void;
 }) {
+  const cached = translationCache.get(row.audio_id, row.sentence_text);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [showAddAlt, setShowAddAlt] = useState(false);
+  const [altDraft, setAltDraft] = useState("");
+  // Tracker voor "Esc cancelt; blur na Esc mag niet alsnog saven".
+  const cancelledRef = useRef(false);
+
+  function startEdit() {
+    if (!cached) return;
+    cancelledRef.current = false;
+    setDraft(cached.translation);
+    setEditing(true);
+  }
+
+  function commitEdit() {
+    if (cancelledRef.current) {
+      cancelledRef.current = false;
+      setEditing(false);
+      return;
+    }
+    const trimmed = draft.trim();
+    if (trimmed.length > 0 && cached && trimmed !== cached.translation) {
+      translationCache.setManualTranslation(row.audio_id, trimmed);
+    }
+    setEditing(false);
+  }
+
+  function cancelEdit() {
+    cancelledRef.current = true;
+    setEditing(false);
+  }
+
+  function commitAlt() {
+    const trimmed = altDraft.trim();
+    if (trimmed.length === 0) {
+      setShowAddAlt(false);
+      return;
+    }
+    translationCache.addAlternative(row.audio_id, trimmed);
+    setAltDraft("");
+    setShowAddAlt(false);
+  }
+
   if (row.lang === TARGET_LANG) {
     return (
       <span
@@ -546,19 +1226,124 @@ function TranslationCell({
     );
   }
 
-  const cached = translationCache.get(row.audio_id, row.sentence_text);
+  if (cached && editing) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <textarea
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              cancelEdit();
+            } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              commitEdit();
+            }
+          }}
+          rows={2}
+          className="w-full resize-y rounded border border-input bg-background px-2 py-1 text-xs text-foreground focus:border-accent focus:outline-none"
+        />
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault() /* voorkom blur-cancel */}
+            onClick={commitEdit}
+            title="Bewaren (Cmd/Ctrl+Enter)"
+            className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400"
+          >
+            ✓
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={cancelEdit}
+            title="Annuleren (Esc)"
+            className="rounded border border-border bg-background px-1.5 py-0.5 hover:bg-muted"
+          >
+            ✕
+          </button>
+          <span className="ml-1">Cmd/Ctrl+Enter = bewaren · Esc = annuleren</span>
+        </div>
+      </div>
+    );
+  }
+
   if (cached) {
     return (
-      <div className="flex items-start gap-2">
-        <span className="flex-1">{cached.translation}</span>
-        <button
-          type="button"
-          onClick={() => onTranslate(row)}
-          title="Hervertalen — overschrijft de cache voor deze zin"
-          className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          ↻
-        </button>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-start gap-2">
+          <span
+            onDoubleClick={startEdit}
+            title="Dubbelklik om handmatig aan te passen"
+            className="flex-1 cursor-text"
+          >
+            {cached.translation}
+            {cached.manually_edited && (
+              <span
+                className="ml-1 text-[10px] text-muted-foreground/70"
+                title="Handmatig aangepast"
+              >
+                ✎
+              </span>
+            )}
+          </span>
+          <div className="flex shrink-0 flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => onTranslate(row)}
+              title="Hervertalen — overschrijft de cache voor deze zin"
+              className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              ↻
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddAlt((v) => !v)}
+              title="Voeg een alternatieve correcte vertaling toe"
+              aria-pressed={showAddAlt}
+              className={`rounded border px-1.5 py-0.5 text-[10px] ${
+                showAddAlt
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              ＋
+            </button>
+          </div>
+        </div>
+
+        {showAddAlt && (
+          <div className="flex items-center gap-1">
+            <input
+              type="text"
+              value={altDraft}
+              autoFocus
+              onChange={(e) => setAltDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitAlt();
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  setAltDraft("");
+                  setShowAddAlt(false);
+                }
+              }}
+              placeholder="Alternatieve vertaling"
+              className="flex-1 rounded border border-input bg-background px-2 py-1 text-[11px]"
+            />
+            <button
+              type="button"
+              onClick={commitAlt}
+              className="rounded border border-accent/60 bg-accent/10 px-2 py-0.5 text-[10px] text-accent-foreground hover:bg-accent/20"
+            >
+              Toevoegen
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -588,5 +1373,173 @@ function TranslationCell({
     >
       Vertaal
     </button>
+  );
+}
+
+// Kolom-cel die "ja"/"nee" toont voor de manually_edited vlag. NL-bron-
+// rijen of niet-gecachete rijen krijgen een em-dash.
+function EditedBadgeCell({
+  row,
+  translationCache,
+}: {
+  row: AudioRow;
+  translationCache: ReturnType<typeof useTranslationCache>;
+}) {
+  if (row.lang === TARGET_LANG) {
+    return <span className="text-[10px] text-muted-foreground/70">—</span>;
+  }
+  const cached = translationCache.get(row.audio_id, row.sentence_text);
+  if (!cached) {
+    return <span className="text-[10px] text-muted-foreground/70">—</span>;
+  }
+  return cached.manually_edited ? (
+    <span
+      className="rounded bg-accent/20 px-1.5 py-0.5 font-mono text-[9px] text-accent"
+      title="De auto-gegenereerde vertaling is handmatig aangepast."
+    >
+      ja
+    </span>
+  ) : (
+    <span
+      className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground"
+      title="Niet handmatig aangepast — auto-vertaling staat zoals AI 'm gaf."
+    >
+      nee
+    </span>
+  );
+}
+
+// Kolom-cel met dropdown: toont count + ▼; klap-open laat de lijst
+// zien met ✕-knoppen om te verwijderen en een input om toe te voegen.
+// Hergebruikt het patroon van LicenseHeader (mousedown buiten + Esc
+// sluiten).
+function AlternativesCell({
+  row,
+  translationCache,
+}: {
+  row: AudioRow;
+  translationCache: ReturnType<typeof useTranslationCache>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: MouseEvent) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  if (row.lang === TARGET_LANG) {
+    return <span className="text-[10px] text-muted-foreground/70">—</span>;
+  }
+  const cached = translationCache.get(row.audio_id, row.sentence_text);
+  if (!cached) {
+    return <span className="text-[10px] text-muted-foreground/70">—</span>;
+  }
+
+  function commit() {
+    if (!cached) return;
+    const trimmed = draft.trim();
+    if (trimmed.length === 0) return;
+    translationCache.addAlternative(row.audio_id, trimmed);
+    setDraft("");
+  }
+
+  const count = cached.alternatives.length;
+
+  return (
+    <div ref={wrapperRef} className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[10px] hover:text-foreground ${
+          count > 0
+            ? "border-accent/40 bg-accent/10 text-accent"
+            : "border-border bg-background text-muted-foreground"
+        }`}
+        title={
+          count === 0
+            ? "Klap uit om een alternatieve vertaling toe te voegen"
+            : `${count} alternatieve vertaling${count === 1 ? "" : "en"} — klap uit om te bekijken/bewerken`
+        }
+      >
+        {count} alt
+        <span className="text-[8px]">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label="Alternatieve vertalingen beheren"
+          className="absolute left-0 top-full z-10 mt-1 w-[280px] rounded-md border border-border bg-card p-2 text-card-foreground shadow-lg"
+        >
+          {cached.alternatives.length > 0 ? (
+            <ul className="space-y-1">
+              {cached.alternatives.map((alt, idx) => (
+                <li
+                  key={`${idx}-${alt}`}
+                  className="flex items-start gap-1 rounded bg-muted/30 px-2 py-1 text-[11px]"
+                >
+                  <span className="flex-1 normal-case">{alt}</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      translationCache.removeAlternative(row.audio_id, idx)
+                    }
+                    title="Verwijder deze alternatieve vertaling"
+                    className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-1 py-1 text-[10px] normal-case tracking-normal text-muted-foreground">
+              Nog geen alternatieven.
+            </p>
+          )}
+
+          <div className="mt-2 flex items-center gap-1">
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commit();
+                }
+              }}
+              placeholder="Nieuwe alternatieve vertaling"
+              className="flex-1 rounded border border-input bg-background px-2 py-1 text-[11px] normal-case"
+            />
+            <button
+              type="button"
+              onClick={commit}
+              className="rounded border border-accent/60 bg-accent/10 px-2 py-0.5 text-[10px] normal-case text-accent-foreground hover:bg-accent/20"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

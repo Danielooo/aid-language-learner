@@ -22,18 +22,10 @@ export const dynamic = "force-dynamic";
 
 export default function TatoebaAudioSearchPage() {
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Tatoeba audio-zoeken (semantisch)
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Haal eenmalig 500 Tatoeba-zinnen + embeddings op (gecached in
-          localStorage), en zoek er semantisch in via natuurlijke taal.
-          Multi-turn: elke nieuwe query verfijnt de huidige selectie. De
-          &quot;Terug&quot;-knop pop&apos;t één stap terug.
-        </p>
-      </header>
+    <div className="space-y-4">
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        Tatoeba audio-zoeken (semantisch)
+      </h1>
 
       <AudioSearchPage />
     </div>

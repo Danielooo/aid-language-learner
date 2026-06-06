@@ -12,25 +12,19 @@ Dat is de toegevoegde waarde van deze applicatie
 1. **Registreren en inloggen**  
    Gebruikers kunnen een persoonlijk account aanmaken. Via Supabase wordt authenticatie en autorisatie geregeld. 
 
-2. **Vooraf gegenereerde oefeningen**  
-   De applicatie bevat een database met vooraf samengestelde oefeningen (Nederlands–Spaans). Gebruikers kunnen deze ophalen en maken. Antwoorden en resultaten worden opgeslagen in Supabase, zodat voortgang later inzichtelijk is.
+2. **Vooraf ophalen en verrijken audio oefeningen**  
+   De admin kan bij Tatoeba API een x aantal audio oefeningen ophalen en in globally beschikbaar maken. De oefeningen hebben alleen audio file en transcriptie. De admin kan in combinatie met de AI SDK de oefening verrijken met oa NL vertaling
 
 3. **Zelf oefeningen toevoegen**  
-   Gebruikers kunnen eigen oefeningen genereren en toevoegen. Deze kunnen privé blijven of ter goedkeuring aangeboden worden voor de algemene publieke database. Op deze manier kunnen gebruikers hun eigen categorieën bouwen.
+   Middels de AI SDK en eigen API key kunnen er oefeningen worden gegenereerd door de user die kunnen worden opgeslagen in Supabase. De oefeningen kunnen persoonlijk zijn of global (voor iedereen toegankelijk)
 
 4. **AI-chatfunctie binnen oefeningen**  
-   Tijdens of na een oefening kan een gebruiker vragen stellen aan een geïntegreerde AI-chat. De AI geeft uitleg over grammatica, vervoegingen of alternatieve vertalingen. Zo wordt taal leren interactiever en persoonlijker. Er worden guardrails ingesteld die zorgen dat de vraag alleen over de specifieke oefening kan gaan
+   Tijdens of na een oefening kan een gebruiker vragen stellen aan de AI SDK. De AI geeft uitleg over grammatica, vervoegingen of alternatieve vertalingen. Zo wordt taal leren interactiever en persoonlijker. Er worden guardrails ingesteld die zorgen dat de vraag alleen over de specifieke oefening kan gaan
 
 5. **Voortgangsdashboard**  
    Een persoonlijk dashboard laat zien hoeveel woorden en zinnen de gebruiker heeft geleerd, welke thema’s goed gaan en waar nog verbetering mogelijk is. Dit is gebaseerd op opgeslagen scores en oefenresultaten in Supabase.
 
-6. **Fallback functionaliteit:**
-   Voor het geval een externe databron vereist is voor de eindopdracht, wordt de **TATOEBA API** gekoppeld om willekeurige Spaanse zinnen op te halen. Deze API levert alleen zinnen en vertalingen; Supabase wordt dan ingezet om  de scores en voortgang te beheren. Dat wordt dan gekoppeld aan het id van het Tatoeba oefening
 
-
-#### **Technische opzet**
-De backend en database draaien op **Supabase**, waar tabellen voor gebruikers, oefeningen, resultaten en feedback aanwezig zijn. RLS-policies waarborgen dat gebruikers alleen hun eigen voortgang en privé-oefeningen kunnen beheren. De AI-functionaliteit wordt ingebouwd via **OpenAI**.
-Voor het geval een externe databron nodig is, wordt de **TATUBA API** gekoppeld om willekeurige Spaanse zinnen op te halen. Deze API levert de zinnen en vertalingen; Supabase beheert de scores en voortgang.
 
 
 ---
