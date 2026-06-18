@@ -14,7 +14,7 @@ Dat is de toegevoegde waarde van deze applicatie
 1. **Registreren en inloggen**
   Gebruikers kunnen een persoonlijk account aanmaken. Via Supabase wordt authenticatie en autorisatie geregeld.
 2. **Vooraf ophalen en verrijken audio oefeningen**
-  De admin kan bij Tatoeba API een x aantal audio oefeningen ophalen en in globally beschikbaar maken. De oefeningen hebben alleen audio file en transcriptie. De admin kan in combinatie met de AI SDK de oefening verrijken met oa NL vertaling
+  De admin kan bij Tatoeba API een x aantal audio oefeningen ophalen en in globally beschikbaar maken. De oefeningen hebben alleen audio file en transcriptie. De admin kan in combinatie met de AI SDK de oefening verrijken met oa NL vertaling. Er is een UI beschikbaar die laat zien wat er in de Supabase database staat
 3. **Zelf oefeningen toevoegen**
   Middels de AI SDK en eigen API key kunnen er oefeningen worden gegenereerd door de user die kunnen worden opgeslagen in Supabase. De oefeningen kunnen persoonlijk zijn of global (voor iedereen toegankelijk)
 4. **AI-chatfunctie binnen oefeningen**

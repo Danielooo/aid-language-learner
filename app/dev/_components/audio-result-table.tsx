@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import type { ExercisePatchFields } from "@/app/api/dev/exercises-admin/types";
 import type { AudioRow } from "@/app/api/dev/tatoeba-audio/list/route";
 import type { useTranslationCache } from "@/lib/hooks/use-translation-cache";
 
@@ -106,6 +107,14 @@ export type SearchEnrichments = {
   reasonsById: Record<number, string>;
 };
 
+export type AudioResultTablePersistMode = {
+  getExerciseId: (row: AudioRow) => string;
+  onPatchRow: (
+    exerciseId: string,
+    fields: ExercisePatchFields,
+  ) => Promise<void>;
+};
+
 export type AudioResultTableProps = {
   rows: AudioRow[];
   translation: {
@@ -129,6 +138,10 @@ export type AudioResultTableProps = {
   // Initiële verborgen kolommen wanneer er nog niets in localStorage
   // staat. Wordt genegeerd zodra de gebruiker zelf iets aanpast.
   defaultHiddenColumns?: ColumnKey[];
+  // Read-only modus: geen verrijk-knoppen of handmatige bewerking.
+  readOnly?: boolean;
+  // Admin: inline edits schrijven naar Supabase via callback.
+  persistMode?: AudioResultTablePersistMode;
 };
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -190,6 +203,8 @@ export function AudioResultTable({
   selection,
   tableScope,
   defaultHiddenColumns,
+  readOnly = false,
+  persistMode,
 }: AudioResultTableProps) {
   const [licenseFilter, setLicenseFilter] = useState<string>(LICENSE_FILTER_ALL);
   const [authorQuery, setAuthorQuery] = useState<string>("");
@@ -599,6 +614,8 @@ export function AudioResultTable({
                         translationCache={translation.cache}
                         state={translation.state[row.audio_id]}
                         onTranslate={translation.onTranslateRow}
+                        readOnly={readOnly}
+                        persistMode={persistMode}
                       />
                     </td>
                     {showEdited && (
@@ -614,6 +631,8 @@ export function AudioResultTable({
                         <AlternativesCell
                           row={row}
                           translationCache={translation.cache}
+                          readOnly={readOnly}
+                          persistMode={persistMode}
                         />
                       </td>
                     )}
@@ -622,6 +641,7 @@ export function AudioResultTable({
                         <TopicCell
                           row={row}
                           translationCache={translation.cache}
+                          persistMode={persistMode}
                         />
                       </td>
                     )}
@@ -630,6 +650,7 @@ export function AudioResultTable({
                         <TagsCell
                           row={row}
                           translationCache={translation.cache}
+                          persistMode={persistMode}
                         />
                       </td>
                     )}
@@ -662,36 +683,42 @@ export function AudioResultTable({
                       </td>
                     )}
                     <td className="px-3 py-2">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handlePlayToggle(row.audio_id, row.mp3_url)
-                          }
-                          aria-label={
-                            playingAudioId === row.audio_id
-                              ? "Pauzeer audio"
-                              : "Speel audio af"
-                          }
-                          title={
-                            playingAudioId === row.audio_id
-                              ? "Pauzeer"
-                              : "Direct afspelen in de tabel"
-                          }
-                          className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 text-[11px] hover:bg-accent hover:text-accent-foreground"
-                        >
-                          {playingAudioId === row.audio_id ? "⏸" : "▶"}
-                        </button>
-                        <a
-                          href={row.mp3_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="font-mono text-[10px] break-all text-accent underline-offset-2 hover:underline"
-                          title={row.mp3_url}
-                        >
-                          {showMp3Url ? row.mp3_url : "open"}
-                        </a>
-                      </div>
+                      {row.mp3_url ? (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handlePlayToggle(row.audio_id, row.mp3_url)
+                            }
+                            aria-label={
+                              playingAudioId === row.audio_id
+                                ? "Pauzeer audio"
+                                : "Speel audio af"
+                            }
+                            title={
+                              playingAudioId === row.audio_id
+                                ? "Pauzeer"
+                                : "Direct afspelen in de tabel"
+                            }
+                            className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 text-[11px] hover:bg-accent hover:text-accent-foreground"
+                          >
+                            {playingAudioId === row.audio_id ? "⏸" : "▶"}
+                          </button>
+                          <a
+                            href={row.mp3_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-mono text-[10px] break-all text-accent underline-offset-2 hover:underline"
+                            title={row.mp3_url}
+                          >
+                            {showMp3Url ? row.mp3_url : "open"}
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground/70">
+                          —
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -1193,11 +1220,15 @@ function TranslationCell({
   translationCache,
   state,
   onTranslate,
+  readOnly = false,
+  persistMode,
 }: {
   row: AudioRow;
   translationCache: ReturnType<typeof useTranslationCache>;
   state: TranslateRowState | undefined;
   onTranslate: (row: AudioRow) => void;
+  readOnly?: boolean;
+  persistMode?: AudioResultTablePersistMode;
 }) {
   const cached = translationCache.get(row.audio_id, row.sentence_text);
   const [editing, setEditing] = useState(false);
@@ -1205,7 +1236,25 @@ function TranslationCell({
   const [showAddAlt, setShowAddAlt] = useState(false);
   const [altDraft, setAltDraft] = useState("");
   // Tracker voor "Esc cancelt; blur na Esc mag niet alsnog saven".
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const cancelledRef = useRef(false);
+
+  async function persistTranslation(text: string, manuallyEdited: boolean) {
+    if (!persistMode) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await persistMode.onPatchRow(persistMode.getExerciseId(row), {
+        target_text: text,
+        target_text_manually_edited: manuallyEdited,
+      });
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Opslaan mislukt.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function startEdit() {
     if (!cached) return;
@@ -1222,7 +1271,12 @@ function TranslationCell({
     }
     const trimmed = draft.trim();
     if (trimmed.length > 0 && cached && trimmed !== cached.translation) {
-      translationCache.setManualTranslation(row.audio_id, trimmed);
+      if (persistMode) {
+        void persistTranslation(trimmed, true);
+        translationCache.setManualTranslation(row.audio_id, trimmed);
+      } else {
+        translationCache.setManualTranslation(row.audio_id, trimmed);
+      }
     }
     setEditing(false);
   }
@@ -1238,7 +1292,25 @@ function TranslationCell({
       setShowAddAlt(false);
       return;
     }
-    translationCache.addAlternative(row.audio_id, trimmed);
+    const next = [...(cached?.alternatives ?? []), trimmed];
+    if (persistMode && cached) {
+      void (async () => {
+        setSaving(true);
+        setSaveError(null);
+        try {
+          await persistMode.onPatchRow(persistMode.getExerciseId(row), {
+            alternative_translations: next,
+          });
+          translationCache.addAlternative(row.audio_id, trimmed);
+        } catch (e) {
+          setSaveError(e instanceof Error ? e.message : "Opslaan mislukt.");
+        } finally {
+          setSaving(false);
+        }
+      })();
+    } else {
+      translationCache.addAlternative(row.audio_id, trimmed);
+    }
     setAltDraft("");
     setShowAddAlt(false);
   }
@@ -1254,14 +1326,26 @@ function TranslationCell({
     );
   }
 
-  if (state?.status === "loading") {
+  if (state?.status === "loading" || saving) {
     return (
       <span className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground">
         <span
           aria-hidden
           className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-muted border-t-accent"
         />
-        Verrijken…
+        {saving ? "Opslaan…" : "Verrijken…"}
+      </span>
+    );
+  }
+
+  if (cached && readOnly) {
+    return <span className="text-xs">{cached.translation}</span>;
+  }
+
+  if (saveError) {
+    return (
+      <span className="text-[10px] text-destructive" title={saveError}>
+        {saveError}
       </span>
     );
   }
@@ -1423,18 +1507,94 @@ function TranslationCell({
 function TopicCell({
   row,
   translationCache,
+  persistMode,
 }: {
   row: AudioRow;
   translationCache: ReturnType<typeof useTranslationCache>;
+  persistMode?: AudioResultTablePersistMode;
 }) {
   const cached = translationCache.get(row.audio_id, row.sentence_text);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  async function saveTopic(value: string) {
+    const trimmed = value.trim();
+    const topic = trimmed.length > 0 ? trimmed : null;
+    if (persistMode) {
+      await persistMode.onPatchRow(persistMode.getExerciseId(row), { topic });
+      if (cached) {
+        translationCache.set(row.audio_id, {
+          ...cached,
+          topic,
+        });
+      }
+    }
+    setEditing(false);
+  }
+
   if (!cached || !cached.topic) {
+    if (persistMode) {
+      if (editing) {
+        return (
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => void saveTopic(draft)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void saveTopic(draft);
+              if (e.key === "Escape") setEditing(false);
+            }}
+            className="w-full rounded border border-input bg-background px-2 py-1 text-[10px]"
+            placeholder="onderwerp"
+          />
+        );
+      }
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            setDraft("");
+            setEditing(true);
+          }}
+          className="text-[10px] text-muted-foreground underline-offset-2 hover:underline"
+        >
+          + onderwerp
+        </button>
+      );
+    }
     return <span className="text-[10px] text-muted-foreground/70">—</span>;
   }
+
+  if (editing && persistMode) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => void saveTopic(draft)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void saveTopic(draft);
+          if (e.key === "Escape") setEditing(false);
+        }}
+        className="w-full rounded border border-input bg-background px-2 py-1 text-[10px]"
+      />
+    );
+  }
+
   return (
     <span
-      className="rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] text-accent"
-      title="AI-gegenereerd onderwerp-label. Wordt bij persist als `topic` op exercises geschreven."
+      onDoubleClick={() => {
+        if (!persistMode) return;
+        setDraft(cached.topic ?? "");
+        setEditing(true);
+      }}
+      className={`rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] text-accent ${persistMode ? "cursor-text" : ""}`}
+      title={
+        persistMode
+          ? "Dubbelklik om te bewerken"
+          : "AI-gegenereerd onderwerp-label."
+      }
     >
       {cached.topic}
     </span>
@@ -1446,21 +1606,98 @@ function TopicCell({
 function TagsCell({
   row,
   translationCache,
+  persistMode,
 }: {
   row: AudioRow;
   translationCache: ReturnType<typeof useTranslationCache>;
+  persistMode?: AudioResultTablePersistMode;
 }) {
   const cached = translationCache.get(row.audio_id, row.sentence_text);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  async function saveTags(value: string) {
+    const tags = value
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    const tagsCsv = tags.join(",");
+    if (persistMode) {
+      await persistMode.onPatchRow(persistMode.getExerciseId(row), {
+        tags: tagsCsv,
+      });
+      if (cached) {
+        translationCache.set(row.audio_id, { ...cached, tags });
+      }
+    }
+    setEditing(false);
+  }
+
   if (!cached || cached.tags.length === 0) {
+    if (persistMode) {
+      if (editing) {
+        return (
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => void saveTags(draft)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void saveTags(draft);
+              if (e.key === "Escape") setEditing(false);
+            }}
+            className="w-full rounded border border-input bg-background px-2 py-1 text-[10px]"
+            placeholder="tag1, tag2"
+          />
+        );
+      }
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            setDraft("");
+            setEditing(true);
+          }}
+          className="text-[10px] text-muted-foreground underline-offset-2 hover:underline"
+        >
+          + tags
+        </button>
+      );
+    }
     return <span className="text-[10px] text-muted-foreground/70">—</span>;
   }
+
+  if (editing && persistMode) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => void saveTags(draft)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void saveTags(draft);
+          if (e.key === "Escape") setEditing(false);
+        }}
+        className="w-full rounded border border-input bg-background px-2 py-1 text-[10px]"
+        placeholder="tag1, tag2"
+      />
+    );
+  }
+
   return (
-    <div className="flex flex-wrap gap-1">
+    <div
+      onDoubleClick={() => {
+        if (!persistMode) return;
+        setDraft(cached.tags.join(", "));
+        setEditing(true);
+      }}
+      className={`flex flex-wrap gap-1 ${persistMode ? "cursor-text" : ""}`}
+      title={persistMode ? "Dubbelklik om te bewerken" : undefined}
+    >
       {cached.tags.map((tag) => (
         <span
           key={tag}
           className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
-          title="AI-gegenereerde tag. Wordt bij persist als CSV op exercises.tags geschreven."
         >
           {tag}
         </span>
@@ -1509,9 +1746,13 @@ function EditedBadgeCell({
 function AlternativesCell({
   row,
   translationCache,
+  readOnly = false,
+  persistMode,
 }: {
   row: AudioRow;
   translationCache: ReturnType<typeof useTranslationCache>;
+  readOnly?: boolean;
+  persistMode?: AudioResultTablePersistMode;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
@@ -1546,15 +1787,52 @@ function AlternativesCell({
     return <span className="text-[10px] text-muted-foreground/70">—</span>;
   }
 
+  async function patchAlternatives(next: string[]) {
+    if (!persistMode || !cached) return;
+    await persistMode.onPatchRow(persistMode.getExerciseId(row), {
+      alternative_translations: next,
+    });
+  }
+
   function commit() {
     if (!cached) return;
     const trimmed = draft.trim();
     if (trimmed.length === 0) return;
-    translationCache.addAlternative(row.audio_id, trimmed);
+    const next = [...cached.alternatives, trimmed];
+    if (persistMode) {
+      void patchAlternatives(next).then(() => {
+        translationCache.addAlternative(row.audio_id, trimmed);
+      });
+    } else {
+      translationCache.addAlternative(row.audio_id, trimmed);
+    }
     setDraft("");
   }
 
+  function removeAt(idx: number) {
+    if (!cached) return;
+    const next = cached.alternatives.filter((_, i) => i !== idx);
+    if (persistMode) {
+      void patchAlternatives(next).then(() => {
+        translationCache.removeAlternative(row.audio_id, idx);
+      });
+    } else {
+      translationCache.removeAlternative(row.audio_id, idx);
+    }
+  }
+
   const count = cached.alternatives.length;
+
+  if (readOnly) {
+    if (count === 0) {
+      return <span className="text-[10px] text-muted-foreground/70">—</span>;
+    }
+    return (
+      <span className="text-[11px] text-muted-foreground">
+        {cached.alternatives.join(" · ")}
+      </span>
+    );
+  }
 
   return (
     <div ref={wrapperRef} className="relative inline-block">
@@ -1592,9 +1870,7 @@ function AlternativesCell({
                   <span className="flex-1 normal-case">{alt}</span>
                   <button
                     type="button"
-                    onClick={() =>
-                      translationCache.removeAlternative(row.audio_id, idx)
-                    }
+                    onClick={() => removeAt(idx)}
                     title="Verwijder deze alternatieve vertaling"
                     className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   >
