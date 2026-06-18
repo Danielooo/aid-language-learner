@@ -8,9 +8,8 @@ import { Dashboard } from "./_components/dashboard";
 // opgehaald via `/api/dev/quiz-attempts`. RLS zorgt dat elke user
 // alleen zijn eigen pogingen ziet.
 export default async function DashboardPage() {
-  // Username ophalen voor de header-titel. proxy.ts redirecten naar
-  // /login als geen sessie, dus user is hier altijd aanwezig — maar
-  // we zijn defensief met de fallback.
+  // TIJDELIJK: proxy vereist geen sessie zolang DEV_EXERCISE_TOOLS_REQUIRE_AUTH
+  // false is; fallback "gast" als er geen profile is.
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
@@ -23,7 +22,7 @@ export default async function DashboardPage() {
         .maybeSingle()
     : { data: null as { username: string } | null };
 
-  const username = profile?.username ?? "jij";
+  const username = profile?.username ?? (user ? "jij" : "gast");
 
   return (
     <div className="space-y-6">

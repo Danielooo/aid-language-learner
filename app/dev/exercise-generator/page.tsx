@@ -159,9 +159,9 @@ export default function ExerciseGeneratorPage() {
           persisten. Vier debug-panels onderaan tonen alle JSON heen-en-weer.
         </p>
         <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          <strong className="font-semibold text-foreground">Alleen jij</strong>{" "}
-          ziet de oefeningen die je hier opslaat — ze worden gekoppeld aan
-          jouw account. De seed-set is gedeeld met alle users.
+          Zonder login worden opgeslagen oefeningen als gedeelde seed (
+          <code className="font-mono">owner_id = null</code>). Ingelogd? Dan
+          horen ze bij jouw account.
         </p>
       </header>
 

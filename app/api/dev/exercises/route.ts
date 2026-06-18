@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 // Persist-route voor de oefeningen-generator. Accepteert een batch
@@ -52,11 +54,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const supabase = await getSupabaseServerClient();
+  const serverSupabase = await getSupabaseServerClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  } = await serverSupabase.auth.getUser();
+
+  if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user) {
     return Response.json(
       { ok: false, error: "Niet ingelogd." },
       { status: 401 },
@@ -70,8 +73,15 @@ export async function POST(req: Request) {
     source_text: ex.source_text,
     target_text: ex.target_text,
     topic: topic ?? null,
-    owner_id: user.id,
+    owner_id: user?.id ?? null,
   }));
+
+  // Zonder login kan owner_id niet via RLS (policy vereist auth.uid());
+  // admin-client volgt hetzelfde patroon als tatoeba persist-batch.
+  const supabase =
+    DEV_EXERCISE_TOOLS_REQUIRE_AUTH && user
+      ? serverSupabase
+      : getSupabaseAdmin();
 
   const { data, error, status, statusText, count } = await supabase
     .from("exercises")
