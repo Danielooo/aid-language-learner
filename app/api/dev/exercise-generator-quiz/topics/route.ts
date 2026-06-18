@@ -1,3 +1,4 @@
+import { ALL_TOPICS } from "@/app/dev/_components/quiz/constants";
 import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -10,8 +11,14 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+export type TopicStat = {
+  topic: string;
+  count: number;
+};
+
 export type TopicsResponse = {
   topics: string[];
+  stats: TopicStat[];
 };
 
 export async function GET() {
@@ -27,32 +34,48 @@ export async function GET() {
     !DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user
       ? getSupabaseAdmin()
       : serverSupabase;
+  const seedOnly = !DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user;
+
+  let countQuery = supabase
+    .from("exercises")
+    .select("id", { count: "exact", head: true });
+  if (seedOnly) countQuery = countQuery.is("owner_id", null);
 
   let topicsQuery = supabase
     .from("exercises")
     .select("topic")
     .not("topic", "is", null);
-  if (!DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user) {
-    topicsQuery = topicsQuery.is("owner_id", null);
+  if (seedOnly) topicsQuery = topicsQuery.is("owner_id", null);
+
+  const [{ count: totalCount, error: countError }, { data, error }] =
+    await Promise.all([countQuery, topicsQuery]);
+
+  if (countError) {
+    return Response.json({ error: countError.message }, { status: 500 });
   }
-
-  const { data, error } = await topicsQuery;
-
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
-  const topics = Array.from(
-    new Set(
-      (data ?? [])
-        .map((row) => row.topic)
-        .filter(
-          (topic): topic is string =>
-            typeof topic === "string" && topic.trim().length > 0,
-        ),
-    ),
-  ).sort((a, b) => a.localeCompare(b, "nl"));
+  const countByTopic = new Map<string, number>();
+  for (const row of data ?? []) {
+    if (typeof row.topic !== "string" || row.topic.trim().length === 0) continue;
+    const key = row.topic.trim();
+    countByTopic.set(key, (countByTopic.get(key) ?? 0) + 1);
+  }
 
-  const payload: TopicsResponse = { topics };
+  const topics = Array.from(countByTopic.keys()).sort((a, b) =>
+    a.localeCompare(b, "nl"),
+  );
+
+  const stats: TopicStat[] = [
+    { topic: ALL_TOPICS, count: totalCount ?? 0 },
+    ...topics.map((topic) => ({
+      topic,
+      count: countByTopic.get(topic) ?? 0,
+    })),
+  ];
+
+  const payload: TopicsResponse = { topics, stats };
   return Response.json(payload);
 }
