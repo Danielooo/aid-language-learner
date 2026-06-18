@@ -36,8 +36,6 @@ const LANG_OPTIONS = [
 ] as const;
 
 const PAGE_SIZE_PRESETS = [10, 25, 50, 100, 200] as const;
-const PAGE_SIZE_MIN = 1;
-const PAGE_SIZE_MAX = 500;
 const ENRICH_CHUNK = 50;
 const TARGET_LANG = "nld";
 
@@ -174,16 +172,12 @@ function buildTranslationLookup(
 
 function parsePageSize(raw: string | null): number {
   const n = Number(raw);
-  if (!Number.isFinite(n)) return 10;
-  return Math.max(PAGE_SIZE_MIN, Math.min(PAGE_SIZE_MAX, Math.floor(n)));
+  if ((PAGE_SIZE_PRESETS as readonly number[]).includes(n)) return n;
+  return PAGE_SIZE_PRESETS[0];
 }
 
 function parseSortDir(raw: string | null): SortDir {
   return raw === "asc" ? "asc" : "desc";
-}
-
-function isPresetPageSize(n: number): boolean {
-  return (PAGE_SIZE_PRESETS as readonly number[]).includes(n);
 }
 
 export function ExercisesListPage({
@@ -221,12 +215,6 @@ export function ExercisesListPage({
   const [deleteAudio, setDeleteAudio] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [pageSizeMode, setPageSizeMode] = useState<"preset" | "custom">(() =>
-    isPresetPageSize(parsePageSize(searchParams.get("pageSize"))) ? "preset" : "custom",
-  );
-  const [customPageSizeDraft, setCustomPageSizeDraft] = useState(() =>
-    String(parsePageSize(searchParams.get("pageSize"))),
-  );
   const enrichAbortRef = useRef<AbortController | null>(null);
   const loadRef = useRef(load);
   loadRef.current = load;
@@ -593,61 +581,24 @@ export function ExercisesListPage({
           />
         </label>
 
-        <div className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1">
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             Per pagina
           </span>
-          <div className="flex items-center gap-2">
-            <select
-              value={
-                pageSizeMode === "custom" || !isPresetPageSize(pageSize)
-                  ? "custom"
-                  : String(pageSize)
-              }
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "custom") {
-                  setPageSizeMode("custom");
-                  setCustomPageSizeDraft(String(pageSize));
-                } else {
-                  setPageSizeMode("preset");
-                  updateParams({ pageSize: v, page: "1" });
-                }
-              }}
-              className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
-            >
-              {PAGE_SIZE_PRESETS.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-              <option value="custom">Aangepast…</option>
-            </select>
-            {(pageSizeMode === "custom" || !isPresetPageSize(pageSize)) && (
-              <input
-                type="number"
-                min={PAGE_SIZE_MIN}
-                max={PAGE_SIZE_MAX}
-                value={customPageSizeDraft}
-                onChange={(e) => setCustomPageSizeDraft(e.target.value)}
-                onBlur={() => {
-                  const n = parsePageSize(customPageSizeDraft);
-                  setCustomPageSizeDraft(String(n));
-                  updateParams({ pageSize: String(n), page: "1" });
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const n = parsePageSize(customPageSizeDraft);
-                    setCustomPageSizeDraft(String(n));
-                    updateParams({ pageSize: String(n), page: "1" });
-                  }
-                }}
-                className="w-20 rounded-md border border-input bg-background px-2 py-1.5 text-xs"
-                title={`Aantal records per pagina (${PAGE_SIZE_MIN}–${PAGE_SIZE_MAX})`}
-              />
-            )}
-          </div>
-        </div>
+          <select
+            value={String(pageSize)}
+            onChange={(e) =>
+              updateParams({ pageSize: e.target.value, page: "1" })
+            }
+            className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+          >
+            {PAGE_SIZE_PRESETS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <button
           type="button"
