@@ -54,7 +54,7 @@ function DevToolSection({ category }: { category: DevToolCategory }) {
 }
 
 export function DevIndexPage() {
-  const [view, setView] = useState<DevView>("both");
+  const [view, setView] = useState<DevView>("use");
 
   const showLab = view === "lab" || view === "both";
   const showUse = view === "use" || view === "both";

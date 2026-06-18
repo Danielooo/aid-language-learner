@@ -18,7 +18,8 @@ const BUCKET = "tatoeba-audio";
 
 const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(500).default(50),
+  pageSize: z.coerce.number().int().min(1).max(500).default(10),
+  sortDir: z.enum(["asc", "desc"]).default("desc"),
   lang: z
     .string()
     .min(2)
@@ -75,6 +76,7 @@ export async function GET(req: Request): Promise<Response> {
   const parse = listQuerySchema.safeParse({
     page: reqUrl.searchParams.get("page") ?? undefined,
     pageSize: reqUrl.searchParams.get("pageSize") ?? undefined,
+    sortDir: reqUrl.searchParams.get("sortDir") ?? undefined,
     lang: reqUrl.searchParams.get("lang") ?? undefined,
     topic: reqUrl.searchParams.get("topic") ?? undefined,
     q: reqUrl.searchParams.get("q") ?? undefined,
@@ -87,14 +89,14 @@ export async function GET(req: Request): Promise<Response> {
     );
   }
 
-  const { page, pageSize, lang, topic, q } = parse.data;
+  const { page, pageSize, sortDir, lang, topic, q } = parse.data;
   const offset = (page - 1) * pageSize;
   const supabase = getSupabaseAdmin();
 
   let query = supabase
     .from("exercises")
     .select(EXERCISE_SELECT_COLUMNS, { count: "exact" })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: sortDir === "asc" });
 
   if (lang) {
     query = query.eq("source_lang", lang);

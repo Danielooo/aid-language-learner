@@ -30,22 +30,34 @@ Dat is de toegevoegde waarde van deze applicatie
 
 ## TODO
 
-Gebleven bij execute plan: /Users/daniel/.cursor/plans/tatoeba_audio_translate_26f4fa35.plan.md 
+**Vooraf ophalen en verrijken audio oefeningen**
 
-- ~~In dev/ gegenereerde oefeningen quiz feature bouwen~~
-- ~~In dev/ oefeningen maken op basis van Supabase data~~
-- ~~In dev/ dashboard maken op basis van gemaakte oefeningen~~
-- ~~In dev/ oefeningen quiz chat functie toevoegen waar je vragen kan stellen over de oefening~~
-- ~~In dev/ inlog maken, account waar je persoonlijke dashboard, oefeningen zijn te zien~~
-- **Tatoeba audio files ophalen**
- ~~Alle audio file metadata ophalen en in een filterbare tabel zet in de UI~~  
- ~~Bij de oefening de auteur + bron + license vermelden~~  
- ~~Mogelijk om audio files in Bucket van Supabase te zetten?~~  
- ~~Mogelijk om altijd te refereren naar directe url?~~
- ~~AI moet ook topic en tags toevoegen~~
- Alleen toegankelijk maken voor admin
-- Tool calling binnen quiz mode implementeren
-- **Updaten Ideefase functionaliteiten**
+- ~~Alle audio file metadata ophalen en in een filterbare tabel zet in de UI~~  
+- ~~Bij de oefening de auteur + bron + license vermelden~~  
+- ~~Mogelijk om audio files in Bucket van Supabase te zetten?~~  
+- ~~Mogelijk om altijd te refereren naar directe url?~~  
+- ~~AI moet ook topic en tags toevoegen~~
+
+**Zelf oefeningen toevoegen**
+
+- Layout tekst-only oefeningen vergelijkbaar met AudioResultTable
+- Zelf kunnen aanpassen
+
+**Taaloefeningen kunnen maken**
+- Flashcards
+- Typen
+- Als er audio bij zit dan een icon die de audio afspeelt
+
+
+**Global**
+- loading state maken
+- skeleton loader maken
+
+
+
+**Aan het eind**
+- Auth implementeren (User en Admin)
+
 
 ## Nice to haves
 
@@ -53,7 +65,7 @@ Gebleven bij execute plan: /Users/daniel/.cursor/plans/tatoeba_audio_translate_2
 - Inloggen met SSO 
  (Login knop met Google, of Github). 
  (Kan ook EU: Zitadel of LogTo)
-- 
+- Eigen api key toevoegen
 
 ## Settings
 

@@ -142,6 +142,20 @@ export type AudioResultTableProps = {
   readOnly?: boolean;
   // Admin: inline edits schrijven naar Supabase via callback.
   persistMode?: AudioResultTablePersistMode;
+  // Verberg mp3-kolom (o.a. exercise-generator zonder audio).
+  hideMp3Column?: boolean;
+  // Verberg Verrijk/↻/＋ in TranslationCell (LLM levert al vertaling).
+  hideEnrichActions?: boolean;
+  // Inline bewerken van de bron-zin (sentence_text).
+  editableSourceText?: boolean;
+  onPatchSourceText?: (row: AudioRow, text: string) => void;
+  // Kolommen die nooit renderen en niet in het kolommen-menu staan.
+  excludedColumns?: ColumnKey[];
+  // Server-side sortering: parent bezit sort-state en schakelt client-sort uit.
+  sortKey?: SortKey;
+  sortDir?: SortDir;
+  onSortChange?: (key: SortKey, dir: SortDir) => void;
+  serverSorted?: boolean;
 };
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -205,13 +219,24 @@ export function AudioResultTable({
   defaultHiddenColumns,
   readOnly = false,
   persistMode,
+  hideMp3Column = false,
+  hideEnrichActions = false,
+  editableSourceText = false,
+  onPatchSourceText,
+  excludedColumns,
+  sortKey: controlledSortKey,
+  sortDir: controlledSortDir,
+  onSortChange,
+  serverSorted = false,
 }: AudioResultTableProps) {
   const [licenseFilter, setLicenseFilter] = useState<string>(LICENSE_FILTER_ALL);
   const [authorQuery, setAuthorQuery] = useState<string>("");
   const [textQuery, setTextQuery] = useState<string>("");
   const [reusableOnly, setReusableOnly] = useState<boolean>(false);
-  const [sortKey, setSortKey] = useState<SortKey>("audio_id");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [internalSortKey, setInternalSortKey] = useState<SortKey>("audio_id");
+  const [internalSortDir, setInternalSortDir] = useState<SortDir>("desc");
+  const sortKey = controlledSortKey ?? internalSortKey;
+  const sortDir = controlledSortDir ?? internalSortDir;
   const [showMp3Url, setShowMp3Url] = useState<boolean>(false);
 
   // Kolom-zichtbaarheid. Init met de defaults om hydration-mismatch
@@ -252,6 +277,16 @@ export function AudioResultTable({
       // een /dev-tool.
     }
   }, [hiddenColumns, tableScope]);
+
+  const excludedSet = useMemo(
+    () => new Set<ColumnKey>(excludedColumns ?? []),
+    [excludedColumns],
+  );
+
+  const isColumnAvailable = useCallback(
+    (key: ColumnKey) => !excludedSet.has(key),
+    [excludedSet],
+  );
 
   const isHidden = useCallback(
     (key: ColumnKey) => hiddenColumns.has(key),
@@ -353,6 +388,7 @@ export function AudioResultTable({
   }, [rows, authorQuery, textMatcher, reusableOnly, effectiveLicenseFilter]);
 
   const sortedRows = useMemo(() => {
+    if (serverSorted) return filteredRows;
     if (filteredRows.length === 0) return filteredRows;
     const dir = sortDir === "asc" ? 1 : -1;
     return [...filteredRows].sort((a, b) => {
@@ -362,14 +398,20 @@ export function AudioResultTable({
       if (va > vb) return 1 * dir;
       return 0;
     });
-  }, [filteredRows, sortKey, sortDir]);
+  }, [filteredRows, sortKey, sortDir, serverSorted]);
 
   function toggleSort(key: SortKey) {
+    if (onSortChange) {
+      const nextDir =
+        key === sortKey ? (sortDir === "asc" ? "desc" : "asc") : "desc";
+      onSortChange(key, nextDir);
+      return;
+    }
     if (key === sortKey) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      setInternalSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
-      setSortKey(key);
-      setSortDir("asc");
+      setInternalSortKey(key);
+      setInternalSortDir("asc");
     }
   }
 
@@ -383,29 +425,34 @@ export function AudioResultTable({
   // Combineer "is de kolom überhaupt leverbaar?" met "heeft de user 'm
   // niet verstopt?". Cosine/reden zonder enrichments worden überhaupt
   // niet getoond (en staan ook niet in het menu).
-  const showAudioId = !isHidden("audio_id");
-  const showSentenceId = !isHidden("sentence_id");
-  const showEdited = !isHidden("edited");
-  const showAlternatives = !isHidden("alternatives");
-  const showTopic = !isHidden("topic");
-  const showTags = !isHidden("tags");
-  const showLang = !isHidden("lang");
-  const showAuthor = !isHidden("author");
-  const showLicense = !isHidden("license");
-  const showCreated = !isHidden("created");
-  const showCosine = hasCosine && !isHidden("cosine");
-  const showReason = hasReason && !isHidden("reason");
+  const showAudioId = isColumnAvailable("audio_id") && !isHidden("audio_id");
+  const showSentenceId =
+    isColumnAvailable("sentence_id") && !isHidden("sentence_id");
+  const showEdited = isColumnAvailable("edited") && !isHidden("edited");
+  const showAlternatives =
+    isColumnAvailable("alternatives") && !isHidden("alternatives");
+  const showTopic = isColumnAvailable("topic") && !isHidden("topic");
+  const showTags = isColumnAvailable("tags") && !isHidden("tags");
+  const showLang = isColumnAvailable("lang") && !isHidden("lang");
+  const showAuthor = isColumnAvailable("author") && !isHidden("author");
+  const showLicense = isColumnAvailable("license") && !isHidden("license");
+  const showCreated = isColumnAvailable("created") && !isHidden("created");
+  const showCosine =
+    isColumnAvailable("cosine") && hasCosine && !isHidden("cosine");
+  const showReason =
+    isColumnAvailable("reason") && hasReason && !isHidden("reason");
 
   // Lijst voor het kolommen-menu: alleen kolommen waarvoor het toggle
   // ook zin heeft. Op de playground-pagina verschijnen `cosine`/`reden`
   // niet in het menu (geen data).
   const menuColumns = useMemo<ColumnKey[]>(() => {
     return COLUMN_ORDER.filter((key) => {
+      if (!isColumnAvailable(key)) return false;
       if (key === "cosine") return hasCosine;
       if (key === "reason") return hasReason;
       return true;
     });
-  }, [hasCosine, hasReason]);
+  }, [hasCosine, hasReason, isColumnAvailable]);
 
   // Afgeleide selectie-stats voor de header-checkbox. We rekenen alleen
   // over de zichtbare-na-filter rijen (sortedRows): "select all" doet
@@ -557,23 +604,25 @@ export function AudioResultTable({
                 {showReason && (
                   <th className="px-3 py-2 font-semibold">reden</th>
                 )}
-                <th className="px-3 py-2 font-semibold">
-                  <div className="flex items-center gap-2">
-                    <span>mp3</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowMp3Url((v) => !v)}
-                      title={
-                        showMp3Url
-                          ? "Toon link-tekst i.p.v. de volledige URL"
-                          : "Toon de volledige URL i.p.v. de link-tekst"
-                      }
-                      className="rounded border border-border bg-background px-1.5 py-0.5 text-[9px] font-medium normal-case tracking-normal text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      {showMp3Url ? "link" : "url"}
-                    </button>
-                  </div>
-                </th>
+                {!hideMp3Column && (
+                  <th className="px-3 py-2 font-semibold">
+                    <div className="flex items-center gap-2">
+                      <span>mp3</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowMp3Url((v) => !v)}
+                        title={
+                          showMp3Url
+                            ? "Toon link-tekst i.p.v. de volledige URL"
+                            : "Toon de volledige URL i.p.v. de link-tekst"
+                        }
+                        className="rounded border border-border bg-background px-1.5 py-0.5 text-[9px] font-medium normal-case tracking-normal text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        {showMp3Url ? "link" : "url"}
+                      </button>
+                    </div>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -607,7 +656,14 @@ export function AudioResultTable({
                         {row.sentence_id}
                       </td>
                     )}
-                    <td className="px-3 py-2">{row.sentence_text}</td>
+                    <td className="px-3 py-2">
+                      <SourceTextCell
+                        row={row}
+                        editable={editableSourceText}
+                        onPatchSourceText={onPatchSourceText}
+                        translationCache={translation.cache}
+                      />
+                    </td>
                     <td className="px-3 py-2">
                       <TranslationCell
                         row={row}
@@ -616,6 +672,7 @@ export function AudioResultTable({
                         onTranslate={translation.onTranslateRow}
                         readOnly={readOnly}
                         persistMode={persistMode}
+                        hideEnrichActions={hideEnrichActions}
                       />
                     </td>
                     {showEdited && (
@@ -682,44 +739,46 @@ export function AudioResultTable({
                         {reason ?? "—"}
                       </td>
                     )}
-                    <td className="px-3 py-2">
-                      {row.mp3_url ? (
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handlePlayToggle(row.audio_id, row.mp3_url)
-                            }
-                            aria-label={
-                              playingAudioId === row.audio_id
-                                ? "Pauzeer audio"
-                                : "Speel audio af"
-                            }
-                            title={
-                              playingAudioId === row.audio_id
-                                ? "Pauzeer"
-                                : "Direct afspelen in de tabel"
-                            }
-                            className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 text-[11px] hover:bg-accent hover:text-accent-foreground"
-                          >
-                            {playingAudioId === row.audio_id ? "⏸" : "▶"}
-                          </button>
-                          <a
-                            href={row.mp3_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-mono text-[10px] break-all text-accent underline-offset-2 hover:underline"
-                            title={row.mp3_url}
-                          >
-                            {showMp3Url ? row.mp3_url : "open"}
-                          </a>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground/70">
-                          —
-                        </span>
-                      )}
-                    </td>
+                    {!hideMp3Column && (
+                      <td className="px-3 py-2">
+                        {row.mp3_url ? (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handlePlayToggle(row.audio_id, row.mp3_url)
+                              }
+                              aria-label={
+                                playingAudioId === row.audio_id
+                                  ? "Pauzeer audio"
+                                  : "Speel audio af"
+                              }
+                              title={
+                                playingAudioId === row.audio_id
+                                  ? "Pauzeer"
+                                  : "Direct afspelen in de tabel"
+                              }
+                              className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 text-[11px] hover:bg-accent hover:text-accent-foreground"
+                            >
+                              {playingAudioId === row.audio_id ? "⏸" : "▶"}
+                            </button>
+                            <a
+                              href={row.mp3_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-mono text-[10px] break-all text-accent underline-offset-2 hover:underline"
+                              title={row.mp3_url}
+                            >
+                              {showMp3Url ? row.mp3_url : "open"}
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground/70">
+                            —
+                          </span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -1207,6 +1266,98 @@ function LicenseMenuItem({
   );
 }
 
+// Bron-zin (sentence_text). Optioneel inline bewerkbaar voor flows
+// zonder Tatoeba (bv. exercise-generator).
+function SourceTextCell({
+  row,
+  editable,
+  onPatchSourceText,
+  translationCache,
+}: {
+  row: AudioRow;
+  editable: boolean;
+  onPatchSourceText?: (row: AudioRow, text: string) => void;
+  translationCache: ReturnType<typeof useTranslationCache>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const cancelledRef = useRef(false);
+
+  function startEdit() {
+    if (!editable || !onPatchSourceText) return;
+    cancelledRef.current = false;
+    setDraft(row.sentence_text);
+    setEditing(true);
+  }
+
+  function commitEdit() {
+    if (cancelledRef.current) {
+      cancelledRef.current = false;
+      setEditing(false);
+      return;
+    }
+    const trimmed = draft.trim();
+    if (
+      trimmed.length > 0 &&
+      trimmed !== row.sentence_text &&
+      onPatchSourceText
+    ) {
+      onPatchSourceText(row, trimmed);
+      const cached = translationCache.get(row.audio_id, row.sentence_text);
+      if (cached) {
+        translationCache.set(row.audio_id, {
+          ...cached,
+          source_text: trimmed,
+        });
+      }
+    }
+    setEditing(false);
+  }
+
+  function cancelEdit() {
+    cancelledRef.current = true;
+    setEditing(false);
+  }
+
+  if (!editable) {
+    return <span>{row.sentence_text}</span>;
+  }
+
+  if (editing) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <textarea
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              cancelEdit();
+            } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              commitEdit();
+            }
+          }}
+          rows={2}
+          className="w-full resize-y rounded border border-input bg-background px-2 py-1 text-xs text-foreground focus:border-accent focus:outline-none"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <span
+      onDoubleClick={startEdit}
+      title="Dubbelklik om handmatig aan te passen"
+      className="cursor-text"
+    >
+      {row.sentence_text}
+    </span>
+  );
+}
+
 // Per-rij cel die de vertaling rendert. Vijf statussen:
 // 1. Bron is al NL → em-dash (geen knop, niets om te vertalen).
 // 2. Loading → spinner.
@@ -1222,6 +1373,7 @@ function TranslationCell({
   onTranslate,
   readOnly = false,
   persistMode,
+  hideEnrichActions = false,
 }: {
   row: AudioRow;
   translationCache: ReturnType<typeof useTranslationCache>;
@@ -1229,6 +1381,7 @@ function TranslationCell({
   onTranslate: (row: AudioRow) => void;
   readOnly?: boolean;
   persistMode?: AudioResultTablePersistMode;
+  hideEnrichActions?: boolean;
 }) {
   const cached = translationCache.get(row.audio_id, row.sentence_text);
   const [editing, setEditing] = useState(false);
@@ -1414,32 +1567,34 @@ function TranslationCell({
               </span>
             )}
           </span>
-          <div className="flex shrink-0 flex-col gap-1">
-            <button
-              type="button"
-              onClick={() => onTranslate(row)}
-              title="Opnieuw verrijken — overschrijft vertaling + topic + tags in de cache voor deze zin"
-              className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              ↻
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowAddAlt((v) => !v)}
-              title="Voeg een alternatieve correcte vertaling toe"
-              aria-pressed={showAddAlt}
-              className={`rounded border px-1.5 py-0.5 text-[10px] ${
-                showAddAlt
-                  ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              ＋
-            </button>
-          </div>
+          {!hideEnrichActions && (
+            <div className="flex shrink-0 flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => onTranslate(row)}
+                title="Opnieuw verrijken — overschrijft vertaling + topic + tags in de cache voor deze zin"
+                className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                ↻
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddAlt((v) => !v)}
+                title="Voeg een alternatieve correcte vertaling toe"
+                aria-pressed={showAddAlt}
+                className={`rounded border px-1.5 py-0.5 text-[10px] ${
+                  showAddAlt
+                    ? "border-accent bg-accent text-accent-foreground"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                ＋
+              </button>
+            </div>
+          )}
         </div>
 
-        {showAddAlt && (
+        {!hideEnrichActions && showAddAlt && (
           <div className="flex items-center gap-1">
             <input
               type="text"
@@ -1473,6 +1628,13 @@ function TranslationCell({
   }
 
   if (state?.status === "error") {
+    if (hideEnrichActions) {
+      return (
+        <span className="text-[10px] text-destructive" title={state.error}>
+          Fout — {truncate(state.error, 60)}
+        </span>
+      );
+    }
     return (
       <div className="flex flex-col gap-1">
         <span className="text-[10px] text-destructive" title={state.error}>
@@ -1486,6 +1648,12 @@ function TranslationCell({
           Opnieuw
         </button>
       </div>
+    );
+  }
+
+  if (hideEnrichActions) {
+    return (
+      <span className="text-[10px] text-muted-foreground/70">—</span>
     );
   }
 

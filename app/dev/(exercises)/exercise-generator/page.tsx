@@ -9,26 +9,25 @@ import {
   EXERCISE_CHAT_SYSTEM_PROMPT,
   EXERCISE_CHAT_TOOL_DESCRIPTOR,
 } from "@/lib/ai/exercise-generator-config";
+import { DEV_MOCK_USER_USERNAME } from "@/lib/dev/dev-identities";
+
+import { ProposalTable } from "./_components/proposal-table";
+import type {
+  ExercisesPersistBody,
+  ProposalBatch,
+  ProposeExercisesOutput,
+} from "./_components/proposal-table-adapter";
+import { mergeProposalBatches } from "./_components/proposal-table-adapter";
 
 import type { UIMessage } from "ai";
 
 // /dev/exercise-generator — playground voor het genereren van Spaans→NL
 // vertaaloefeningen via de Vercel AI SDK. De chatbot krijgt één tool
 // `proposeExercises` aangereikt; zodra die met output is aangeroepen
-// rendert de UI kaartjes met een "Opslaan in Supabase"-knop.
+// rendert de UI een tabel met een "Opslaan in Supabase"-knop.
 //
 // Vier collapsible debug-panels onderaan tonen wat er heen-en-weer gaat
 // (zelfde patroon als /dev/wiktionary-chat, uitgebreid voor Supabase).
-
-type ExerciseProposal = {
-  source_text: string;
-  target_text: string;
-};
-
-type ProposeExercisesOutput = {
-  topic: string;
-  exercises: ExerciseProposal[];
-};
 
 type PersistResponse =
   | {
@@ -58,8 +57,13 @@ const SUGGESTIONS = [
   "5 zinnen voor op de luchthaven, alsjeblieft",
 ];
 
+const APPEND_SUGGESTION = "Voeg nog 5 zinnen toe";
+
 export default function ExerciseGeneratorPage() {
   const [input, setInput] = useState("");
+  const [batches, setBatches] = useState<ProposalBatch[]>([]);
+  const processedBatchIds = useRef(new Set<string>());
+  const mergedProposalRef = useRef<ProposeExercisesOutput | null>(null);
   const [persistState, setPersistState] = useState<{
     status: "idle" | "saving" | "success" | "error";
     requestBody: unknown;
@@ -67,19 +71,54 @@ export default function ExerciseGeneratorPage() {
     error: string | null;
   }>({ status: "idle", requestBody: null, response: null, error: null });
 
+  const mergedProposal = useMemo(
+    () => (batches.length > 0 ? mergeProposalBatches(batches) : null),
+    [batches],
+  );
+  mergedProposalRef.current = mergedProposal;
+
   const { messages, sendMessage, status, error, setMessages, stop } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/dev/exercise-chat" }),
+    transport: new DefaultChatTransport({
+      api: "/api/dev/exercise-chat",
+      body: () => {
+        const draft = mergedProposalRef.current;
+        if (!draft || draft.exercises.length === 0) return {};
+        return {
+          draftSummary: {
+            topic: draft.topic,
+            count: draft.exercises.length,
+            existingSourceTexts: draft.exercises.map(
+              (exercise) => exercise.source_text,
+            ),
+          },
+        };
+      },
+    }),
   });
 
   const isBusy = status === "submitted" || status === "streaming";
 
-  // Pak het laatste tool-result (`proposeExercises`) uit de assistant
-  // messages. Dat is wat de user als "huidige voorstel" ziet en wat de
-  // Opslaan-knop persist.
-  const latestProposal = useMemo(
-    () => findLatestProposal(messages),
-    [messages],
-  );
+  useEffect(() => {
+    for (const msg of messages) {
+      if (msg.role !== "assistant") continue;
+      for (const part of msg.parts) {
+        if (
+          part.type === "tool-proposeExercises" &&
+          part.state === "output-available"
+        ) {
+          const output = part.output;
+          if (!isProposeOutput(output)) continue;
+          const batchId = `${msg.id}:proposeExercises`;
+          if (processedBatchIds.current.has(batchId)) continue;
+          processedBatchIds.current.add(batchId);
+          setBatches((prev) => [
+            ...prev,
+            { id: batchId, proposal: output },
+          ]);
+        }
+      }
+    }
+  }, [messages]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -91,6 +130,8 @@ export default function ExerciseGeneratorPage() {
 
   function handleClearChat() {
     setMessages([]);
+    setBatches([]);
+    processedBatchIds.current.clear();
     setPersistState({
       status: "idle",
       requestBody: null,
@@ -99,12 +140,23 @@ export default function ExerciseGeneratorPage() {
     });
   }
 
-  async function handleSave() {
-    if (!latestProposal) return;
-    const requestBody = {
-      topic: latestProposal.topic,
-      exercises: latestProposal.exercises,
-    };
+  function handleUndoLastBatch() {
+    setBatches((prev) => prev.slice(0, -1));
+  }
+
+  function resetGenerator() {
+    setMessages([]);
+    setBatches([]);
+    processedBatchIds.current.clear();
+    setPersistState({
+      status: "idle",
+      requestBody: null,
+      response: null,
+      error: null,
+    });
+  }
+
+  async function handleSave(requestBody: ExercisesPersistBody) {
     setPersistState({
       status: "saving",
       requestBody,
@@ -128,12 +180,7 @@ export default function ExerciseGeneratorPage() {
         });
         return;
       }
-      setPersistState({
-        status: "success",
-        requestBody,
-        response: json,
-        error: null,
-      });
+      resetGenerator();
     } catch (err) {
       setPersistState({
         status: "error",
@@ -159,9 +206,9 @@ export default function ExerciseGeneratorPage() {
           persisten. Vier debug-panels onderaan tonen alle JSON heen-en-weer.
         </p>
         <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Zonder login worden opgeslagen oefeningen als gedeelde seed (
-          <code className="font-mono">owner_id = null</code>). Ingelogd? Dan
-          horen ze bij jouw account.
+          Opgeslagen oefeningen horen bij{" "}
+          <code className="font-mono">@{DEV_MOCK_USER_USERNAME}</code> in
+          dev-modus. Beheer ze via de tab &quot;Mijn oefeningen&quot;.
         </p>
       </header>
 
@@ -206,6 +253,17 @@ export default function ExerciseGeneratorPage() {
               </ul>
             </div>
           )}
+          {messages.length > 0 && batches.length > 0 && (
+            <div className="pb-2">
+              <button
+                type="button"
+                onClick={() => setInput(APPEND_SUGGESTION)}
+                className="text-left font-mono text-xs text-accent hover:underline"
+              >
+                &quot;{APPEND_SUGGESTION}&quot;
+              </button>
+            </div>
+          )}
           {messages.map((m) => (
             <MessageBubble key={m.id} message={m} />
           ))}
@@ -223,7 +281,11 @@ export default function ExerciseGeneratorPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isBusy}
-            placeholder="bv. Geef me 10 zinnen voor een autogarage"
+            placeholder={
+              batches.length > 0
+                ? "Voeg nog zinnen toe, bv. nog 5 zinnen"
+                : "bv. Geef me 10 zinnen voor een autogarage"
+            }
             className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
           />
           {isBusy ? (
@@ -240,15 +302,18 @@ export default function ExerciseGeneratorPage() {
               disabled={!input.trim()}
               className="rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
             >
-              Verstuur
+              Genereer
             </button>
           )}
         </form>
       </section>
 
-      {latestProposal && (
-        <ProposalPanel
-          proposal={latestProposal}
+      {mergedProposal && batches.length > 0 && (
+        <ProposalTable
+          batches={batches}
+          proposal={mergedProposal}
+          canUndo={batches.length >= 1}
+          onUndo={handleUndoLastBatch}
           persistState={persistState}
           onSave={handleSave}
         />
@@ -259,104 +324,6 @@ export default function ExerciseGeneratorPage() {
         persistState={persistState}
       />
     </div>
-  );
-}
-
-function ProposalPanel({
-  proposal,
-  persistState,
-  onSave,
-}: {
-  proposal: ProposeExercisesOutput;
-  persistState: {
-    status: "idle" | "saving" | "success" | "error";
-    response: PersistResponse | null;
-    error: string | null;
-  };
-  onSave: () => void;
-}) {
-  return (
-    <section className="space-y-3 rounded-lg border border-border bg-card p-5 text-card-foreground">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div className="space-y-0.5">
-          <h2 className="text-sm font-semibold">
-            Voorstel: {proposal.exercises.length} oefening
-            {proposal.exercises.length === 1 ? "" : "en"}
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Onderwerp:{" "}
-            <code className="font-mono text-foreground">{proposal.topic}</code>
-          </p>
-        </div>
-        <SaveButton persistState={persistState} onSave={onSave} />
-      </header>
-
-      <ol className="grid gap-2 sm:grid-cols-2">
-        {proposal.exercises.map((ex, i) => (
-          <li
-            key={`${i}-${ex.source_text}`}
-            className="rounded-md border border-border bg-background p-3"
-          >
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {i + 1}. ES
-            </p>
-            <p className="text-sm text-foreground">{ex.source_text}</p>
-            <p className="mt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              NL
-            </p>
-            <p className="text-sm text-foreground">{ex.target_text}</p>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
-function SaveButton({
-  persistState,
-  onSave,
-}: {
-  persistState: {
-    status: "idle" | "saving" | "success" | "error";
-    response: PersistResponse | null;
-    error: string | null;
-  };
-  onSave: () => void;
-}) {
-  if (persistState.status === "success" && persistState.response?.ok) {
-    return (
-      <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-        ✓ {persistState.response.inserted} opgeslagen
-      </div>
-    );
-  }
-
-  if (persistState.status === "error") {
-    return (
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-destructive">
-          Fout: {persistState.error}
-        </span>
-        <button
-          type="button"
-          onClick={onSave}
-          className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted"
-        >
-          Opnieuw proberen
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onSave}
-      disabled={persistState.status === "saving"}
-      className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
-    >
-      {persistState.status === "saving" ? "Opslaan..." : "Opslaan in Supabase"}
-    </button>
   );
 }
 
@@ -398,7 +365,7 @@ function ToolPartHint({ state }: { state: string }) {
       : state === "input-available"
         ? "→ proposeExercises: tool aangeroepen, wachten op execute..."
         : state === "output-available"
-          ? "✓ proposeExercises: output beschikbaar (zie kaartjes hieronder)"
+          ? "✓ proposeExercises: output beschikbaar (zie tabel hieronder)"
           : state === "output-error"
             ? "✗ proposeExercises: error"
             : `→ proposeExercises [${state}]`;
@@ -530,40 +497,32 @@ function JsonBlock({ data }: { data: unknown }) {
   );
 }
 
-// Loop achterstevoren door de messages tot we de meest recente
-// `tool-proposeExercises`-part met `state: "output-available"` vinden.
-// Returned `null` als die er nog niet is (bv. tijdens streaming of na
-// een input-prompt zonder tool-call).
-function findLatestProposal(
-  messages: UIMessage[],
-): ProposeExercisesOutput | null {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg.role !== "assistant") continue;
-    for (let j = msg.parts.length - 1; j >= 0; j--) {
-      const part = msg.parts[j];
-      if (
-        part.type === "tool-proposeExercises" &&
-        part.state === "output-available" &&
-        isProposeOutput(part.output)
-      ) {
-        return part.output;
-      }
-    }
-  }
-  return null;
-}
-
+// Valideer tool-output voordat we 'm op de batch-stack zetten.
 function isProposeOutput(value: unknown): value is ProposeExercisesOutput {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
-  if (typeof v.topic !== "string") return false;
+  if (typeof v.topic !== "string" || v.topic.trim().length === 0) return false;
   if (!Array.isArray(v.exercises)) return false;
-  return v.exercises.every(
-    (ex) =>
-      typeof ex === "object" &&
-      ex !== null &&
-      typeof (ex as Record<string, unknown>).source_text === "string" &&
-      typeof (ex as Record<string, unknown>).target_text === "string",
-  );
+  return v.exercises.every((ex) => {
+    if (typeof ex !== "object" || ex === null) return false;
+    const row = ex as Record<string, unknown>;
+    if (typeof row.source_text !== "string" || typeof row.target_text !== "string") {
+      return false;
+    }
+    if (
+      !Array.isArray(row.tags) ||
+      row.tags.length < 2 ||
+      !row.tags.every((tag) => typeof tag === "string" && tag.length > 0)
+    ) {
+      return false;
+    }
+    if (
+      row.alternative_translations !== undefined &&
+      (!Array.isArray(row.alternative_translations) ||
+        !row.alternative_translations.every((alt) => typeof alt === "string"))
+    ) {
+      return false;
+    }
+    return true;
+  });
 }

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { ExercisesAdminPage } from "./_components/exercises-admin-page";
+import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,11 @@ export default function ExercisesAdminRoutePage() {
           database opgeslagen — wijzigingen zijn meteen zichtbaar na
           verversen of na een voltooide actie.
         </p>
+        {!DEV_EXERCISE_TOOLS_REQUIRE_AUTH && (
+          <p className="text-xs text-muted-foreground">
+            Dev-modus · admin-overzicht (alle oefeningen, ongeacht eigenaar)
+          </p>
+        )}
       </header>
 
       <Suspense

@@ -16,16 +16,36 @@
 
 import { createClient } from "@supabase/supabase-js";
 
+import {
+  DEV_MOCK_ADMIN_EMAIL,
+  DEV_MOCK_ADMIN_ID,
+  DEV_MOCK_ADMIN_USERNAME,
+  DEV_MOCK_USER_EMAIL,
+  DEV_MOCK_USER_ID,
+  DEV_MOCK_USER_USERNAME,
+} from "../lib/dev/dev-identities";
+
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 type AdminClient = SupabaseClient;
 
 type SeedUser = {
+  id?: string;
   username: string;
   email: string;
 };
 
 const SEED_USERS: SeedUser[] = [
+  {
+    id: DEV_MOCK_USER_ID,
+    username: DEV_MOCK_USER_USERNAME,
+    email: DEV_MOCK_USER_EMAIL,
+  },
+  {
+    id: DEV_MOCK_ADMIN_ID,
+    username: DEV_MOCK_ADMIN_USERNAME,
+    email: DEV_MOCK_ADMIN_EMAIL,
+  },
   { username: "Danijelooo", email: "danijelooo@aid.local" },
   { username: "Fred", email: "fred@aid.local" },
 ];
@@ -71,6 +91,7 @@ async function ensureUser(
   }
 
   const { data, error } = await admin.auth.admin.createUser({
+    ...(seed.id ? { id: seed.id } : {}),
     email: seed.email,
     password,
     email_confirm: true,
@@ -108,7 +129,9 @@ async function main() {
     );
   }
 
-  console.log("\nKlaar. Tip: noteer Danijelooo's UUID hierboven voor de backfill-migration.");
+  console.log(
+    "\nKlaar. dev-user/dev-admin UUIDs staan vast in lib/dev/dev-identities.ts.",
+  );
 }
 
 main().catch((err) => {

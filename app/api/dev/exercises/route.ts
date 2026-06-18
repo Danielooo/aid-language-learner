@@ -1,8 +1,6 @@
 import { z } from "zod";
 
-import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getExerciseUserAccess } from "@/lib/dev/exercise-access";
 
 // Persist-route voor de oefeningen-generator. Accepteert een batch
 // vertaaloefeningen die de user (na review van de chat-output) wil
@@ -18,13 +16,27 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
+function parseTagsCsv(value: string): string[] {
+  return value
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
+}
+
 const requestSchema = z.object({
-  topic: z.string().nullable().optional(),
+  topic: z.string().min(1),
   exercises: z
     .array(
       z.object({
         source_text: z.string().min(1),
         target_text: z.string().min(1),
+        tags: z
+          .string()
+          .min(1)
+          .refine((value) => parseTagsCsv(value).length >= 2, {
+            message: "Minimaal 2 tags vereist.",
+          }),
+        alternative_translations: z.array(z.string()).optional(),
       }),
     )
     .min(1)
@@ -54,12 +66,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const serverSupabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await serverSupabase.auth.getUser();
-
-  if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user) {
+  const access = await getExerciseUserAccess();
+  if (!access.ok) {
     return Response.json(
       { ok: false, error: "Niet ingelogd." },
       { status: 401 },
@@ -72,16 +80,13 @@ export async function POST(req: Request) {
   const rowsToInsert = exercises.map((ex) => ({
     source_text: ex.source_text,
     target_text: ex.target_text,
-    topic: topic ?? null,
-    owner_id: user?.id ?? null,
+    topic,
+    tags: ex.tags,
+    alternative_translations: ex.alternative_translations ?? [],
+    owner_id: access.userId,
   }));
 
-  // Zonder login kan owner_id niet via RLS (policy vereist auth.uid());
-  // admin-client volgt hetzelfde patroon als tatoeba persist-batch.
-  const supabase =
-    DEV_EXERCISE_TOOLS_REQUIRE_AUTH && user
-      ? serverSupabase
-      : getSupabaseAdmin();
+  const supabase = access.supabase;
 
   const { data, error, status, statusText, count } = await supabase
     .from("exercises")

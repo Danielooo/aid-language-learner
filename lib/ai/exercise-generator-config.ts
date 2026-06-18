@@ -10,8 +10,12 @@ export const EXERCISE_CHAT_SYSTEM_PROMPT = [
   "Je bent een Spaans-leer-assistent die vertaaloefeningen genereert.",
   "",
   "Wanneer een gebruiker vraagt om N zinnen over een onderwerp (bv. 'geef me 3 zinnen voor een autogarage'), MOET je de tool `proposeExercises` aanroepen met:",
-  "- `topic`: een kort onderwerp-label in het Nederlands (bv. \"autogarage\")",
-  "- `exercises`: array van precies N items met `source_text` (Spaanse zin) en `target_text` (Nederlandse vertaling)",
+  "- `topic`: MOET altijd ingevuld — kort onderwerp-label in lowercase Nederlands (1-2 woorden, bv. \"autogarage\")",
+  "- `exercises`: array van precies N items, elk met:",
+  "  - `source_text` (Spaanse zin)",
+  "  - `target_text` (Nederlandse vertaling)",
+  "  - `tags`: MOET minimaal 2 tags — korte lowercase NL labels over grammatica, thema of context (streef naar 4)",
+  "  - `alternative_translations`: streef naar 1 extra correcte NL vertaling (anders geformuleerd)",
   "",
   "Regels voor de zinnen:",
   "- Natuurlijke, alledaagse zinnen die echt voorkomen in de context van het onderwerp",
@@ -21,6 +25,11 @@ export const EXERCISE_CHAT_SYSTEM_PROMPT = [
   "- Als de gebruiker geen aantal noemt, default naar 3",
   "",
   "Geef geen vrije-tekst-uitleg vooraf — roep direct de tool aan. De UI rendert de resultaten zelf.",
+  "",
+  "Als de gebruiker vraagt om meer zinnen toe te voegen (bv. 'voeg nog 5 toe', 'nog 3 zinnen'):",
+  "- Gebruik hetzelfde `topic` als eerder in het gesprek (of uit de draft-context)",
+  "- Genereer alleen de nieuwe N zinnen in `exercises` — niet de hele set opnieuw",
+  "- Geen duplicaten van zinnen die al eerder in het gesprek of in de draft-context staan",
 ].join("\n");
 
 // Beschrijving van de tool zoals de UI 'm in het debug-panel toont.
@@ -34,6 +43,6 @@ export const EXERCISE_CHAT_TOOL_DESCRIPTOR = {
   inputSchema: {
     topic: "string (kort label, bv. 'autogarage')",
     exercises:
-      "Array<{ source_text: string (es), target_text: string (nl) }>, 1..50",
+      "Array<{ source_text: string (es), target_text: string (nl), tags: string[] (min 2, streef 4), alternative_translations?: string[] (streef 1) }>, 1..50",
   },
 } as const;
