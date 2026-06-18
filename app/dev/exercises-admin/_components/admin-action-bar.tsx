@@ -1,5 +1,8 @@
 "use client";
 
+const ACCENT_BTN =
+  "inline-flex h-9 cursor-pointer items-center justify-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50";
+
 const DESTRUCTIVE_BTN =
   "inline-flex h-9 cursor-pointer items-center justify-center rounded-md bg-destructive/90 px-3 text-xs font-medium text-destructive-foreground transition-colors hover:bg-destructive disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -13,6 +16,7 @@ type AdminActionBarProps = {
   pendingSelectedEnrichCount: number;
   enriching: boolean;
   deleting: boolean;
+  isRefreshing?: boolean;
   onEnrich: () => void;
   onStopEnrich: () => void;
   onDelete: () => void;
@@ -31,6 +35,7 @@ export function AdminActionBar({
   pendingSelectedEnrichCount,
   enriching,
   deleting,
+  isRefreshing = false,
   onEnrich,
   onStopEnrich,
   onDelete,
@@ -53,7 +58,7 @@ export function AdminActionBar({
     ? "Verwijderen..."
     : selectedCount > 0
       ? `Verwijder ${selectedCount} geselecteerde`
-      : `Verwijder ${pageCount} op pagina`;
+      : "Verwijder records";
 
   return (
     <div className="space-y-2 rounded-md border border-border bg-background/40 px-3 py-2">
@@ -61,17 +66,17 @@ export function AdminActionBar({
         <button
           type="button"
           onClick={enriching ? onStopEnrich : onEnrich}
-          disabled={
-            deleting || (!enriching && enrichCount === 0)
-          }
-          className={DESTRUCTIVE_BTN}
+          disabled={deleting || isRefreshing || (!enriching && enrichCount === 0)}
+          className={ACCENT_BTN}
         >
           {enrichLabel}
         </button>
         <button
           type="button"
           onClick={onDelete}
-          disabled={enriching || deleting || (selectedCount === 0 && pageCount === 0)}
+          disabled={
+            enriching || deleting || isRefreshing || selectedCount === 0
+          }
           className={DESTRUCTIVE_BTN}
         >
           {deleteLabel}
@@ -80,12 +85,13 @@ export function AdminActionBar({
           {selectedCount > 0
             ? `${selectedCount} geselecteerd · pagina ${page}/${totalPages} · ${total} totaal`
             : `pagina ${page}/${totalPages} · ${total} totaal`}
+          {isRefreshing ? " · verversen…" : ""}
         </span>
         {selectedCount > 0 && (
           <button
             type="button"
             onClick={onClearSelection}
-            disabled={enriching || deleting}
+            disabled={enriching || deleting || isRefreshing}
             className="ml-auto text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
           >
             Selectie leegmaken

@@ -57,14 +57,21 @@ export const DEV_TOOLS: DevTool[] = [
     href: "/dev/exercises-admin",
     title: "Oefeningen — admin",
     description:
-      "Dashboard voor alle oefeningen in Supabase: bekijken, inline bewerken, AI-verrijken, verwijderen en server-side paginatie.",
+      "Dashboard voor alle oefeningen in Supabase: bekijken, inline bewerken, AI-verrijken, verwijderen en server-side paginatie. Koppel met de generator om nieuwe oefeningen toe te voegen.",
     category: "use",
   },
   {
     href: "/dev/exercise-generator",
     title: "Oefeningen-generator",
     description:
-      "Vercel AI SDK met tool-calling. Vraag de chatbot om N Spaans→Nederlands vertaalzinnen voor een onderwerp; review en persist naar Supabase. Vier debug-panels: in/uit voor zowel OpenAI als Supabase.",
+      "Vercel AI SDK met tool-calling. Vraag de chatbot om N Spaans→Nederlands vertaalzinnen voor een onderwerp; review in tabel en persist naar Supabase. Beheer je eigen oefeningen via Mijn oefeningen.",
+    category: "use",
+  },
+  {
+    href: "/dev/my-exercises",
+    title: "Mijn oefeningen",
+    description:
+      "Overzicht van je eigen opgeslagen oefeningen: bekijken, inline bewerken, AI-verrijken en verwijderen. Wissel via tabs met de generator.",
     category: "use",
   },
   {

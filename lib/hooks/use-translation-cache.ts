@@ -75,6 +75,7 @@ export type TranslationBulkSetEntry = {
   cached_at: string;
   topic?: string | null;
   tags?: string[];
+  alternatives?: string[];
 };
 
 export type UseTranslationCache = {
@@ -88,6 +89,7 @@ export type UseTranslationCache = {
   setManualTranslation: (audioId: number, newText: string) => void;
   addAlternative: (audioId: number, text: string) => void;
   removeAlternative: (audioId: number, index: number) => void;
+  removeByAudioIds: (audioIds: number[]) => void;
   clearAll: () => void;
   // Wist alleen entries met matching `lang` (overige talen blijven
   // staan). Gebruikt door de corpus-bar "Wissen"-flow zodat we niet
@@ -265,6 +267,12 @@ export function useTranslationCache(): UseTranslationCache {
             : sameSource
               ? (prev?.tags ?? [])
               : [];
+        const alternatives =
+          e.alternatives !== undefined
+            ? e.alternatives
+            : sameSource
+              ? (prev?.alternatives ?? [])
+              : [];
 
         next[key] = {
           translation: e.translation,
@@ -275,7 +283,7 @@ export function useTranslationCache(): UseTranslationCache {
           // niet handmatig opnieuw aangepast; pas na een nieuwe
           // dubbelklik wordt 'ie weer true.
           manually_edited: false,
-          alternatives: sameSource ? (prev?.alternatives ?? []) : [],
+          alternatives,
           topic,
           tags,
         };
@@ -348,6 +356,25 @@ export function useTranslationCache(): UseTranslationCache {
     [cache],
   );
 
+  const removeByAudioIds = useCallback(
+    (audioIds: number[]) => {
+      if (audioIds.length === 0) return;
+      const toRemove = new Set(audioIds.map(String));
+      const next: TranslationCacheMap = {};
+      let removed = 0;
+      for (const [key, entry] of Object.entries(cache)) {
+        if (toRemove.has(key)) {
+          removed += 1;
+          continue;
+        }
+        next[key] = entry;
+      }
+      if (removed === 0) return;
+      writeSnapshot(next);
+    },
+    [cache],
+  );
+
   const clearAll = useCallback(() => {
     writeSnapshot({});
   }, []);
@@ -380,6 +407,7 @@ export function useTranslationCache(): UseTranslationCache {
     setManualTranslation,
     addAlternative,
     removeAlternative,
+    removeByAudioIds,
     clearAll,
     clearByLang,
   };

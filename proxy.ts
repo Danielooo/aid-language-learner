@@ -24,6 +24,7 @@ import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-au
 const PROTECTED_PAGE_PREFIXES = DEV_EXERCISE_TOOLS_REQUIRE_AUTH
   ? ([
       "/dev/exercise-generator",
+      "/dev/my-exercises",
       "/dev/exercise-generator-quiz",
       "/dev/dashboard",
     ] as const)
