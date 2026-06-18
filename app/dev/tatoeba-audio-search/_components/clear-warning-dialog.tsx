@@ -49,12 +49,12 @@ export function ClearWarningDialog({
       <div className="space-y-4 p-5">
         <header className="space-y-1">
           <h2 className="text-base font-semibold">
-            Corpus en verrijkingen wissen?
+            Records en verrijkingen wissen?
           </h2>
           <p className="text-xs text-muted-foreground">
             Je hebt {enrichedCount} verrijkte record
             {enrichedCount === 1 ? "" : "s"} (vertaling + topic + tags) in
-            de cache voor deze taal. Doorgaan wist het corpus, je zoek-
+            de cache voor deze taal. Doorgaan wist de records, je zoek-
             sessie én deze verrijkingen onomkeerbaar.
           </p>
         </header>

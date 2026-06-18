@@ -45,7 +45,7 @@ function FullCorpusForm({
   return (
     <section className="space-y-3 rounded-lg border border-border bg-card p-5 text-card-foreground">
       <header className="space-y-1">
-        <h2 className="text-sm font-semibold">Corpus laden</h2>
+        <h2 className="text-sm font-semibold">Records ophalen</h2>
         <p className="text-xs text-muted-foreground">
           500 Tatoeba-zinnen + embeddings per taal, gecached in
           localStorage. ~1 MB voor 500 × 512 dims.
@@ -97,7 +97,7 @@ function FullCorpusForm({
           disabled={loading}
           className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
         >
-          {loading ? "Laden..." : "Haal corpus op"}
+          {loading ? "Laden..." : "Haal records op"}
         </button>
       </div>
 
@@ -128,7 +128,7 @@ function CompactCorpusBar({
   return (
     <section className="space-y-2 rounded-md border border-border bg-card px-3 py-2 text-card-foreground">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="font-medium text-muted-foreground">Corpus:</span>
+        <span className="font-medium text-muted-foreground">Records:</span>
 
         <select
           value={lang}

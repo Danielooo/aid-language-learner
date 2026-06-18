@@ -13,24 +13,31 @@
 export const TATOEBA_SEARCH_EMBED_MODEL = "text-embedding-3-small";
 export const TATOEBA_SEARCH_EMBED_DIMS = 512;
 
-// ── Rerank-model + prompts ─────────────────────────────────────────
+// ── Zoek-model + prompts ───────────────────────────────────────────
 
-// Dropdown-opties voor het rerank-model. Bewust een spectrum van
-// goedkoop → premium zodat de gebruiker live de kosten/kwaliteit-
-// trade-off kan voelen. Embedding-stap blijft hardcoded
-// `text-embedding-3-small` — dat is alleen ranking-input, niet de
-// kwaliteits-bottleneck van de feature.
-export const TATOEBA_SEARCH_RERANK_MODELS = [
+// Dropdown-opties voor het Zoek model (user-facing). Intern heet de
+// route nog `rerank` — dat is de LLM-stap die cosine-kandidaten
+// filtert op onderwerp.
+export const TATOEBA_SEARCH_MODELS = [
   { value: "gpt-4o-mini", label: "GPT-4o mini (snel, goedkoop)" },
   { value: "gpt-5-mini", label: "GPT-5 mini (mid)" },
   { value: "gpt-5.5", label: "GPT-5.5 (premium)" },
 ] as const;
 
-export type TatoebaSearchRerankModel =
-  (typeof TATOEBA_SEARCH_RERANK_MODELS)[number]["value"];
+/** @deprecated Gebruik `TATOEBA_SEARCH_MODELS` */
+export const TATOEBA_SEARCH_RERANK_MODELS = TATOEBA_SEARCH_MODELS;
 
-export const TATOEBA_SEARCH_RERANK_DEFAULT_MODEL: TatoebaSearchRerankModel =
+export type TatoebaSearchModel =
+  (typeof TATOEBA_SEARCH_MODELS)[number]["value"];
+
+/** @deprecated Gebruik `TatoebaSearchModel` */
+export type TatoebaSearchRerankModel = TatoebaSearchModel;
+
+export const TATOEBA_SEARCH_DEFAULT_MODEL: TatoebaSearchModel =
   "gpt-4o-mini";
+
+/** @deprecated Gebruik `TATOEBA_SEARCH_DEFAULT_MODEL` */
+export const TATOEBA_SEARCH_RERANK_DEFAULT_MODEL = TATOEBA_SEARCH_DEFAULT_MODEL;
 
 // Lijst van toegestane model-waardes — handig voor `z.enum()` in de
 // route en voor runtime-validatie aan de client-zijde. Apart van de
@@ -118,13 +125,13 @@ export const TATOEBA_SEARCH_DESCRIPTORS = {
     outputSchema: { embedding: "number[512]" },
   },
   rerank: {
-    name: "rerankCandidates",
+    name: "searchByTopic",
     description:
-      "Filter + rangschik cosine-kandidaten via een keuze uit gpt-4o-mini / gpt-5-mini / gpt-5.5 en geef een korte AI-samenvatting.",
+      "Zoek op onderwerp: filter + rangschik cosine-kandidaten via het gekozen Zoek model en geef een korte AI-samenvatting.",
     inputSchema: {
       query: "string",
       candidates: "{ audio_id, source_text, cosine }[] (1..100)",
-      model: "TatoebaSearchRerankModel",
+      model: "TatoebaSearchModel",
     },
     outputSchema: {
       summary: "string (max 2 zinnen)",

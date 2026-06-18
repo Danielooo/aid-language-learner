@@ -4,17 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AudioResultTable } from "@/app/dev/_components/audio-result-table";
 import {
+  TATOEBA_SEARCH_DEFAULT_MODEL,
   TATOEBA_SEARCH_DEFAULT_TOP_K,
-  TATOEBA_SEARCH_RERANK_DEFAULT_MODEL,
   TATOEBA_SEARCH_RERANK_MAX_CANDIDATES,
-  type TatoebaSearchRerankModel,
+  type TatoebaSearchModel,
 } from "@/lib/ai/tatoeba-search-config";
 import { useCorpusCache } from "@/lib/hooks/use-corpus-cache";
 import { useSearchSessionCache } from "@/lib/hooks/use-search-session-cache";
 import { useTranslationCache } from "@/lib/hooks/use-translation-cache";
 import { cosineSim } from "@/lib/utils/cosine";
 
-import { AudioStatsPanel } from "./audio-stats-panel";
 import { ClearWarningDialog } from "./clear-warning-dialog";
 import { ConflictDialog } from "./conflict-dialog";
 import { CorpusBar } from "./corpus-bar";
@@ -105,10 +104,8 @@ function sameNumberSet(a: Set<number>, b: readonly number[]): boolean {
 
 export function AudioSearchPage() {
   const [lang, setLang] = useState<string>("spa");
-  const [topK, setTopK] = useState<number>(TATOEBA_SEARCH_DEFAULT_TOP_K);
-  const [rerankEnabled, setRerankEnabled] = useState<boolean>(true);
-  const [model, setModel] = useState<TatoebaSearchRerankModel>(
-    TATOEBA_SEARCH_RERANK_DEFAULT_MODEL,
+  const [model, setModel] = useState<TatoebaSearchModel>(
+    TATOEBA_SEARCH_DEFAULT_MODEL,
   );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [stack, setStack] = useState<Selection[]>([]);
@@ -282,7 +279,6 @@ export function AudioSearchPage() {
           selectionId: root.id,
           summary: root.summary,
           matchCount: root.audioIds.length,
-          mode: "cosine",
         },
       ]);
       setSelectedIds(new Set());
@@ -434,7 +430,6 @@ export function AudioSearchPage() {
             selectionId: root.id,
             summary: root.summary,
             matchCount: root.audioIds.length,
-            mode: "cosine",
           },
         ]);
         setDebug(null);
@@ -491,8 +486,8 @@ export function AudioSearchPage() {
       const debugSnapshot: SearchDebugSnapshot = {
         query,
         scopeSize: currentSelection.audioIds.length,
-        topK,
-        rerankRequested: rerankEnabled,
+        topK: TATOEBA_SEARCH_DEFAULT_TOP_K,
+        searchModel: model,
         cosineCandidates: [],
       };
 
@@ -536,11 +531,9 @@ export function AudioSearchPage() {
           })
           .filter((r): r is NonNullable<typeof r> => r !== null);
         scoredRows.sort((a, b) => b.cosine - a.cosine);
-        const topCandidates = scoredRows.slice(0, topK);
+        const topCandidates = scoredRows.slice(0, TATOEBA_SEARCH_DEFAULT_TOP_K);
         debugSnapshot.cosineCandidates = topCandidates;
 
-        // (3) Optionele LLM-rerank. Stuurt max 100 kandidaten naar de
-        // route; bij topK > 100 trimmen we voorzichtigheidshalve hier.
         let summary: string;
         let finalAudioIds: number[];
         const reasonsById: Record<number, string> = {};
@@ -548,9 +541,9 @@ export function AudioSearchPage() {
           topCandidates.map((c) => [c.audio_id, c.cosine]),
         );
 
-        if (rerankEnabled && topCandidates.length > 0) {
-          const rerankUrl = "/api/dev/tatoeba-audio-search/rerank";
-          const rerankBody = {
+        if (topCandidates.length > 0) {
+          const searchUrl = "/api/dev/tatoeba-audio-search/rerank";
+          const searchBody = {
             query,
             candidates: topCandidates.slice(
               0,
@@ -558,35 +551,32 @@ export function AudioSearchPage() {
             ),
             model,
           };
-          const rerankRes = await fetch(rerankUrl, {
+          const searchRes = await fetch(searchUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(rerankBody),
+            body: JSON.stringify(searchBody),
           });
-          const rerankJson = (await rerankRes.json()) as RerankResponse;
-          debugSnapshot.rerank = {
-            url: rerankUrl,
-            request: rerankBody,
-            response: rerankJson,
-            ok: rerankRes.ok && rerankJson.ok,
+          const searchJson = (await searchRes.json()) as RerankResponse;
+          debugSnapshot.search = {
+            url: searchUrl,
+            request: searchBody,
+            response: searchJson,
+            ok: searchRes.ok && searchJson.ok,
           };
-          if (!rerankRes.ok || !rerankJson.ok) {
-            const err = rerankJson.ok
-              ? `HTTP ${rerankRes.status}`
-              : rerankJson.error;
-            throw new Error(`AI rerank mislukt: ${err}`);
+          if (!searchRes.ok || !searchJson.ok) {
+            const err = searchJson.ok
+              ? `HTTP ${searchRes.status}`
+              : searchJson.error;
+            throw new Error(`Zoeken mislukt: ${err}`);
           }
-          summary = rerankJson.summary;
-          finalAudioIds = rerankJson.matches.map((m) => m.audio_id);
-          for (const m of rerankJson.matches) {
+          summary = searchJson.summary;
+          finalAudioIds = searchJson.matches.map((m) => m.audio_id);
+          for (const m of searchJson.matches) {
             reasonsById[m.audio_id] = m.reason;
           }
         } else {
-          finalAudioIds = topCandidates.map((c) => c.audio_id);
-          summary =
-            topCandidates.length === 0
-              ? "Geen kandidaten in de huidige scope."
-              : `${topCandidates.length} match${topCandidates.length === 1 ? "" : "es"} (cosine top-${topK}, geen AI-rerank).`;
+          finalAudioIds = [];
+          summary = "Geen kandidaten in de huidige scope.";
         }
 
         // (4) Push selection + assistant message.
@@ -607,7 +597,7 @@ export function AudioSearchPage() {
             selectionId: newSelection.id,
             summary,
             matchCount: finalAudioIds.length,
-            mode: rerankEnabled ? "rerank" : "cosine",
+            mode: "search",
           },
         ]);
       } catch (e) {
@@ -624,7 +614,7 @@ export function AudioSearchPage() {
         setSearching(false);
       }
     },
-    [corpus.snapshot, currentSelection, searching, topK, rerankEnabled, model],
+    [corpus.snapshot, currentSelection, searching, model],
   );
 
   // ── Stack-navigatie ───────────────────────────────────────────────
@@ -1237,10 +1227,6 @@ export function AudioSearchPage() {
       {corpus.snapshot ? (
         <>
           <SearchControls
-            topK={topK}
-            onTopKChange={setTopK}
-            rerankEnabled={rerankEnabled}
-            onRerankToggle={setRerankEnabled}
             model={model}
             onModelChange={setModel}
             disabled={searching || !currentSelection}
@@ -1302,6 +1288,7 @@ export function AudioSearchPage() {
               "author",
               "license",
               "created",
+              "cosine",
             ]}
           />
 
@@ -1309,12 +1296,10 @@ export function AudioSearchPage() {
         </>
       ) : (
         <p className="rounded-md border border-dashed border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
-          Klik &quot;Haal corpus op&quot; om te beginnen. De zoekfunctie
+          Klik &quot;Haal records op&quot; om te beginnen. De zoekfunctie
           komt beschikbaar zodra de embeddings in localStorage staan.
         </p>
       )}
-
-      <AudioStatsPanel refreshKey={statsRefreshKey} />
 
       {conflictPrompt && (
         <ConflictDialog

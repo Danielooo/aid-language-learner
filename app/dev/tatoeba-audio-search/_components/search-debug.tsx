@@ -3,8 +3,7 @@
 import type { SearchDebugSnapshot } from "./types";
 
 // Debug-panel onderaan de pagina: toont de laatste search-pipeline
-// (embed-query response, cosine top-K kandidaten met scores, en de
-// optionele rerank request/response). Consistent met de andere
+// (embed-query, cosine pre-filter, LLM-zoek). Consistent met de andere
 // /dev pagina's; alle details in collapsibles zodat de hoofd-UI rustig
 // blijft.
 
@@ -21,8 +20,8 @@ export function SearchDebug({ snapshot }: { snapshot: SearchDebugSnapshot }) {
           <em>&quot;{snapshot.query}&quot;</em>
         </p>
         <p className="text-[10px] text-muted-foreground">
-          Scope: {snapshot.scopeSize} records · top-K: {snapshot.topK} ·
-          rerank: {snapshot.rerankRequested ? "aan" : "uit"}
+          Scope: {snapshot.scopeSize} records · interne top-K: {snapshot.topK}{" "}
+          · zoekmodel: {snapshot.searchModel}
         </p>
       </div>
 
@@ -46,7 +45,7 @@ export function SearchDebug({ snapshot }: { snapshot: SearchDebugSnapshot }) {
 
       <details className="rounded-md border border-border bg-card text-card-foreground">
         <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-muted-foreground">
-          2. Cosine top-K kandidaten ({snapshot.cosineCandidates.length})
+          2. Cosine pre-filter ({snapshot.cosineCandidates.length})
         </summary>
         <div className="px-4 pb-4">
           <pre className="max-h-[300px] overflow-auto rounded bg-muted/40 p-3 font-mono text-[10px]">
@@ -55,14 +54,14 @@ export function SearchDebug({ snapshot }: { snapshot: SearchDebugSnapshot }) {
         </div>
       </details>
 
-      {snapshot.rerank && (
+      {snapshot.search && (
         <details className="rounded-md border border-border bg-card text-card-foreground">
           <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-muted-foreground">
-            3. POST {snapshot.rerank.url}{" "}
+            3. Zoeken (LLM) — POST {snapshot.search.url}{" "}
             <span
-              className={`ml-2 rounded px-1.5 py-0.5 text-[9px] font-medium ${snapshot.rerank.ok ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}
+              className={`ml-2 rounded px-1.5 py-0.5 text-[9px] font-medium ${snapshot.search.ok ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}
             >
-              {snapshot.rerank.ok ? "OK" : "FOUT"}
+              {snapshot.search.ok ? "OK" : "FOUT"}
             </span>
           </summary>
           <div className="space-y-2 px-4 pb-4">
@@ -71,7 +70,7 @@ export function SearchDebug({ snapshot }: { snapshot: SearchDebugSnapshot }) {
                 Request
               </p>
               <pre className="max-h-[300px] overflow-auto rounded bg-muted/40 p-3 font-mono text-[10px]">
-                {JSON.stringify(snapshot.rerank.request, null, 2)}
+                {JSON.stringify(snapshot.search.request, null, 2)}
               </pre>
             </div>
             <div>
@@ -79,7 +78,7 @@ export function SearchDebug({ snapshot }: { snapshot: SearchDebugSnapshot }) {
                 Response
               </p>
               <pre className="max-h-[300px] overflow-auto rounded bg-muted/40 p-3 font-mono text-[10px]">
-                {JSON.stringify(snapshot.rerank.response, null, 2)}
+                {JSON.stringify(snapshot.search.response, null, 2)}
               </pre>
             </div>
           </div>

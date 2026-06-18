@@ -70,15 +70,15 @@ export function PersistBar({
     : translateMode === "selected"
       ? `Verrijk ${pendingSelectedTranslationCount} geselecteerde`
       : translateMode === "visible"
-        ? `Verrijk ${pendingTranslationCount} zichtbare`
+        ? `Verrijk ${pendingTranslationCount} alle`
         : "Alles verrijkt";
 
   const translateTitle =
     translateMode === "selected"
       ? `Verrijkt ${pendingSelectedTranslationCount} van de ${selectedCount} geselecteerde oefening${selectedCount === 1 ? "" : "en"} (vertaling + topic + tags in één AI-call)`
       : translateMode === "visible"
-        ? `Verrijkt alle ${pendingTranslationCount} nog niet-verrijkte zichtbare oefening${pendingTranslationCount === 1 ? "" : "en"} (vertaling + topic + tags in één AI-call)`
-        : "Alle zichtbare oefeningen zijn al verrijkt";
+        ? `Verrijkt alle ${pendingTranslationCount} nog niet-verrijkte rijen in de tabel (vertaling + topic + tags in één AI-call)`
+        : "Alle rijen in de tabel zijn al verrijkt";
 
   // ── Persist-knop (zelfde smart-patroon) ─────────────────────────
   // We kiezen "selected"-modus zodra de user iets heeft aangevinkt —
@@ -104,14 +104,14 @@ export function PersistBar({
     : persistMode === "selected"
       ? `Sla ${persistableSelectedCount} geselecteerde op`
       : persistMode === "visible"
-        ? `Sla ${persistableVisibleCount} zichtbare op`
+        ? `Sla ${persistableVisibleCount} alle op`
         : "Niets om op te slaan";
 
   const persistTitle =
     persistMode === "selected"
       ? `Slaat ${persistableSelectedCount} van de ${selectedCount} geselecteerde oefening${selectedCount === 1 ? "" : "en"} op in Supabase`
       : persistMode === "visible"
-        ? `Slaat alle ${persistableVisibleCount} zichtbare oefening${persistableVisibleCount === 1 ? "" : "en"} mét vertaling op in Supabase`
+        ? `Slaat alle ${persistableVisibleCount} rijen in de tabel mét vertaling op in Supabase`
         : "Geen rijen om op te slaan — vertaal eerst";
 
   return (
@@ -139,8 +139,8 @@ export function PersistBar({
 
         <span className="text-[10px] text-muted-foreground">
           {selectedCount > 0
-            ? `${selectedCount} geselecteerd · ${visibleCount} zichtbaar`
-            : `${visibleCount} zichtbaar`}
+            ? `${selectedCount} geselecteerd · ${visibleCount} in tabel`
+            : `${visibleCount} in tabel`}
         </span>
 
         {selectedCount > 0 && (

@@ -230,8 +230,16 @@ function ChatBubble({
         <div className="flex items-baseline gap-2">
           <span className="font-medium text-foreground">AI: </span>
           <span className="text-[9px] uppercase tracking-wide text-muted-foreground">
-            {msg.mode === "rerank" ? "rerank" : "cosine"} · {msg.matchCount}{" "}
-            match{msg.matchCount === 1 ? "" : "es"}
+            {msg.mode === "search" ? (
+              <>
+                zoeken · {msg.matchCount} match
+                {msg.matchCount === 1 ? "" : "es"}
+              </>
+            ) : (
+              <>
+                {msg.matchCount} record{msg.matchCount === 1 ? "" : "s"}
+              </>
+            )}
           </span>
           {isCurrent && (
             <span className="rounded bg-accent/20 px-1 py-0.5 text-[8px] font-medium text-accent">
