@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 // CRUD voor `quiz_attempts`. Eén plek die de tabel kent; de quiz-
@@ -83,7 +85,11 @@ export async function GET(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return Response.json({ error: "Niet ingelogd." }, { status: 401 });
+    if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH) {
+      return Response.json({ error: "Niet ingelogd." }, { status: 401 });
+    }
+    // TIJDELIJK: zonder user_id geen quiz_attempts in Supabase (FK + NOT NULL).
+    return Response.json({ attempts: [] });
   }
 
   // RLS filtert al op user_id = auth.uid(); de extra .eq is verbose maar
@@ -127,17 +133,41 @@ export async function POST(req: Request) {
     );
   }
 
-  const supabase = await getSupabaseServerClient();
+  const serverSupabase = await getSupabaseServerClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await serverSupabase.auth.getUser();
   if (!user) {
-    return Response.json(
-      { ok: false, error: "Niet ingelogd." },
-      { status: 401 },
-    );
+    if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH) {
+      return Response.json(
+        { ok: false, error: "Niet ingelogd." },
+        { status: 401 },
+      );
+    }
+
+    // TIJDELIJK: echo attempt zodat de quiz-UI werkt; geen persist zonder user_id.
+    const { exerciseId, userAnswer, isCorrect } = parseResult.data;
+    const { data: exercise } = await getSupabaseAdmin()
+      .from("exercises")
+      .select("source_text, target_text, topic")
+      .eq("id", exerciseId)
+      .maybeSingle();
+
+    return Response.json({
+      ok: true,
+      attempt: {
+        exerciseId,
+        source_text: exercise?.source_text ?? "",
+        target_text: exercise?.target_text ?? "",
+        topic: exercise?.topic ?? null,
+        userAnswer,
+        isCorrect,
+        at: Date.now(),
+      } satisfies QuizAttemptDto,
+    });
   }
 
+  const supabase = serverSupabase;
   const { exerciseId, userAnswer, isCorrect } = parseResult.data;
 
   const { data, error } = await supabase
@@ -168,10 +198,14 @@ export async function DELETE() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return Response.json(
-      { ok: false, error: "Niet ingelogd." },
-      { status: 401 },
-    );
+    if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH) {
+      return Response.json(
+        { ok: false, error: "Niet ingelogd." },
+        { status: 401 },
+      );
+    }
+    // TIJDELIJK: niets te wissen zonder sessie.
+    return Response.json({ ok: true, deleted: 0 });
   }
 
   // Filter expliciet op user_id zodat we — ook als RLS faalt — alleen

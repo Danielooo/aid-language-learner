@@ -1,3 +1,5 @@
+import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 // Distinct topic-lijst uit `exercises` voor de topic-dropdown in
@@ -13,18 +15,28 @@ export type TopicsResponse = {
 };
 
 export async function GET() {
-  const supabase = await getSupabaseServerClient();
+  const serverSupabase = await getSupabaseServerClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  } = await serverSupabase.auth.getUser();
+  if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user) {
     return Response.json({ error: "Niet ingelogd." }, { status: 401 });
   }
 
-  const { data, error } = await supabase
+  const supabase =
+    !DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user
+      ? getSupabaseAdmin()
+      : serverSupabase;
+
+  let topicsQuery = supabase
     .from("exercises")
     .select("topic")
     .not("topic", "is", null);
+  if (!DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user) {
+    topicsQuery = topicsQuery.is("owner_id", null);
+  }
+
+  const { data, error } = await topicsQuery;
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });

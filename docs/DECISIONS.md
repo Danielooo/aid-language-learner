@@ -223,6 +223,23 @@ en mengen met user-data risico geeft. AI-generatie via `streamText` +
 gestructureerde tool-call vervangt vrije-tekst-output, zodat de UI
 gegarandeerd renderbare JSON krijgt.
 
+---
+
+### 2026-06-04 10:27 — Altijd Tatoeba-attributie tonen ongeacht licentie <a id="altijd-tatoeba-attributie"></a>
+
+**Files:** lib/api/tatoeba-audio.ts, app/dev/tatoeba-audio/
+
+**Tags:** tatoeba, licensing, attribution, audio, compliance
+
+Tatoeba-audio kent meerdere licenties: CC0 1.0 staat alle rechten af en
+vereist geen vermelding, CC BY 2.0 FR verplicht auteur + bron + licentie,
+en sommige bestanden hebben helemaal geen licentie-aanduiding. Om bij elk
+mogelijk geval safe te zitten — inclusief de "geen licentie"-categorie —
+tonen we altijd auteur, bron en licentie bij elk audiofragment, ook
+wanneer dat technisch niet vereist is. Effect: één consistente
+UI-behandeling, geen per-fragment-conditional, en geen risico op
+ongedekte attributie als Tatoeba's metadata onvolledig is.
+
 <!-- INSERT-NEW-ENTRY-ABOVE -->
 
 ## Template — kopieer & vul in

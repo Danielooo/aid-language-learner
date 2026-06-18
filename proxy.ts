@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
+
 // Next.js 16 hernoemt `middleware.ts` → `proxy.ts` (zelfde semantiek,
 // nieuwe naam — zie docs/01-app/03-api-reference/03-file-conventions/proxy.md).
 //
@@ -18,11 +20,14 @@ import { createServerClient } from "@supabase/ssr";
 // `response.cookies` (zodat de browser de refresh ontvangt). Dit is de
 // canonieke @supabase/ssr-pattern voor middleware/proxy.
 
-const PROTECTED_PAGE_PREFIXES = [
-  "/dev/exercise-generator",
-  "/dev/exercise-generator-quiz",
-  "/dev/dashboard",
-] as const;
+// TIJDELIJK: leeg zolang DEV_EXERCISE_TOOLS_REQUIRE_AUTH false is.
+const PROTECTED_PAGE_PREFIXES = DEV_EXERCISE_TOOLS_REQUIRE_AUTH
+  ? ([
+      "/dev/exercise-generator",
+      "/dev/exercise-generator-quiz",
+      "/dev/dashboard",
+    ] as const)
+  : ([] as const);
 
 function isProtectedPagePath(pathname: string): boolean {
   return PROTECTED_PAGE_PREFIXES.some((prefix) => pathname.startsWith(prefix));

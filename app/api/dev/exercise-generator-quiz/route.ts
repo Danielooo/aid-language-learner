@@ -1,3 +1,5 @@
+import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 // Random oefening uit `exercises` voor de generator-quiz. RLS filtert
@@ -29,17 +31,25 @@ export async function GET(req: Request) {
       ? topicParam.trim()
       : null;
 
-  const supabase = await getSupabaseServerClient();
+  const serverSupabase = await getSupabaseServerClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  } = await serverSupabase.auth.getUser();
+  if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user) {
     return Response.json({ error: "Niet ingelogd." }, { status: 401 });
   }
 
-  const countQuery = supabase
+  // TIJDELIJK: zonder sessie alleen seed-rijen via admin (RLS is authenticated-only).
+  const supabase =
+    !DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user
+      ? getSupabaseAdmin()
+      : serverSupabase;
+  const seedOnly = !DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user;
+
+  let countQuery = supabase
     .from("exercises")
     .select("id", { count: "exact", head: true });
+  if (seedOnly) countQuery = countQuery.is("owner_id", null);
 
   const { count, error: countError } = topic
     ? await countQuery.eq("topic", topic)
@@ -62,10 +72,11 @@ export async function GET(req: Request) {
 
   const offset = Math.floor(Math.random() * count);
 
-  const rowQuery = supabase
+  let rowQuery = supabase
     .from("exercises")
     .select("id, source_text, target_text, topic, created_at")
     .range(offset, offset);
+  if (seedOnly) rowQuery = rowQuery.is("owner_id", null);
 
   const { data, error } = topic
     ? await rowQuery.eq("topic", topic)

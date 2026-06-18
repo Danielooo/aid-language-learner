@@ -9,9 +9,10 @@ import { ThemeToggle } from "@/app/_components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "#", label: "Home" },
-  { href: "#", label: "About" },
-  { href: "#", label: "Contact" },
+  { href: "/dev", label: "Dev" },
+  { href: "/", label: "Home" },
+  { href: "/", label: "About" },
+  { href: "/", label: "Contact" },
 ] as const;
 
 const navLinkClasses =
