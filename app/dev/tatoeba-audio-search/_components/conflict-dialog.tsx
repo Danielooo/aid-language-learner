@@ -234,7 +234,7 @@ function ConflictRow({
             key={r}
             className={`flex cursor-pointer items-center gap-1.5 rounded border px-2 py-1 text-[11px] ${
               value === r
-                ? "border-accent bg-accent/10 text-accent-foreground"
+                ? "border-accent bg-accent/10 text-foreground"
                 : "border-border bg-background hover:bg-muted"
             }`}
           >

@@ -177,7 +177,7 @@ function CompactCorpusBar({
             disabled={loading}
             className="inline-flex h-7 cursor-pointer items-center justify-center rounded-md bg-card px-2.5 text-[11px] font-medium text-card-foreground hover:bg-muted disabled:opacity-50"
           >
-            {loading ? "Laden..." : "Opnieuw laden"}
+            {loading ? "Laden..." : "Ophalen"}
           </button>
           <button
             type="button"
@@ -185,7 +185,7 @@ function CompactCorpusBar({
             disabled={loading}
             className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
           >
-            Wis cache
+            Wissen
           </button>
         </span>
       </div>

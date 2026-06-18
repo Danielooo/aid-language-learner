@@ -55,6 +55,10 @@ const persistItemSchema = z.object({
   // Door de user toegevoegde extra correcte vertalingen — gebruikt voor
   // de toekomstige `markAsAlsoCorrect`-quizfeature uit IDEEFASE.md.
   alternative_translations: z.array(z.string().min(1)).default([]),
+  // Comma-separated lowercase NL tags vanuit de AI-enrich-flow. Komt
+  // al als CSV binnen (UI joined client-side); lege string = "geen
+  // tags". Default zorgt dat oude clients zonder dit veld niet breken.
+  tags: z.string().default(""),
 });
 
 const resolutionSchema = z.enum(["skip", "replace", "both"]);
@@ -365,6 +369,7 @@ async function handleApply(
         source_text: item.sentence_text,
         target_text: item.target_text,
         topic: item.topic ?? null,
+        tags: item.tags,
         owner_id: null,
         source_lang: item.source_lang,
         audio_path: path,

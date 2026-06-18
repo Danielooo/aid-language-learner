@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AudioResultTable } from "@/app/dev/_components/audio-result-table";
+import { useAudioListCache } from "@/lib/hooks/use-audio-list-cache";
 import { useTranslationCache } from "@/lib/hooks/use-translation-cache";
 
 import type {
@@ -11,6 +12,7 @@ import type {
 } from "@/app/api/dev/tatoeba-audio/list/route";
 import type { TranslateResponse } from "@/app/api/dev/tatoeba-audio/translate/route";
 import type { TranslateRowState } from "@/app/dev/_components/audio-result-table";
+import type { AudioListSnapshot } from "@/lib/hooks/use-audio-list-cache";
 
 // Tabelweergave: één klik laadt audios uit /unstable/audios. De
 // limit is onbegrensd: de server-route pagineert intern tot de
@@ -87,6 +89,7 @@ export function AudioTable() {
   const [limit, setLimit] = useState<number>(100);
   const [load, setLoad] = useState<LoadState>({ status: "idle" });
 
+  const listCache = useAudioListCache(lang);
   const translationCache = useTranslationCache();
   const [translateState, setTranslateState] = useState<
     Record<number, TranslateRowState>
@@ -94,6 +97,62 @@ export function AudioTable() {
   const [translateDebug, setTranslateDebug] =
     useState<TranslateDebugSnapshot | null>(null);
   const [batchRunning, setBatchRunning] = useState(false);
+
+  // Onthoudt welk (lang, snapshot)-paar we voor het laatst hebben
+  // gerestored. Identity-compare op de snapshot werkt omdat `writeSnapshot`
+  // in `use-audio-list-cache.ts` een write-through cache gebruikt: gelijke
+  // data houdt zijn referentie, alleen écht-gewijzigde data krijgt een
+  // nieuwe identity. Zonder deze ref zou we óf de hydration-race houden
+  // (zie commentblok in restore-effect hieronder) óf een loop riskeren.
+  const restoredRef = useRef<{
+    lang: string;
+    snap: AudioListSnapshot | null;
+  } | null>(null);
+
+  // Restore op mount / lang-wissel / late-arriving snapshot. Cache aanwezig
+  // → ga direct naar "loaded" met dezelfde shape die `handleLoad` zou
+  // produceren. Anders terug naar "idle" zodat de empty-state hint
+  // verschijnt.
+  //
+  // Deps bevatten óók `listCache.snapshot` — niet alleen `lang` — omdat
+  // `useSyncExternalStore` tijdens hydration eerst `getServerSnapshot()`
+  // (= null) returnt en pas ná de eerste commit naar de echte client-
+  // snapshot synchroniseert. Met deps `[lang]` only zou de restore op de
+  // allereerste pass `setLoad({status:"idle"})` committen en daarna nooit
+  // meer triggeren — net als de "tabel weg na refresh"-bug op
+  // /dev/tatoeba-audio-search. De `restoredRef`-guard voorkomt
+  // overbodige re-runs als auto-renders met dezelfde snapshot komen.
+  useEffect(() => {
+    const snap = listCache.snapshot;
+    if (
+      restoredRef.current &&
+      restoredRef.current.lang === lang &&
+      restoredRef.current.snap === snap
+    ) {
+      return;
+    }
+    restoredRef.current = { lang, snap };
+
+    if (snap) {
+      const params: Record<string, string> = {
+        lang: snap.lang,
+        limit: String(snap.limit),
+      };
+      const qs = new URLSearchParams(params);
+      setLoad({
+        status: "loaded",
+        rows: snap.response.rows,
+        total: snap.response.total,
+        url: snap.response.url,
+        pagesFetched: snap.response.pages_fetched,
+        request: { url: `/api/dev/tatoeba-audio/list?${qs}`, params },
+        rawResponse: snap.response,
+      });
+      setLimit(snap.limit);
+    } else {
+      setLoad({ status: "idle" });
+    }
+  }, [lang, listCache.snapshot]);
 
   async function handleLoad() {
     setLoad({ status: "loading" });
@@ -121,6 +180,13 @@ export function AudioTable() {
         pagesFetched: json.pages_fetched,
         request,
         rawResponse: json,
+      });
+      // Persist zodat een refresh dezelfde rijen + debug-state toont.
+      listCache.save({
+        lang,
+        limit,
+        fetched_at: new Date().toISOString(),
+        response: json,
       });
     } catch (e) {
       setLoad({
@@ -211,6 +277,8 @@ export function AudioTable() {
         source_text: string;
         lang: string;
         cached_at: string;
+        topic: string;
+        tags: string[];
       }> = [];
       const erroredIds = new Map<number, string>();
 
@@ -224,20 +292,26 @@ export function AudioTable() {
             chunk.map((c) => [c.audio_id, c.source_text]),
           );
           const langById = new Map(chunk.map((c) => [c.audio_id, c.source_lang]));
-          for (const t of result.translations) {
+          // Sinds de enrich-uitbreiding levert de route ook topic + tags
+          // per item. De playground heeft daar (nog) geen UI voor, maar
+          // we pluggen 'm wel door naar de cache zodat /search en
+          // /playground dezelfde verrijking delen.
+          for (const t of result.items) {
             successEntries.push({
               audio_id: t.audio_id,
               translation: t.translation,
               source_text: sourceById.get(t.audio_id) ?? "",
               lang: langById.get(t.audio_id) ?? "",
               cached_at: new Date().toISOString(),
+              topic: t.topic,
+              tags: t.tags,
             });
           }
         } else {
           // Hele chunk faalde: alle audio_ids in deze chunk krijgen error.
-          // Bij "missing_translations" specifiek alleen die ID's, anders alles.
+          // Bij "missing_items" specifiek alleen die ID's, anders alles.
           const ids =
-            result.reason === "missing_translations" && result.missing_audio_ids
+            result.reason === "missing_items" && result.missing_audio_ids
               ? result.missing_audio_ids
               : chunk.map((c) => c.audio_id);
           for (const id of ids) {

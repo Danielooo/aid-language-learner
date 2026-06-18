@@ -8,8 +8,9 @@ import type { ApplySuccess } from "@/app/api/dev/tatoeba-audio/persist-batch/rou
 // alle zichtbare rijen. Counts zijn in-scope (parent prunet selectie
 // zodra de zichtbare lijst verandert) zodat het label nooit liegt.
 //
-//   1. Slim-vertalen-knop: vertaalt selectie indien aanwezig, anders
-//      alle zichtbare nog-niet-vertaalde rijen.
+//   1. Slim-verrijk-knop: produceert in één AI-call vertaling + topic
+//      + tags voor de selectie, anders voor alle zichtbare nog-niet-
+//      verrijkte rijen.
 //   2. Slim-opslaan-knop: persist selectie indien aanwezig, anders
 //      alle zichtbare die direct opgeslagen kunnen worden (NL-bron of
 //      cache-hit). Rijen zonder vertaling triggeren de
@@ -65,19 +66,19 @@ export function PersistBar({
     translating || persisting || translateMode === "none";
 
   const translateLabel = translating
-    ? "Vertalen..."
+    ? "Verrijken..."
     : translateMode === "selected"
-      ? `Vertaal ${pendingSelectedTranslationCount} geselecteerde`
+      ? `Verrijk ${pendingSelectedTranslationCount} geselecteerde`
       : translateMode === "visible"
-        ? `Vertaal ${pendingTranslationCount} zichtbare`
-        : "Alles vertaald";
+        ? `Verrijk ${pendingTranslationCount} zichtbare`
+        : "Alles verrijkt";
 
   const translateTitle =
     translateMode === "selected"
-      ? `Vertaalt ${pendingSelectedTranslationCount} van de ${selectedCount} geselecteerde oefening${selectedCount === 1 ? "" : "en"}`
+      ? `Verrijkt ${pendingSelectedTranslationCount} van de ${selectedCount} geselecteerde oefening${selectedCount === 1 ? "" : "en"} (vertaling + topic + tags in één AI-call)`
       : translateMode === "visible"
-        ? `Vertaalt alle ${pendingTranslationCount} nog niet-vertaalde zichtbare oefening${pendingTranslationCount === 1 ? "" : "en"}`
-        : "Alle zichtbare oefeningen hebben al een vertaling";
+        ? `Verrijkt alle ${pendingTranslationCount} nog niet-verrijkte zichtbare oefening${pendingTranslationCount === 1 ? "" : "en"} (vertaling + topic + tags in één AI-call)`
+        : "Alle zichtbare oefeningen zijn al verrijkt";
 
   // ── Persist-knop (zelfde smart-patroon) ─────────────────────────
   // We kiezen "selected"-modus zodra de user iets heeft aangevinkt —

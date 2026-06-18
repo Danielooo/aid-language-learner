@@ -328,7 +328,7 @@ function CandidateRow({
             aria-disabled={!viable}
             className={`rounded border px-2 py-0.5 text-[10px] ${
               viable
-                ? "border-accent/60 bg-accent/10 text-accent-foreground hover:bg-accent/20"
+                ? "border-accent/60 bg-accent/10 text-foreground hover:bg-accent/20"
                 : "pointer-events-none border-border text-muted-foreground opacity-30"
             }`}
           >

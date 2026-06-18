@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AudioResultTable } from "@/app/dev/_components/audio-result-table";
 import {
@@ -10,10 +10,12 @@ import {
   type TatoebaSearchRerankModel,
 } from "@/lib/ai/tatoeba-search-config";
 import { useCorpusCache } from "@/lib/hooks/use-corpus-cache";
+import { useSearchSessionCache } from "@/lib/hooks/use-search-session-cache";
 import { useTranslationCache } from "@/lib/hooks/use-translation-cache";
 import { cosineSim } from "@/lib/utils/cosine";
 
 import { AudioStatsPanel } from "./audio-stats-panel";
+import { ClearWarningDialog } from "./clear-warning-dialog";
 import { ConflictDialog } from "./conflict-dialog";
 import { CorpusBar } from "./corpus-bar";
 import { HistoryPanel } from "./history-panel";
@@ -23,6 +25,7 @@ import { SearchControls } from "./search-controls";
 import { SearchDebug } from "./search-debug";
 
 import type { AudioRow } from "@/app/api/dev/tatoeba-audio/list/route";
+import type { ExistingTopicsResponse } from "@/app/api/dev/tatoeba-audio/existing-topics/route";
 import type {
   ApplySuccess,
   ExistingConflictRow,
@@ -31,11 +34,13 @@ import type {
   PersistResponse,
   PreflightSuccess,
 } from "@/app/api/dev/tatoeba-audio/persist-batch/route";
-import type { TranslateResponse } from "@/app/api/dev/tatoeba-audio/translate/route";
+import type { EnrichResponse } from "@/app/api/dev/tatoeba-audio/translate/route";
 import type { CorpusResponse } from "@/app/api/dev/tatoeba-audio-search/corpus/route";
 import type { EmbedQueryResponse } from "@/app/api/dev/tatoeba-audio-search/embed-query/route";
 import type { RerankResponse } from "@/app/api/dev/tatoeba-audio-search/rerank/route";
 import type { TranslateRowState } from "@/app/dev/_components/audio-result-table";
+import type { CorpusSnapshot } from "@/lib/hooks/use-corpus-cache";
+import type { SearchSessionSnapshot } from "@/lib/hooks/use-search-session-cache";
 import type {
   ChatMessage,
   SearchDebugSnapshot,
@@ -85,6 +90,19 @@ function newId(): string {
   return crypto.randomUUID();
 }
 
+// Shallow-equal voor de selectie-Set vs. een serialized array. Wordt
+// gebruikt in de restore-tak om een gratuit `new Set(...)` te vermijden
+// als de cached selectie identiek is aan de huidige — anders zou de
+// restore na elke auto-persist één extra render veroorzaken (Set-identity
+// verandert, ook al is de inhoud gelijk).
+function sameNumberSet(a: Set<number>, b: readonly number[]): boolean {
+  if (a.size !== b.length) return false;
+  for (const id of b) {
+    if (!a.has(id)) return false;
+  }
+  return true;
+}
+
 export function AudioSearchPage() {
   const [lang, setLang] = useState<string>("spa");
   const [topK, setTopK] = useState<number>(TATOEBA_SEARCH_DEFAULT_TOP_K);
@@ -100,10 +118,44 @@ export function AudioSearchPage() {
   const [corpusError, setCorpusError] = useState<string | null>(null);
 
   const corpus = useCorpusCache(lang);
+  const sessionCache = useSearchSessionCache(lang);
   const translationCache = useTranslationCache();
   const [translateState, setTranslateState] = useState<
     Record<number, TranslateRowState>
   >({});
+  // Onthoudt de tuple van (lang, sessionSnapshot, corpusSnapshot) die
+  // we voor het laatst hebben gerestored. Identity-compare is veilig:
+  // `writeSnapshot` in beide cache-hooks gebruikt een write-through
+  // cache, dus snapshot-objecten houden hun referentie zolang de
+  // onderliggende data niet wijzigt. Pas wanneer een van de drie écht
+  // verandert (lang-switch, of een nieuwe snapshot-identity via hydration
+  // of cross-tab) draait de restore-tak opnieuw.
+  const restoredRef = useRef<{
+    lang: string;
+    session: SearchSessionSnapshot | null;
+    corpus: CorpusSnapshot | null;
+  } | null>(null);
+
+  // True gezet door `handleLoadCorpus` vlak vóór een eigen corpus-write
+  // + stack/messages-setState. Het corpus-snapshot identity verandert
+  // dan binnen dezelfde commit-cyclus, wat de restore-effect zou
+  // triggeren — die zou vervolgens de OUDE sessie uit localStorage
+  // teruglezen en de zojuist-gezette nieuwe stack overschrijven (oud
+  // gedrag: "tabel blijft op de oude data staan na Ophalen"). Met deze
+  // flag slaat restore die ene run over en synchroniseert alleen de
+  // refs, zodat verdere snapshot-identity-bumps (b.v. auto-persist) wél
+  // weer netjes door restore worden opgepikt.
+  const skipRestoreOnceRef = useRef(false);
+
+  // Wis-dialog state: open zodra de user "Wissen" klikt en er nog
+  // verrijkingen in de cache staan voor de huidige taal.
+  const [clearPrompt, setClearPrompt] = useState(false);
+  // Lijst bestaande topics uit Supabase; één keer opgehaald bij mount
+  // en doorgestuurd naar elke enrich-call zodat de LLM voorrang geeft
+  // aan hergebruik boven het verzinnen van nieuwe labels. Lege array
+  // is geldig (eerste enrichment) — de prompt vangt dat geval expliciet
+  // af in `buildEnrichUserMessage`.
+  const [existingTopics, setExistingTopics] = useState<string[]>([]);
 
   // ── Selectie + persist state ───────────────────────────────────────
   // selectedIds is in-scope: ids die niet meer in `visibleRows` zitten
@@ -132,6 +184,151 @@ export function AudioSearchPage() {
   // Bump om <AudioStatsPanel> te triggeren tot een re-fetch na persist.
   const [statsRefreshKey, setStatsRefreshKey] = useState(0);
 
+  // Eén keer bij mount én na elke persist (statsRefreshKey wijzigt dan)
+  // verse topic-lijst ophalen, want een succesvolle persist kan een
+  // nieuw topic-label hebben aangemaakt waar volgende enrichments van
+  // moeten kunnen profiteren. AbortController vermijdt setState op een
+  // unmounted component bij snelle navigatie.
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/dev/tatoeba-audio/existing-topics", {
+      signal: controller.signal,
+    })
+      .then((res) => res.json() as Promise<ExistingTopicsResponse>)
+      .then((json) => {
+        if (json.ok) setExistingTopics(json.topics);
+      })
+      .catch(() => {
+        // Niet-fataal: enrichment werkt ook zonder bestaande topics,
+        // alleen zonder reuse-bias. Geen UI-toast nodig.
+      });
+    return () => controller.abort();
+  }, [statsRefreshKey]);
+
+  // ── Sessie restore (mount + lang-wissel + late-arriving snapshots) ─
+  // Drie scenarios in volgorde van voorkeur:
+  //   1. Cached sessie aanwezig → herstel stack/messages/selectedIds.
+  //   2. Geen sessie maar wel corpus → re-creëer een root-selectie
+  //      (zelfde shape als in handleLoadCorpus); zorgt dat de tabel
+  //      ook na refresh meteen oefeningen toont.
+  //   3. Geen sessie én geen corpus → empty-state.
+  //
+  // Deps bevatten óók `sessionCache.snapshot` en `corpus.snapshot` —
+  // niet alleen `lang` — omdat `useSyncExternalStore` tijdens hydration
+  // eerst `getServerSnapshot()` (= null) returnt en pas ná de eerste
+  // commit naar de echte client-snapshot synchroniseert. Met deps
+  // `[lang]` only zou de restore op de allereerste pass empty-state
+  // committen en daarna nooit meer triggeren — exact het "tabel weg na
+  // refresh"-symptoom. De `restoredRef`-guard zorgt dat we niet alsnog
+  // in een loop belanden zodra auto-persist een nieuwe identity
+  // doorgeeft (writeSnapshot houdt identity stabiel voor identieke
+  // data, en saveSession gebruikt dezelfde stack/messages-refs als
+  // state — dus de echo-restore is een React-no-op).
+  useEffect(() => {
+    const cachedSession = sessionCache.snapshot;
+    const cachedCorpus = corpus.snapshot;
+
+    // Eigen-write skip: handleLoadCorpus heeft net corpus.setCorpus +
+    // setStack + setMessages aangeroepen. De corpus-snapshot is wel
+    // veranderd, maar de sessie-snapshot loopt nog één tick achter; als
+    // we hier zouden restoreren overschrijven we de net-gezette stack
+    // met de oude session uit localStorage.
+    if (skipRestoreOnceRef.current) {
+      skipRestoreOnceRef.current = false;
+      restoredRef.current = {
+        lang,
+        session: cachedSession,
+        corpus: cachedCorpus,
+      };
+      return;
+    }
+
+    if (
+      restoredRef.current &&
+      restoredRef.current.lang === lang &&
+      restoredRef.current.session === cachedSession &&
+      restoredRef.current.corpus === cachedCorpus
+    ) {
+      return;
+    }
+    restoredRef.current = {
+      lang,
+      session: cachedSession,
+      corpus: cachedCorpus,
+    };
+
+    if (cachedSession) {
+      setStack(cachedSession.stack);
+      setMessages(cachedSession.messages);
+      setSelectedIds((prev) =>
+        sameNumberSet(prev, cachedSession.selectedAudioIds)
+          ? prev
+          : new Set(cachedSession.selectedAudioIds),
+      );
+    } else if (cachedCorpus) {
+      const root: Selection = {
+        id: newId(),
+        query: null,
+        audioIds: cachedCorpus.rows.map((r) => r.audio_id),
+        summary: `${cachedCorpus.rows.length} records geladen voor ${lang}.`,
+        reasonsById: {},
+        cosineById: {},
+      };
+      setStack([root]);
+      setMessages([
+        {
+          role: "assistant",
+          id: newId(),
+          selectionId: root.id,
+          summary: root.summary,
+          matchCount: root.audioIds.length,
+          mode: "cosine",
+        },
+      ]);
+      setSelectedIds(new Set());
+    } else {
+      setStack([]);
+      setMessages([]);
+      setSelectedIds(new Set());
+    }
+    setDebug(null);
+  }, [lang, sessionCache.snapshot, corpus.snapshot]);
+
+  // ── Sessie auto-persist ──────────────────────────────────────────
+  // Schrijft elke state-mutatie naar localStorage per lang.
+  //
+  // Empty-state skip: tijdens hydration zijn beide snapshots null en
+  // commit de restore-effect een lege state ([], [], ∅). Als we die
+  // empty-state vervolgens netjes wegschrijven (saveSession ziet `[]`
+  // → writeSnapshot(null) → REMOVE), wissen we de eerder-bewaarde
+  // sessie nog vóórdat `useSyncExternalStore` van getServerSnapshot
+  // naar de echte client-snapshot kan synchroniseren. Door empty-state
+  // hier te skippen, blijft de localStorage-sleutel staan totdat de
+  // user iets daadwerkelijk in scope heeft. "Wissen" zelf gaat niet
+  // via deze flow maar via `runClear` → `sessionCache.clear()`.
+  //
+  // Echo-writes (auto-persist schrijft data die we net via restore
+  // hebben binnengetrokken) vangt `writeSnapshot` zelf af met een
+  // `newRaw === currentRaw` no-op skip. Geen extra ref-guard nodig.
+  //
+  // Belangrijk: we destructuren `save` uit `sessionCache` zodat ESLint
+  // niet om het hele `sessionCache` object als dep vraagt. Dat object
+  // krijgt namelijk op elke render een nieuwe identity (hook returnt
+  // `{ snapshot, save, clear }` als verse literal). `save` is daarentegen
+  // een useCallback met deps `[lang]` en dus stabiel zolang lang gelijk
+  // blijft — geen render-loop meer.
+  const saveSession = sessionCache.save;
+  useEffect(() => {
+    if (stack.length === 0 && messages.length === 0 && selectedIds.size === 0) {
+      return;
+    }
+    saveSession({
+      stack,
+      messages,
+      selectedAudioIds: Array.from(selectedIds),
+    });
+  }, [stack, messages, selectedIds, saveSession]);
+
   // Bouw een AudioRow-by-id index zodat de tabel snel records kan
   // resolven uit de huidige selectie's audioIds.
   const recordsById = useMemo(() => {
@@ -155,7 +352,22 @@ export function AudioSearchPage() {
     return out;
   }, [currentSelection, recordsById]);
 
-  // ── Corpus laden ──────────────────────────────────────────────────
+  // ── Corpus laden (= "Ophalen" knop) ───────────────────────────────
+  // Twee modi via dezelfde flow:
+  //   - Fresh load (geen bestaand corpus voor deze lang) → API-respons
+  //     1:1 wegschrijven en een nieuwe root-selectie bouwen.
+  //   - Append (er staat al een corpus) → fetch N records, dedupe op
+  //     audio_id tegen bestaande rijen, behoud oude embeddings en voeg
+  //     alleen écht-nieuwe records toe. Bespaart re-embed van bekende
+  //     zinnen en voorkomt dubbele rijen in de tabel.
+  //
+  // Na de merge wordt de stack altijd gereset naar één root die het
+  // samengevoegde totaal weerspiegelt; eventuele sub-selecties (search-
+  // resultaten in de chat-historie) verdwijnen. Reden: de user-intent
+  // van "Ophalen" is "laat me zien wat er nu in scope zit" — sub-
+  // selecties zouden alleen oude audioIds tonen en de toevoeging
+  // onzichtbaar maken. De translation-cache + corpus zelf blijven
+  // intact, dus geen verlies van eerder vertaalde records.
   const handleLoadCorpus = useCallback(
     async (limit: number) => {
       setCorpusLoading(true);
@@ -169,20 +381,48 @@ export function AudioSearchPage() {
           setCorpusError(errMsg);
           return;
         }
+
+        const existing = corpus.snapshot;
+        const mergedRows: AudioRow[] = existing ? [...existing.rows] : [];
+        const mergedEmbeddings: number[][] = existing
+          ? [...existing.embeddings]
+          : [];
+        const knownIds = new Set(mergedRows.map((r) => r.audio_id));
+        let appendedCount = 0;
+        json.rows.forEach((row, i) => {
+          if (knownIds.has(row.audio_id)) return;
+          mergedRows.push(row);
+          mergedEmbeddings.push(json.embeddings[i]);
+          knownIds.add(row.audio_id);
+          appendedCount += 1;
+        });
+
+        const summary = existing
+          ? `${mergedRows.length} records voor ${json.lang} · ${appendedCount} nieuw${appendedCount === 0 ? " (alleen duplicaten ontvangen)" : ""}`
+          : `${mergedRows.length} records geladen voor ${json.lang} (${json.pages_fetched} pagina${json.pages_fetched === 1 ? "" : "'s"}).`;
+
+        // Restore-effect onderdrukken: corpus.setCorpus wijzigt straks de
+        // snapshot-identity en zou anders — in dezelfde commit-cyclus —
+        // de oude session uit localStorage boven ons net-gezette nieuwe
+        // stack heen leggen ("tabel blijft op de oude data staan na
+        // Ophalen"-bug).
+        skipRestoreOnceRef.current = true;
         corpus.setCorpus({
           lang: json.lang,
-          rows: json.rows,
-          embeddings: json.embeddings,
+          rows: mergedRows,
+          embeddings: mergedEmbeddings,
           fetched_at: json.fetched_at,
-          dims: json.dims,
+          // Bestaande dims winnen; embed-route hoort dezelfde dimensies
+          // te returnen, maar voor de cosineSim-veiligheid mogen we niet
+          // half-stilletjes naar een ander getal switchen.
+          dims: existing?.dims ?? json.dims,
         });
-        // Reset chat-state: oude selecties verwijzen naar audio_ids
-        // die mogelijk niet meer in de corpus zitten.
+
         const root: Selection = {
           id: newId(),
           query: null,
-          audioIds: json.rows.map((r) => r.audio_id),
-          summary: `${json.rows.length} records geladen voor ${json.lang} (${json.pages_fetched} pagina${json.pages_fetched === 1 ? "" : "'s"}).`,
+          audioIds: mergedRows.map((r) => r.audio_id),
+          summary,
           reasonsById: {},
           cosineById: {},
         };
@@ -207,13 +447,37 @@ export function AudioSearchPage() {
     [corpus, lang],
   );
 
-  const handleClearCorpus = useCallback(() => {
+  // Aantal verrijkte cache-entries voor de actieve taal. Bepaalt of
+  // "Wissen" de waarschuwings-dialog opent (>0) of direct wist (0).
+  const enrichedCountForLang = useMemo(
+    () =>
+      Object.values(translationCache.cache).filter((e) => e.lang === lang)
+        .length,
+    [translationCache.cache, lang],
+  );
+
+  const runClear = useCallback(() => {
     corpus.clear();
+    sessionCache.clear();
+    translationCache.clearByLang(lang);
+    // Restore-effect zou óók terug naar de root-fallback gaan zodra
+    // corpus.snapshot null is, maar daar zit een render tussen — door
+    // hier expliciet te resetten ziet de UI direct de empty-state.
     setStack([]);
     setMessages([]);
+    setSelectedIds(new Set());
     setDebug(null);
     setCorpusError(null);
-  }, [corpus]);
+    setClearPrompt(false);
+  }, [corpus, sessionCache, translationCache, lang]);
+
+  const handleClearCorpus = useCallback(() => {
+    if (enrichedCountForLang > 0) {
+      setClearPrompt(true);
+      return;
+    }
+    runClear();
+  }, [enrichedCountForLang, runClear]);
 
   // ── Search-pipeline ───────────────────────────────────────────────
   const handleSearch = useCallback(
@@ -439,9 +703,10 @@ export function AudioSearchPage() {
 
   const handleClearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
-  // ── Translate-flow (per-rij) ──────────────────────────────────────
+  // ── Enrich-flow (per-rij) ─────────────────────────────────────────
   // Identieke pattern als in audio-table.tsx; alleen geen batch-knop
-  // omdat selecties op de search-page typisch klein zijn.
+  // omdat selecties op de search-page typisch klein zijn. De call
+  // levert nu vertaling + topic + tags in één rondje.
   const handleTranslateRow = useCallback(
     async (row: AudioRow) => {
       if (row.lang === TARGET_LANG) return;
@@ -459,14 +724,14 @@ export function AudioSearchPage() {
         },
       ];
 
-      let result: TranslateResponse;
+      let result: EnrichResponse;
       try {
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items }),
+          body: JSON.stringify({ items, existing_topics: existingTopics }),
         });
-        result = (await res.json()) as TranslateResponse;
+        result = (await res.json()) as EnrichResponse;
       } catch (e) {
         result = {
           ok: false,
@@ -477,12 +742,14 @@ export function AudioSearchPage() {
 
       if (result.ok) {
         translationCache.bulkSet(
-          result.translations.map((t) => ({
+          result.items.map((t) => ({
             audio_id: t.audio_id,
             translation: t.translation,
             source_text: row.sentence_text,
             lang: row.lang,
             cached_at: new Date().toISOString(),
+            topic: t.topic,
+            tags: t.tags,
           })),
         );
         setTranslateState((prev) => {
@@ -497,7 +764,7 @@ export function AudioSearchPage() {
         }));
       }
     },
-    [translationCache],
+    [translationCache, existingTopics],
   );
 
   // ── Batch-translate ───────────────────────────────────────────────
@@ -545,14 +812,17 @@ export function AudioSearchPage() {
       }
 
       const results = await Promise.all(
-        chunks.map(async (chunk): Promise<TranslateResponse> => {
+        chunks.map(async (chunk): Promise<EnrichResponse> => {
           try {
             const res = await fetch("/api/dev/tatoeba-audio/translate", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ items: chunk }),
+              body: JSON.stringify({
+                items: chunk,
+                existing_topics: existingTopics,
+              }),
             });
-            return (await res.json()) as TranslateResponse;
+            return (await res.json()) as EnrichResponse;
           } catch (e) {
             return {
               ok: false,
@@ -569,6 +839,8 @@ export function AudioSearchPage() {
         source_text: string;
         lang: string;
         cached_at: string;
+        topic: string;
+        tags: string[];
       }> = [];
       const erroredIds = new Map<number, string>();
 
@@ -581,19 +853,20 @@ export function AudioSearchPage() {
           const langById = new Map(
             chunk.map((c) => [c.audio_id, c.source_lang]),
           );
-          for (const t of result.translations) {
+          for (const t of result.items) {
             successEntries.push({
               audio_id: t.audio_id,
               translation: t.translation,
               source_text: sourceById.get(t.audio_id) ?? "",
               lang: langById.get(t.audio_id) ?? "",
               cached_at: new Date().toISOString(),
+              topic: t.topic,
+              tags: t.tags,
             });
           }
         } else {
           const ids =
-            result.reason === "missing_translations" &&
-            result.missing_audio_ids
+            result.reason === "missing_items" && result.missing_audio_ids
               ? result.missing_audio_ids
               : chunk.map((c) => c.audio_id);
           for (const id of ids) erroredIds.set(id, result.error);
@@ -613,7 +886,7 @@ export function AudioSearchPage() {
       });
       setBatchTranslating(false);
     },
-    [batchTranslating, translationCache],
+    [batchTranslating, translationCache, existingTopics],
   );
 
   const handleTranslateAllVisible = useCallback(
@@ -657,15 +930,28 @@ export function AudioSearchPage() {
         let target_text: string | null = null;
         let manually_edited = false;
         let alternatives: string[] = [];
+        // Enrichment-data uit de cache. Voor NL-rijen blijft 'ie leeg
+        // tenzij de user vooraf "Verrijk" heeft gedraaid; de DB-defaults
+        // (`topic null`, `tags ''`) vangen dat dan op.
+        let topic: string | null = null;
+        let tagsCsv = "";
+        const cached = translationCache.get(row.audio_id, row.sentence_text);
         if (row.lang === TARGET_LANG) {
           target_text = row.sentence_text;
-        } else {
-          const cached = translationCache.get(row.audio_id, row.sentence_text);
-          if (cached) {
-            target_text = cached.translation;
-            manually_edited = cached.manually_edited;
-            alternatives = cached.alternatives;
-          }
+        } else if (cached) {
+          target_text = cached.translation;
+          manually_edited = cached.manually_edited;
+          alternatives = cached.alternatives;
+        }
+        if (cached) {
+          topic = cached.topic;
+          // CSV-formaat zoals afgesproken in migration 0010: lowercase,
+          // comma-gescheiden, geen spaties rond commas. We trimmen
+          // defensief voor het geval een handmatige edit ze achterlaat.
+          tagsCsv = cached.tags
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0)
+            .join(",");
         }
         if (!target_text) {
           skipped += 1;
@@ -677,7 +963,8 @@ export function AudioSearchPage() {
           sentence_text: row.sentence_text,
           source_lang: row.lang,
           target_text,
-          topic: null,
+          topic,
+          tags: tagsCsv,
           license: row.license,
           author: row.author,
           attribution_url: row.attribution_url,
@@ -935,13 +1222,10 @@ export function AudioSearchPage() {
     <div className="space-y-6">
       <CorpusBar
         lang={lang}
-        onLangChange={(v) => {
-          setLang(v);
-          // Stack hoort bij de oude lang's snapshot; reset bij wissel.
-          setStack([]);
-          setMessages([]);
-          setDebug(null);
-        }}
+        // Geen handmatige reset meer: de restore-effect detecteert de
+        // lang-wissel en herstelt de juiste sessie voor de nieuwe taal
+        // (of valt terug op een root-selectie / empty-state).
+        onLangChange={setLang}
         langOptions={LANG_OPTIONS}
         snapshot={corpus.snapshot}
         loading={corpusLoading}
@@ -1051,6 +1335,13 @@ export function AudioSearchPage() {
           onConfirm={handleConfirmNoTranslation}
         />
       )}
+
+      <ClearWarningDialog
+        open={clearPrompt}
+        enrichedCount={enrichedCountForLang}
+        onCancel={() => setClearPrompt(false)}
+        onConfirm={runClear}
+      />
     </div>
   );
 }

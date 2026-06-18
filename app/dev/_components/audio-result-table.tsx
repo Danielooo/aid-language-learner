@@ -47,6 +47,8 @@ export type ColumnKey =
   | "sentence_id"
   | "edited"
   | "alternatives"
+  | "topic"
+  | "tags"
   | "lang"
   | "author"
   | "license"
@@ -61,6 +63,8 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   sentence_id: "sentence_id",
   edited: "aangepast?",
   alternatives: "alternatieven",
+  topic: "onderwerp",
+  tags: "tags",
   lang: "lang",
   author: "author",
   license: "license",
@@ -77,6 +81,8 @@ const COLUMN_ORDER: ColumnKey[] = [
   "sentence_id",
   "edited",
   "alternatives",
+  "topic",
+  "tags",
   "lang",
   "author",
   "license",
@@ -366,6 +372,8 @@ export function AudioResultTable({
   const showSentenceId = !isHidden("sentence_id");
   const showEdited = !isHidden("edited");
   const showAlternatives = !isHidden("alternatives");
+  const showTopic = !isHidden("topic");
+  const showTags = !isHidden("tags");
   const showLang = !isHidden("lang");
   const showAuthor = !isHidden("author");
   const showLicense = !isHidden("license");
@@ -492,6 +500,22 @@ export function AudioResultTable({
                 {showAlternatives && (
                   <th className="px-3 py-2 font-semibold">alternatieven</th>
                 )}
+                {showTopic && (
+                  <th
+                    className="px-3 py-2 font-semibold"
+                    title="AI-gegenereerd topic-label (lowercase NL); hergebruikt bestaande topics uit Supabase waar mogelijk."
+                  >
+                    onderwerp
+                  </th>
+                )}
+                {showTags && (
+                  <th
+                    className="px-3 py-2 font-semibold"
+                    title="AI-gegenereerde tags (2-5, lowercase NL)."
+                  >
+                    tags
+                  </th>
+                )}
                 {showLang && <th className="px-3 py-2 font-semibold">lang</th>}
                 {showAuthor && (
                   <th className="px-3 py-2 font-semibold">author</th>
@@ -588,6 +612,22 @@ export function AudioResultTable({
                     {showAlternatives && (
                       <td className="px-3 py-2">
                         <AlternativesCell
+                          row={row}
+                          translationCache={translation.cache}
+                        />
+                      </td>
+                    )}
+                    {showTopic && (
+                      <td className="px-3 py-2">
+                        <TopicCell
+                          row={row}
+                          translationCache={translation.cache}
+                        />
+                      </td>
+                    )}
+                    {showTags && (
+                      <td className="px-3 py-2">
+                        <TagsCell
                           row={row}
                           translationCache={translation.cache}
                         />
@@ -1221,7 +1261,7 @@ function TranslationCell({
           aria-hidden
           className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-muted border-t-accent"
         />
-        Vertalen…
+        Verrijken…
       </span>
     );
   }
@@ -1294,7 +1334,7 @@ function TranslationCell({
             <button
               type="button"
               onClick={() => onTranslate(row)}
-              title="Hervertalen — overschrijft de cache voor deze zin"
+              title="Opnieuw verrijken — overschrijft vertaling + topic + tags in de cache voor deze zin"
               className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               ↻
@@ -1338,7 +1378,7 @@ function TranslationCell({
             <button
               type="button"
               onClick={commitAlt}
-              className="rounded border border-accent/60 bg-accent/10 px-2 py-0.5 text-[10px] text-accent-foreground hover:bg-accent/20"
+              className="rounded border border-accent/60 bg-accent/10 px-2 py-0.5 text-[10px] text-foreground hover:bg-accent/20"
             >
               Toevoegen
             </button>
@@ -1369,10 +1409,63 @@ function TranslationCell({
     <button
       type="button"
       onClick={() => onTranslate(row)}
+      title="Verrijk deze rij: vertaling + topic + tags in één AI-call"
       className="rounded border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-accent-foreground"
     >
-      Vertaal
+      Verrijk
     </button>
+  );
+}
+
+// Cel voor het AI-onderwerp. Toont een em-dash zolang er geen
+// enrichment-data is voor deze rij (waarschijnlijk omdat de user
+// nog geen "Verrijk" heeft gedraaid).
+function TopicCell({
+  row,
+  translationCache,
+}: {
+  row: AudioRow;
+  translationCache: ReturnType<typeof useTranslationCache>;
+}) {
+  const cached = translationCache.get(row.audio_id, row.sentence_text);
+  if (!cached || !cached.topic) {
+    return <span className="text-[10px] text-muted-foreground/70">—</span>;
+  }
+  return (
+    <span
+      className="rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] text-accent"
+      title="AI-gegenereerd onderwerp-label. Wordt bij persist als `topic` op exercises geschreven."
+    >
+      {cached.topic}
+    </span>
+  );
+}
+
+// Cel voor de AI-tags. Toont elke tag als een kleine badge; em-dash
+// wanneer er geen enrichment beschikbaar is.
+function TagsCell({
+  row,
+  translationCache,
+}: {
+  row: AudioRow;
+  translationCache: ReturnType<typeof useTranslationCache>;
+}) {
+  const cached = translationCache.get(row.audio_id, row.sentence_text);
+  if (!cached || cached.tags.length === 0) {
+    return <span className="text-[10px] text-muted-foreground/70">—</span>;
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      {cached.tags.map((tag) => (
+        <span
+          key={tag}
+          className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+          title="AI-gegenereerde tag. Wordt bij persist als CSV op exercises.tags geschreven."
+        >
+          {tag}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -1533,7 +1626,7 @@ function AlternativesCell({
             <button
               type="button"
               onClick={commit}
-              className="rounded border border-accent/60 bg-accent/10 px-2 py-0.5 text-[10px] normal-case text-accent-foreground hover:bg-accent/20"
+              className="rounded border border-accent/60 bg-accent/10 px-2 py-0.5 text-[10px] normal-case text-foreground hover:bg-accent/20"
             >
               +
             </button>
