@@ -33,7 +33,8 @@ export function ExercisesQuizPage() {
           Oefeningen-quiz
         </h1>
         <p className="text-sm text-muted-foreground">
-          Kies een quiz-vorm om je oefeningen uit Supabase te oefenen.
+          Kies een quiz-vorm en hoe je wilt oefenen: willekeurig, spaced
+          repetition of een eigen selectie.
         </p>
       </header>
 

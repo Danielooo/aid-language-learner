@@ -7,7 +7,7 @@ De applicatie helpt gebruikers op een praktische manier om Spaans te leren door 
 #### **Opgelost probleem**
 
 Bestaande apps zoals Babbel of Duolingo bieden slechts de oefeningen en categorieën die zij zelf hebben bedacht. Als je bijvoorbeeld iets specifieks gaat doen in het buitenland — zoals een medische afspraak of werkgerelateerde communicatie — kun je niet je eigen categorie aanmaken of je oefeneningen afstemmen op jouw situatie.  
-Dat is de toegevoegde waarde van deze applicatie
+Dat is de toegevoegde waarde van deze applicatie.
 
 #### **Belangrijkste functionaliteiten**
 
@@ -49,13 +49,16 @@ Dat is de toegevoegde waarde van deze applicatie
 - ~~Sorteren~~
 - ~~Als er audio bij zit dan een icon die de audio afspeelt~~
 
-**Taaloefeningen kunnen maken**
+**Oefeningen herhalen met eerder zwak resultaat**
+  - ~~Spaced repetition (regels voor goede en foute antwoorden)~~
+
+**Voortgangsdashboard**
+  Een persoonlijk dashboard laat zien hoeveel woorden en zinnen de gebruiker heeft geleerd, welke thema’s goed gaan en waar nog verbetering mogelijk is. Dit is gebaseerd op opgeslagen scores en oefenresultaten in Supabase.
 
 
 **Global**
 - loading state maken
 - skeleton loader maken
-
 
 
 **Aan het eind**

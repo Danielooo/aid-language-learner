@@ -15,6 +15,9 @@ type TopicPickerGridProps = {
   loading: boolean;
   selectedTopic: string;
   onSelect: (topic: string) => void;
+  /** Toon due-counts i.p.v. totaal aantal oefeningen (spaced repetition). */
+  srsMode?: boolean;
+  dueByTopic?: Record<string, number>;
 };
 
 function topicLabel(topic: string): string {
@@ -26,6 +29,8 @@ export function TopicPickerGrid({
   loading,
   selectedTopic,
   onSelect,
+  srsMode = false,
+  dueByTopic = {},
 }: TopicPickerGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -91,6 +96,12 @@ export function TopicPickerGrid({
       {stats.map((stat) => {
         const isSelected = stat.topic === selectedTopic;
         const isAll = stat.topic === ALL_TOPICS;
+        const dueCount = srsMode
+          ? isAll
+            ? Object.values(dueByTopic).reduce((sum, n) => sum + n, 0)
+            : (dueByTopic[stat.topic] ?? 0)
+          : null;
+        const isDone = srsMode && dueCount === 0;
 
         return (
           <button
@@ -99,11 +110,20 @@ export function TopicPickerGrid({
             data-topic-card
             role="option"
             aria-selected={isSelected}
-            onClick={() => onSelect(stat.topic)}
-            className={`group flex min-h-28 cursor-pointer flex-col items-start justify-between rounded-2xl border p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${
-              isSelected
+            disabled={isDone}
+            onClick={() => {
+              if (!isDone) onSelect(stat.topic);
+            }}
+            className={`group flex min-h-28 flex-col items-start justify-between rounded-2xl border p-5 text-left transition-all ${
+              isDone
+                ? "cursor-not-allowed border-border bg-muted/20 opacity-60"
+                : "cursor-pointer hover:-translate-y-0.5 hover:shadow-md"
+            } ${
+              isSelected && !isDone
                 ? "border-accent bg-gradient-to-br from-accent/20 via-accent/5 to-card shadow-md ring-2 ring-accent/30"
-                : "border-border bg-card hover:border-accent/30 hover:bg-muted/30"
+                : isDone
+                  ? ""
+                  : "border-border bg-card hover:border-accent/30 hover:bg-muted/30"
             }`}
           >
             <div className="space-y-1">
@@ -119,8 +139,21 @@ export function TopicPickerGrid({
               </h3>
             </div>
             <p className="text-xs text-muted-foreground">
-              {stat.count}{" "}
-              {stat.count === 1 ? "oefening" : "oefeningen"}
+              {srsMode ? (
+                isDone ? (
+                  <span className="font-medium text-muted-foreground">Klaar</span>
+                ) : (
+                  <>
+                    <span className="font-medium text-accent">{dueCount}</span>{" "}
+                    {dueCount === 1 ? "klaar voor herhaling" : "klaar voor herhaling"}
+                  </>
+                )
+              ) : (
+                <>
+                  {stat.count}{" "}
+                  {stat.count === 1 ? "oefening" : "oefeningen"}
+                </>
+              )}
             </p>
           </button>
         );

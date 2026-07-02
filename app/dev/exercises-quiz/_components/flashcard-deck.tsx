@@ -17,12 +17,20 @@ import {
   isQuizShortcut,
   QUIZ_SHORTCUTS,
 } from "@/lib/keyboard/quiz-shortcuts";
+import { selectionModeLabel } from "@/lib/quiz/selection-config";
 
+import { ExercisePicker } from "./exercise-picker";
 import { animateCardExit, Flashcard } from "./flashcard";
+import {
+  QuizSelectionScreen,
+  useQuizSelectionMode,
+} from "./quiz-selection-screen";
+import { SrsCompleteState } from "./srs-complete-state";
+import { SrsTopicPickerSection } from "./srs-topic-picker-section";
 import { TopicPickerGrid } from "./topic-picker-grid";
+import { useQuizSession } from "../_hooks/use-quiz-session";
 
 import type { FlashcardPhase } from "./flashcard";
-import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
 import type {
   TopicStat,
   TopicsResponse,
@@ -30,7 +38,11 @@ import type {
 
 const TOPIC_KEY = "aid:exercises-quiz-flashcards:topic";
 
-type DeckScreen = "topic-picker" | "playing";
+type DeckScreen =
+  | "selection"
+  | "topic-picker"
+  | "exercise-picker"
+  | "playing";
 
 function topicDisplayLabel(topic: string): string {
   return topic === ALL_TOPICS ? "Alle topics" : topic;
@@ -41,11 +53,7 @@ export function FlashcardDeck() {
   const containerRef = useRef<HTMLDivElement>(null);
   const cardContainerRef = useRef<HTMLDivElement>(null);
 
-  const [screen, setScreen] = useState<DeckScreen>("topic-picker");
-  const [item, setItem] = useState<ExerciseQuizItem | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [screen, setScreen] = useState<DeckScreen>("selection");
   const [phase, setPhase] = useState<FlashcardPhase>("front");
   const [animating, setAnimating] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -54,35 +62,32 @@ export function FlashcardDeck() {
   const [topicsLoading, setTopicsLoading] = useState(true);
   const [selectedTopic, setSelectedTopic] = useState<string>(ALL_TOPICS);
   const [topicHydrated, setTopicHydrated] = useState(false);
+  const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const {
+    mode: selectionMode,
+    setMode: setSelectionMode,
+    hydrated: selectionHydrated,
+  } = useQuizSelectionMode();
+
+  const {
+    item,
+    loading,
+    error,
+    errorStatus,
+    sessionComplete,
+    srsComplete,
+    queueRemaining,
+    startSession,
+    resetSession,
+    fetchNext,
+    recordSrsReview,
+    suspendExercise,
+  } = useQuizSession();
 
   const { score, attempts, recordAttempt, reset, hydrated } = useQuizStorage();
-
-  const fetchNext = useCallback(async (topic: string) => {
-    setLoading(true);
-    setError(null);
-    setErrorStatus(null);
-    setPhase("front");
-    setAnimating(false);
-    try {
-      const url =
-        topic === ALL_TOPICS
-          ? "/api/dev/exercise-generator-quiz"
-          : `/api/dev/exercise-generator-quiz?topic=${encodeURIComponent(topic)}`;
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        setErrorStatus(res.status);
-        throw new Error(body.error ?? `Status ${res.status}`);
-      }
-      const data = (await res.json()) as ExerciseQuizItem;
-      setItem(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout");
-      setItem(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -132,22 +137,55 @@ export function FlashcardDeck() {
     }
   }
 
-  function handleTopicSelect(topic: string) {
-    persistTopic(topic);
-    setScreen("playing");
-    setError(null);
-    setErrorStatus(null);
-    void fetchNext(topic);
-  }
-
-  const handleChangeTopic = useCallback(() => {
-    setScreen("topic-picker");
-    setItem(null);
+  function beginSession(
+    mode: typeof selectionMode,
+    topic: string,
+    customIds?: string[],
+  ) {
+    startSession({
+      selectionMode: mode,
+      topic,
+      customExerciseIds: customIds,
+    });
     setPhase("front");
     setAnimating(false);
-    setError(null);
-    setErrorStatus(null);
-  }, []);
+    setScreen("playing");
+    void fetchNext();
+  }
+
+  function handleSelectionContinue() {
+    if (selectionMode === "custom") {
+      setScreen("exercise-picker");
+      return;
+    }
+    setScreen("topic-picker");
+  }
+
+  function handleTopicSelect(topic: string) {
+    persistTopic(topic);
+    beginSession(selectionMode, topic);
+  }
+
+  function handleCustomStart() {
+    if (selectedExerciseIds.size === 0) return;
+    beginSession(selectionMode, selectedTopic, [...selectedExerciseIds]);
+  }
+
+  function toggleExerciseId(id: string) {
+    setSelectedExerciseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const handleChangeSetup = useCallback(() => {
+    resetSession();
+    setScreen("selection");
+    setPhase("front");
+    setAnimating(false);
+  }, [resetSession]);
 
   const handleFlip = useCallback(() => {
     if (animating || loading) return;
@@ -156,8 +194,9 @@ export function FlashcardDeck() {
 
   const handleSkip = useCallback(() => {
     if (animating || loading) return;
-    void fetchNext(selectedTopic);
-  }, [animating, loading, fetchNext, selectedTopic]);
+    setPhase("front");
+    void fetchNext();
+  }, [animating, loading, fetchNext]);
 
   const handleGrade = useCallback(
     async (isCorrect: boolean) => {
@@ -182,7 +221,13 @@ export function FlashcardDeck() {
         at: Date.now(),
       });
 
-      void fetchNext(selectedTopic);
+      if (selectionMode === "srs") {
+        void recordSrsReview(item.id, isCorrect);
+      }
+
+      setPhase("front");
+      void fetchNext();
+      setAnimating(false);
     },
     [
       item,
@@ -191,9 +236,20 @@ export function FlashcardDeck() {
       loading,
       recordAttempt,
       fetchNext,
-      selectedTopic,
+      selectionMode,
+      recordSrsReview,
     ],
   );
+
+  const handleSuspend = useCallback(async () => {
+    if (!item) return;
+    if (!window.confirm("Deze oefening niet meer tonen in spaced repetition?")) {
+      return;
+    }
+    await suspendExercise(item.id);
+    setPhase("front");
+    void fetchNext();
+  }, [item, suspendExercise, fetchNext]);
 
   function handleReset() {
     if (window.confirm("Score en geschiedenis echt wissen?")) reset();
@@ -212,7 +268,9 @@ export function FlashcardDeck() {
       if (e.key === "Escape") {
         e.preventDefault();
         if (screen === "playing") {
-          handleChangeTopic();
+          handleChangeSetup();
+        } else if (screen === "topic-picker" || screen === "exercise-picker") {
+          setScreen("selection");
         } else {
           router.push("/dev/exercises-quiz");
         }
@@ -265,8 +323,15 @@ export function FlashcardDeck() {
     handleGrade,
     handleFlip,
     handleSkip,
-    handleChangeTopic,
+    handleChangeSetup,
   ]);
+
+  const escHint =
+    screen === "selection"
+      ? "Esc = terug naar overzicht"
+      : screen === "playing"
+        ? "Esc = wijzig instellingen"
+        : "Esc = terug naar moduskeuze";
 
   return (
     <div ref={containerRef} tabIndex={-1} className="space-y-6 outline-none">
@@ -279,30 +344,44 @@ export function FlashcardDeck() {
             ← Oefeningen-quiz
           </Link>
           <span aria-hidden>·</span>
-          <span>
-            {screen === "topic-picker"
-              ? "Esc = terug naar overzicht"
-              : "Esc = wijzig topic"}
-          </span>
+          <span>{escHint}</span>
         </div>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Flashcards
         </h1>
         <p className="text-sm text-muted-foreground">
-          {screen === "topic-picker"
-            ? "Kies een topic om te oefenen met kaartjes."
-            : "Bekijk de Spaanse zin, draai de kaart om en beoordeel jezelf."}
+          {screen === "playing"
+            ? "Bekijk de Spaanse zin, draai de kaart om en beoordeel jezelf."
+            : "Kies hoe en welke oefeningen je wilt oefenen."}
         </p>
       </header>
 
-      {screen === "topic-picker" && (
+      {screen === "selection" && selectionHydrated && (
+        <QuizSelectionScreen
+          selectedMode={selectionMode}
+          onSelect={setSelectionMode}
+          onContinue={handleSelectionContinue}
+        />
+      )}
+
+      {screen === "topic-picker" && selectionMode === "srs" && (
+        <SrsTopicPickerSection
+          topicStats={topicStats}
+          topicsLoading={!topicHydrated || topicsLoading}
+          selectedTopic={selectedTopic}
+          onSelect={handleTopicSelect}
+          onBack={() => setScreen("selection")}
+        />
+      )}
+
+      {screen === "topic-picker" && selectionMode !== "srs" && (
         <section className="space-y-4 rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
           <div className="space-y-1">
             <h2 className="text-sm font-semibold text-foreground">
               Kies je topic
             </h2>
             <p className="text-xs text-muted-foreground">
-              Selecteer een categorie om alleen die oefeningen te tonen.
+              {selectionModeLabel(selectionMode)} — selecteer een categorie.
             </p>
           </div>
           <TopicPickerGrid
@@ -314,35 +393,90 @@ export function FlashcardDeck() {
         </section>
       )}
 
+      {screen === "exercise-picker" && (
+        <ExercisePicker
+          topicStats={topicStats}
+          topicsLoading={!topicHydrated || topicsLoading}
+          selectedTopic={selectedTopic}
+          onTopicChange={persistTopic}
+          selectedIds={selectedExerciseIds}
+          onToggle={toggleExerciseId}
+          onSelectAll={(ids) =>
+            setSelectedExerciseIds((prev) => new Set([...prev, ...ids]))
+          }
+          onClear={() => setSelectedExerciseIds(new Set())}
+          onStart={handleCustomStart}
+        />
+      )}
+
       {screen === "playing" && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-medium text-accent">
-                {topicDisplayLabel(selectedTopic)}
+                {selectionModeLabel(selectionMode)}
               </span>
+              {selectionMode !== "custom" && (
+                <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  {topicDisplayLabel(selectedTopic)}
+                </span>
+              )}
+              {selectionMode === "custom" && queueRemaining > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  Nog {queueRemaining} in wachtrij
+                </span>
+              )}
               <button
                 type="button"
-                onClick={handleChangeTopic}
+                onClick={handleChangeSetup}
                 className="cursor-pointer text-xs text-muted-foreground underline hover:text-foreground"
               >
-                Wijzig topic
+                Wijzig instellingen
               </button>
             </div>
+            {selectionMode === "srs" && item && (
+              <button
+                type="button"
+                onClick={() => void handleSuspend()}
+                className="cursor-pointer text-xs text-muted-foreground underline hover:text-foreground"
+              >
+                Niet meer tonen
+              </button>
+            )}
           </div>
 
           <ScoreBar score={score} hydrated={hydrated} onReset={handleReset} />
 
           <section className="rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
-            {loading && <FlashcardSkeleton />}
-            {!loading && error && (
+            {sessionComplete && (
+              <div className="mx-auto max-w-lg space-y-4 text-center">
+                <p className="text-lg font-semibold text-foreground">
+                  Alle geselecteerde oefeningen voltooid!
+                </p>
+                <button
+                  type="button"
+                  onClick={handleChangeSetup}
+                  className="cursor-pointer rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground"
+                >
+                  Nieuwe sessie starten
+                </button>
+              </div>
+            )}
+            {srsComplete && (
+              <SrsCompleteState
+                topic={selectedTopic}
+                onBack={handleChangeSetup}
+              />
+            )}
+            {!sessionComplete && !srsComplete && loading && <FlashcardSkeleton />}
+            {!sessionComplete && !srsComplete && !loading && error && (
               <ExerciseErrorState
                 message={error}
                 status={errorStatus}
-                onRetry={() => void fetchNext(selectedTopic)}
+                onRetry={() => void fetchNext()}
               />
             )}
-            {!loading && !error && item && (
+            {!sessionComplete && !srsComplete && !loading && !error && item && (
               <div ref={cardContainerRef}>
                 <Flashcard
                   item={item}
