@@ -1,6 +1,9 @@
-import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getExerciseUserAccess } from "@/lib/dev/exercise-access";
+import {
+  activeTopicsToArray,
+  getActiveTopicsForUser,
+  isTopicActive,
+} from "@/lib/topics/active-topics";
 
 // Lichte lijst van oefeningen voor de custom exercise-picker in de quiz.
 
@@ -24,6 +27,9 @@ const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 200;
 
 export async function GET(req: Request) {
+  const access = await getExerciseUserAccess();
+  if (!access.ok) return access.response;
+
   const url = new URL(req.url);
   const topicParam = url.searchParams.get("topic");
   const searchParam = url.searchParams.get("search");
@@ -41,30 +47,39 @@ export async function GET(req: Request) {
     Math.max(1, Number.parseInt(pageSizeParam ?? String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE),
   );
 
-  const serverSupabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await serverSupabase.auth.getUser();
-  if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user) {
-    return Response.json({ error: "Niet ingelogd." }, { status: 401 });
+  const activeTopics = await getActiveTopicsForUser(access.supabase, access.userId);
+  const activeList = activeTopicsToArray(activeTopics);
+
+  if (!activeList) {
+    const payload: ExerciseListResponse = {
+      exercises: [],
+      total: 0,
+      page,
+      pageSize,
+    };
+    return Response.json(payload);
   }
 
-  const supabase =
-    !DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user
-      ? getSupabaseAdmin()
-      : serverSupabase;
-  const seedOnly = !DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user;
+  if (topic && !isTopicActive(activeTopics, topic)) {
+    const payload: ExerciseListResponse = {
+      exercises: [],
+      total: 0,
+      page,
+      pageSize,
+    };
+    return Response.json(payload);
+  }
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  let query = supabase
+  let query = access.supabase
     .from("exercises")
     .select("id, source_text, target_text, topic", { count: "exact" })
+    .in("topic", activeList)
     .order("created_at", { ascending: false })
     .range(from, to);
 
-  if (seedOnly) query = query.is("owner_id", null);
   if (topic) query = query.eq("topic", topic);
   if (search.length > 0) {
     const pattern = `%${search}%`;

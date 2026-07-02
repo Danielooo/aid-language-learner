@@ -68,6 +68,13 @@ export const DEV_TOOLS: DevTool[] = [
     category: "use",
   },
   {
+    href: "/dev/mijn-leerplan",
+    title: "Mijn leerplan",
+    description:
+      "Kies welke topics je actief oefent. Vink aan wat je wilt leren; alleen actieve topics komen in quiz en spaced repetition.",
+    category: "use",
+  },
+  {
     href: "/dev/exercise-generator",
     title: "Oefeningen-generator",
     description:

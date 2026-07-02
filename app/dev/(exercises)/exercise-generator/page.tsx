@@ -2,6 +2,7 @@
 
 import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -180,6 +181,12 @@ export default function ExerciseGeneratorPage() {
         });
         return;
       }
+      setPersistState({
+        status: "success",
+        requestBody,
+        response: json,
+        error: null,
+      });
       resetGenerator();
     } catch (err) {
       setPersistState({
@@ -210,6 +217,18 @@ export default function ExerciseGeneratorPage() {
           <code className="font-mono">@{DEV_MOCK_USER_USERNAME}</code> in
           dev-modus. Beheer ze via de tab &quot;Mijn oefeningen&quot;.
         </p>
+        {persistState.status === "success" && (
+          <p className="rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-foreground">
+            Opgeslagen. Vink topics aan om ze te oefenen via{" "}
+            <Link
+              href="/dev/mijn-leerplan"
+              className="font-medium text-accent underline-offset-2 hover:underline"
+            >
+              Mijn leerplan
+            </Link>
+            .
+          </p>
+        )}
       </header>
 
       <section className="space-y-3 rounded-lg border border-border bg-card p-5 text-card-foreground">

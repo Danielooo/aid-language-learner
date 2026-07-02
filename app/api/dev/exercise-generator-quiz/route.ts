@@ -1,11 +1,13 @@
 import { getExerciseUserAccess } from "@/lib/dev/exercise-access";
-import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
 import {
   EXERCISE_QUIZ_SELECT,
   toExerciseQuizItem,
 } from "@/lib/quiz/exercise-quiz-item";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  activeTopicsToArray,
+  getActiveTopicsForUser,
+  isTopicActive,
+} from "@/lib/topics/active-topics";
 
 // Random oefening uit `exercises` voor de generator-quiz. RLS filtert
 // automatisch op (`owner_id is null` OR `owner_id = auth.uid()`), dus
@@ -31,55 +33,63 @@ export type ExerciseQuizItem = {
   tatoeba_attribution_url: string | null;
 };
 
-async function resolveSupabase() {
-  const serverSupabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await serverSupabase.auth.getUser();
-  if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user) {
-    return { error: Response.json({ error: "Niet ingelogd." }, { status: 401 }) };
-  }
-
-  const supabase =
-    !DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user
-      ? getSupabaseAdmin()
-      : serverSupabase;
-  const seedOnly = !DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user;
-
-  return { supabase, seedOnly };
-}
-
-function applySeedFilter<T extends { is: (col: string, val: null) => T }>(
-  query: T,
-  seedOnly: boolean,
-): T {
-  return seedOnly ? query.is("owner_id", null) : query;
-}
-
 async function fetchById(
-  supabase: Awaited<ReturnType<typeof resolveSupabase>>["supabase"] & object,
+  access: NonNullable<Awaited<ReturnType<typeof getExerciseUserAccess>> & { ok: true }>,
   id: string,
-  seedOnly: boolean,
+  activeTopics: Set<string>,
 ) {
-  let query = supabase
+  const { data, error } = await access.supabase
     .from("exercises")
     .select(EXERCISE_QUIZ_SELECT)
-    .eq("id", id);
-  query = applySeedFilter(query, seedOnly);
+    .eq("id", id)
+    .maybeSingle();
 
-  const { data, error } = await query.maybeSingle();
   if (error) return { error: Response.json({ error: error.message }, { status: 500 }) };
   if (!data) {
     return {
       error: Response.json({ error: "Oefening niet gevonden." }, { status: 404 }),
     };
   }
-  return { item: toExerciseQuizItem(supabase, data) };
+  if (!isTopicActive(activeTopics, data.topic)) {
+    return {
+      error: Response.json(
+        { error: "Oefening hoort bij een inactief topic." },
+        { status: 404 },
+      ),
+    };
+  }
+  return { item: toExerciseQuizItem(access.supabase, data) };
 }
 
-async function fetchSrsDue(topic: string | null) {
-  const access = await getExerciseUserAccess();
-  if (!access.ok) return { error: access.response };
+async function fetchSrsDue(
+  access: NonNullable<Awaited<ReturnType<typeof getExerciseUserAccess>> & { ok: true }>,
+  topic: string | null,
+  activeTopics: Set<string>,
+) {
+  const activeList = activeTopicsToArray(activeTopics);
+  if (!activeList) {
+    return {
+      error: Response.json(
+        {
+          error: "Geen actieve topics. Activeer topics via Mijn leerplan.",
+          code: "SRS_NOTHING_DUE",
+        },
+        { status: 404 },
+      ),
+    };
+  }
+
+  if (topic && !isTopicActive(activeTopics, topic)) {
+    return {
+      error: Response.json(
+        {
+          error: `Topic "${topic}" is niet actief.`,
+          code: "SRS_NOTHING_DUE",
+        },
+        { status: 404 },
+      ),
+    };
+  }
 
   const now = new Date().toISOString();
 
@@ -89,6 +99,7 @@ async function fetchSrsDue(topic: string | null) {
     .eq("user_id", access.userId)
     .eq("is_suspended", false)
     .lte("next_review_at", now)
+    .in("exercises.topic", activeList)
     .order("next_review_at", { ascending: true })
     .limit(20);
 
@@ -121,15 +132,37 @@ async function fetchSrsDue(topic: string | null) {
 }
 
 async function fetchRandom(
-  supabase: Awaited<ReturnType<typeof resolveSupabase>>["supabase"] & object,
-  seedOnly: boolean,
+  access: NonNullable<Awaited<ReturnType<typeof getExerciseUserAccess>> & { ok: true }>,
   topic: string | null,
   excludeIds: string[],
+  activeTopics: Set<string>,
 ) {
-  let countQuery = supabase
+  const activeList = activeTopicsToArray(activeTopics);
+  if (!activeList) {
+    return {
+      error: Response.json(
+        {
+          error:
+            "Geen actieve topics. Activeer topics via /dev/mijn-leerplan om te oefenen.",
+        },
+        { status: 404 },
+      ),
+    };
+  }
+
+  if (topic && !isTopicActive(activeTopics, topic)) {
+    return {
+      error: Response.json(
+        { error: `Geen oefeningen gevonden voor topic "${topic}".` },
+        { status: 404 },
+      ),
+    };
+  }
+
+  let countQuery = access.supabase
     .from("exercises")
-    .select("id", { count: "exact", head: true });
-  countQuery = applySeedFilter(countQuery, seedOnly);
+    .select("id", { count: "exact", head: true })
+    .in("topic", activeList);
   if (topic) countQuery = countQuery.eq("topic", topic);
   for (const id of excludeIds) {
     countQuery = countQuery.neq("id", id);
@@ -155,11 +188,11 @@ async function fetchRandom(
 
   const offset = Math.floor(Math.random() * count);
 
-  let rowQuery = supabase
+  let rowQuery = access.supabase
     .from("exercises")
     .select(EXERCISE_QUIZ_SELECT)
+    .in("topic", activeList)
     .range(offset, offset);
-  rowQuery = applySeedFilter(rowQuery, seedOnly);
   if (topic) rowQuery = rowQuery.eq("topic", topic);
   for (const id of excludeIds) {
     rowQuery = rowQuery.neq("id", id);
@@ -180,10 +213,13 @@ async function fetchRandom(
     };
   }
 
-  return { item: toExerciseQuizItem(supabase, row) };
+  return { item: toExerciseQuizItem(access.supabase, row) };
 }
 
 export async function GET(req: Request) {
+  const access = await getExerciseUserAccess();
+  if (!access.ok) return access.response;
+
   const url = new URL(req.url);
   const topicParam = url.searchParams.get("topic");
   const idParam = url.searchParams.get("id");
@@ -197,23 +233,21 @@ export async function GET(req: Request) {
   const excludeIds =
     excludeParam?.split(",").map((s) => s.trim()).filter((s) => s.length > 0) ?? [];
 
-  const resolved = await resolveSupabase();
-  if ("error" in resolved && resolved.error) return resolved.error;
-  const { supabase, seedOnly } = resolved;
+  const activeTopics = await getActiveTopicsForUser(access.supabase, access.userId);
 
   if (idParam) {
-    const result = await fetchById(supabase, idParam, seedOnly);
+    const result = await fetchById(access, idParam, activeTopics);
     if ("error" in result && result.error) return result.error;
     return Response.json(result.item);
   }
 
   if (modeParam === "srs") {
-    const result = await fetchSrsDue(topic);
+    const result = await fetchSrsDue(access, topic, activeTopics);
     if ("error" in result && result.error) return result.error;
     return Response.json(result.item);
   }
 
-  const result = await fetchRandom(supabase, seedOnly, topic, excludeIds);
+  const result = await fetchRandom(access, topic, excludeIds, activeTopics);
   if ("error" in result && result.error) return result.error;
   return Response.json(result.item);
 }
