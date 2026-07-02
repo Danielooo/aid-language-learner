@@ -31,14 +31,11 @@ export default async function DashboardPage() {
           Dashboard — @{username}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Overzicht van je oefen-historie uit{" "}
-          <code className="font-mono text-xs">quiz_attempts</code> in
-          Supabase. Trends en zwakke plekken worden berekend over de
-          laatste 500 pogingen (default-limiet van{" "}
-          <code className="font-mono text-xs">
-            GET /api/dev/quiz-attempts
-          </code>
-          ).
+          Overzicht van je SRS-voortgang: retentie, mastery, consistentie en
+          workload. Data uit{" "}
+          <code className="font-mono text-xs">quiz_attempts</code> en{" "}
+          <code className="font-mono text-xs">exercise_progress</code> in
+          Supabase.
         </p>
       </header>
 
