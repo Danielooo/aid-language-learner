@@ -2,15 +2,27 @@
 
 import { useCallback, useRef, useState } from "react";
 
+import { fetchTopicExerciseIds } from "@/lib/quiz/fetch-topic-exercise-ids";
 import { fisherYatesShuffle } from "@/lib/quiz/shuffle";
 
+import type { ExercisePickerItem } from "@/app/api/dev/exercise-generator-quiz/list/route";
 import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
 import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
+
+export type QuizSessionPhase =
+  | "playing"
+  | "main-complete"
+  | "review"
+  | "all-complete";
 
 export type QuizSessionConfig = {
   selectionMode: QuizSelectionMode;
   topic: string;
   customExerciseIds?: string[];
+};
+
+export type StartSessionOptions = {
+  exerciseFilter?: (item: ExercisePickerItem) => boolean;
 };
 
 function buildFetchUrl(config: QuizSessionConfig, exerciseId?: string): string {
@@ -25,10 +37,6 @@ function buildFetchUrl(config: QuizSessionConfig, exerciseId?: string): string {
     if (config.topic !== "all") {
       params.set("topic", config.topic);
     }
-  } else if (config.selectionMode === "random") {
-    if (config.topic !== "all") {
-      params.set("topic", config.topic);
-    }
   }
 
   const qs = params.toString();
@@ -37,8 +45,12 @@ function buildFetchUrl(config: QuizSessionConfig, exerciseId?: string): string {
     : "/api/dev/exercise-generator-quiz";
 }
 
+function usesQueue(mode: QuizSelectionMode): boolean {
+  return mode === "custom" || mode === "topic";
+}
+
 /**
- * Beheert de oefening-queue voor random, SRS en custom selectie.
+ * Beheert de oefening-queue voor topic, SRS en custom selectie.
  * Decks roepen `startSession` aan na topic/picker-keuze en `fetchNext`
  * voor elke volgende kaart.
  */
@@ -46,46 +58,158 @@ export function useQuizSession() {
   const configRef = useRef<QuizSessionConfig | null>(null);
   const queueRef = useRef<string[]>([]);
   const queueIndexRef = useRef(0);
+  const queueTotalRef = useRef(0);
+  const initialQueueTotalRef = useRef(0);
+  const mistakeIdsRef = useRef<Set<string>>(new Set());
+  const skippedIneligibleRef = useRef(0);
+  const sessionPhaseRef = useRef<QuizSessionPhase>("playing");
 
   const [item, setItem] = useState<ExerciseQuizItem | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [srsComplete, setSrsComplete] = useState(false);
+  const [sessionPhase, setSessionPhaseState] = useState<QuizSessionPhase>("playing");
+
+  const setSessionPhase = useCallback((phase: QuizSessionPhase) => {
+    sessionPhaseRef.current = phase;
+    setSessionPhaseState(phase);
+  }, []);
   const [queueRemaining, setQueueRemaining] = useState(0);
+  const [queueProgress, setQueueProgress] = useState(0);
+  const [queueTotal, setQueueTotal] = useState(0);
+  const [initialQueueTotal, setInitialQueueTotal] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [mistakeCount, setMistakeCount] = useState(0);
+  const [skippedIneligible, setSkippedIneligible] = useState(0);
 
-  const startSession = useCallback((config: QuizSessionConfig) => {
-    configRef.current = config;
-    setSessionComplete(false);
-    setSrsComplete(false);
-    setError(null);
-    setErrorStatus(null);
-    setItem(null);
-
-    if (config.selectionMode === "custom" && config.customExerciseIds) {
-      const shuffled = fisherYatesShuffle([...config.customExerciseIds]);
-      queueRef.current = shuffled;
-      queueIndexRef.current = 0;
-      setQueueRemaining(shuffled.length);
-    } else {
-      queueRef.current = [];
-      queueIndexRef.current = 0;
-      setQueueRemaining(0);
-    }
+  const syncQueueState = useCallback((queueLength: number, index: number) => {
+    queueTotalRef.current = queueLength;
+    setQueueTotal(queueLength);
+    setQueueProgress(index);
+    setQueueRemaining(Math.max(0, queueLength - index));
   }, []);
 
   const resetSession = useCallback(() => {
     configRef.current = null;
     queueRef.current = [];
     queueIndexRef.current = 0;
+    queueTotalRef.current = 0;
+    initialQueueTotalRef.current = 0;
+    mistakeIdsRef.current = new Set();
+    skippedIneligibleRef.current = 0;
     setItem(null);
     setError(null);
     setErrorStatus(null);
     setSessionComplete(false);
     setSrsComplete(false);
+    setSessionLoading(false);
+    setSessionPhase("playing");
     setQueueRemaining(0);
-  }, []);
+    setQueueProgress(0);
+    setQueueTotal(0);
+    setInitialQueueTotal(0);
+    setCorrectCount(0);
+    setMistakeCount(0);
+    setSkippedIneligible(0);
+  }, [setSessionPhase]);
+
+  const completeQueue = useCallback(() => {
+    const config = configRef.current;
+    if (!config) return;
+
+    setItem(null);
+    setQueueRemaining(0);
+
+    if (config.selectionMode === "custom") {
+      setSessionComplete(true);
+      return;
+    }
+
+    if (config.selectionMode === "topic") {
+      if (sessionPhaseRef.current === "review") {
+        setSessionPhase("all-complete");
+      } else {
+        setMistakeCount(mistakeIdsRef.current.size);
+        setSessionPhase("main-complete");
+      }
+    }
+  }, [setSessionPhase]);
+
+  const startSession = useCallback(
+    async (
+      config: QuizSessionConfig,
+      options?: StartSessionOptions,
+    ): Promise<boolean> => {
+      configRef.current = config;
+      queueRef.current = [];
+      queueIndexRef.current = 0;
+      mistakeIdsRef.current = new Set();
+      skippedIneligibleRef.current = 0;
+      setSessionComplete(false);
+      setSrsComplete(false);
+      setSessionPhase("playing");
+      setError(null);
+      setErrorStatus(null);
+      setItem(null);
+      setCorrectCount(0);
+      setMistakeCount(0);
+      setSkippedIneligible(0);
+      syncQueueState(0, 0);
+
+      if (config.selectionMode === "custom" && config.customExerciseIds) {
+        const shuffled = fisherYatesShuffle([...config.customExerciseIds]);
+        queueRef.current = shuffled;
+        queueIndexRef.current = 0;
+        initialQueueTotalRef.current = shuffled.length;
+        setInitialQueueTotal(shuffled.length);
+        syncQueueState(shuffled.length, 0);
+        return true;
+      }
+
+      if (config.selectionMode === "topic") {
+        setSessionLoading(true);
+        try {
+          const result = await fetchTopicExerciseIds(
+            config.topic,
+            options?.exerciseFilter,
+          );
+          skippedIneligibleRef.current = result.skippedIneligible;
+          setSkippedIneligible(result.skippedIneligible);
+
+          if (result.ids.length === 0) {
+            const topicLabel =
+              config.topic === "all" ? "dit topic" : `topic "${config.topic}"`;
+            setError(
+              result.skippedIneligible > 0
+                ? `Geen geschikte oefeningen gevonden in ${topicLabel}.`
+                : `Geen oefeningen gevonden in ${topicLabel}.`,
+            );
+            setErrorStatus(404);
+            return false;
+          }
+
+          queueRef.current = result.ids;
+          queueIndexRef.current = 0;
+          initialQueueTotalRef.current = result.ids.length;
+          setInitialQueueTotal(result.ids.length);
+          syncQueueState(result.ids.length, 0);
+          return true;
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Onbekende fout");
+          setErrorStatus(500);
+          return false;
+        } finally {
+          setSessionLoading(false);
+        }
+      }
+
+      return true;
+    },
+    [syncQueueState, setSessionPhase],
+  );
 
   const fetchNext = useCallback(async () => {
     const config = configRef.current;
@@ -96,20 +220,18 @@ export function useQuizSession() {
     setErrorStatus(null);
 
     try {
-      if (config.selectionMode === "custom") {
+      if (usesQueue(config.selectionMode)) {
         const queue = queueRef.current;
         const index = queueIndexRef.current;
 
         if (index >= queue.length) {
-          setSessionComplete(true);
-          setItem(null);
-          setQueueRemaining(0);
+          completeQueue();
           return;
         }
 
         const exerciseId = queue[index];
         queueIndexRef.current = index + 1;
-        setQueueRemaining(queue.length - index - 1);
+        syncQueueState(queue.length, index + 1);
 
         const url = buildFetchUrl(config, exerciseId);
         const res = await fetch(url, { cache: "no-store" });
@@ -153,7 +275,7 @@ export function useQuizSession() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [completeQueue, syncQueueState]);
 
   /** Haalt oefeningen op met optionele validatie (bijv. sort-eligibility). */
   const fetchNextValidated = useCallback(
@@ -165,16 +287,16 @@ export function useQuizSession() {
       const config = configRef.current;
       if (!config) return;
 
+      if (usesQueue(config.selectionMode)) {
+        await fetchNext();
+        return;
+      }
+
       setLoading(true);
       setError(null);
       setErrorStatus(null);
 
       try {
-        if (config.selectionMode === "custom") {
-          await fetchNext();
-          return;
-        }
-
         let lastInvalid: ExerciseQuizItem | null = null;
 
         for (let attempt = 0; attempt < maxRetries; attempt += 1) {
@@ -224,6 +346,57 @@ export function useQuizSession() {
     [fetchNext],
   );
 
+  const recordAnswer = useCallback((exerciseId: string, isCorrect: boolean) => {
+    const config = configRef.current;
+    if (!config || config.selectionMode !== "topic") return;
+
+    if (isCorrect) {
+      setCorrectCount((prev) => prev + 1);
+      return;
+    }
+
+    if (sessionPhaseRef.current === "playing") {
+      mistakeIdsRef.current.add(exerciseId);
+      setMistakeCount(mistakeIdsRef.current.size);
+    }
+  }, []);
+
+  const recordSkip = useCallback(
+    (exerciseId: string) => {
+      const config = configRef.current;
+      if (!config || config.selectionMode !== "topic") return;
+
+      queueRef.current = [...queueRef.current, exerciseId];
+      syncQueueState(queueRef.current.length, queueIndexRef.current);
+    },
+    [syncQueueState],
+  );
+
+  const startMistakeReview = useCallback(() => {
+    const config = configRef.current;
+    if (!config || config.selectionMode !== "topic") return;
+
+    const mistakes = [...mistakeIdsRef.current];
+    if (mistakes.length === 0) {
+      setSessionPhase("all-complete");
+      return;
+    }
+
+    const shuffled = fisherYatesShuffle(mistakes);
+    queueRef.current = shuffled;
+    queueIndexRef.current = 0;
+    syncQueueState(shuffled.length, 0);
+    setSessionPhase("review");
+    setItem(null);
+    setError(null);
+    setErrorStatus(null);
+  }, [syncQueueState]);
+
+  const finishSession = useCallback(() => {
+    setSessionPhase("all-complete");
+    setItem(null);
+  }, []);
+
   const recordSrsReview = useCallback(
     async (exerciseId: string, isCorrect: boolean) => {
       const config = configRef.current;
@@ -254,18 +427,42 @@ export function useQuizSession() {
     }
   }, []);
 
+  const isTopicSessionActive =
+    configRef.current?.selectionMode === "topic" &&
+    (sessionPhase === "playing" || sessionPhase === "review");
+
+  const showPlayingUi =
+    !sessionComplete &&
+    !srsComplete &&
+    sessionPhase !== "main-complete" &&
+    sessionPhase !== "all-complete";
+
   return {
     item,
     loading,
+    sessionLoading,
     error,
     errorStatus,
     sessionComplete,
     srsComplete,
+    sessionPhase,
     queueRemaining,
+    queueProgress,
+    queueTotal,
+    initialQueueTotal,
+    correctCount,
+    mistakeCount,
+    skippedIneligible,
+    isTopicSessionActive,
+    showPlayingUi,
     startSession,
     resetSession,
     fetchNext,
     fetchNextValidated,
+    recordAnswer,
+    recordSkip,
+    startMistakeReview,
+    finishSession,
     recordSrsReview,
     suspendExercise,
     selectionMode: configRef.current?.selectionMode ?? null,

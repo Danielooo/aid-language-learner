@@ -4,6 +4,7 @@ export const QUIZ_SHORTCUTS = {
   gradeCorrect: "g",
   gradeIncorrect: "f",
   playAudio: "p",
+  reviewMistakes: "r",
 } as const;
 
 function letterToCode(letter: string): string {

@@ -29,6 +29,10 @@ import {
   QuizSelectionScreen,
   useQuizSelectionMode,
 } from "./quiz-selection-screen";
+import {
+  formatQueueProgressLabel,
+  SessionCompleteState,
+} from "./session-complete-state";
 import { SrsCompleteState } from "./srs-complete-state";
 import { SrsTopicPickerSection } from "./srs-topic-picker-section";
 import { TopicPickerGrid } from "./topic-picker-grid";
@@ -99,14 +103,27 @@ export function TypingQuizDeck() {
   const {
     item,
     loading,
+    sessionLoading,
     error,
     errorStatus,
     sessionComplete,
     srsComplete,
+    sessionPhase,
     queueRemaining,
+    queueProgress,
+    queueTotal,
+    initialQueueTotal,
+    correctCount,
+    mistakeCount,
+    skippedIneligible,
+    showPlayingUi,
     startSession,
     resetSession,
     fetchNext,
+    recordAnswer,
+    recordSkip,
+    startMistakeReview,
+    finishSession,
     recordSrsReview,
     suspendExercise,
   } = useQuizSession();
@@ -203,19 +220,19 @@ export function TypingQuizDeck() {
     }
   }
 
-  function beginSession(
+  async function beginSession(
     selMode: typeof selectionMode,
     topic: string,
     customIds?: string[],
   ) {
-    startSession({
+    resetExerciseState();
+    setScreen("playing");
+    const ok = await startSession({
       selectionMode: selMode,
       topic,
       customExerciseIds: customIds,
     });
-    resetExerciseState();
-    setScreen("playing");
-    void fetchNext();
+    if (ok) void fetchNext();
   }
 
   function handleSetupContinue() {
@@ -260,9 +277,12 @@ export function TypingQuizDeck() {
   }, []);
 
   const handleSkip = useCallback(() => {
-    if (loading) return;
+    if (loading || !item) return;
+    if (selectionMode === "topic") {
+      recordSkip(item.id);
+    }
     loadNext();
-  }, [loading, loadNext]);
+  }, [loading, item, selectionMode, recordSkip, loadNext]);
 
   const handleSubmit = useCallback(() => {
     if (!item || feedback) return;
@@ -277,6 +297,7 @@ export function TypingQuizDeck() {
       isCorrect: result.isCorrect,
       at: Date.now(),
     });
+    recordAnswer(item.id, result.isCorrect);
     if (selectionMode === "srs") {
       void recordSrsReview(item.id, result.isCorrect);
     }
@@ -287,6 +308,7 @@ export function TypingQuizDeck() {
     direction,
     answer,
     recordAttempt,
+    recordAnswer,
     selectionMode,
     recordSrsReview,
   ]);
@@ -308,6 +330,33 @@ export function TypingQuizDeck() {
     await suspendExercise(item.id);
     loadNext();
   }, [item, suspendExercise, loadNext]);
+
+  const handleStartMistakeReview = useCallback(() => {
+    startMistakeReview();
+    resetExerciseState();
+    void fetchNext();
+  }, [startMistakeReview, resetExerciseState, fetchNext]);
+
+  const handleFinishSession = useCallback(() => {
+    if (sessionPhase === "main-complete") {
+      if (mistakeCount === 0) {
+        handleChangeSetup();
+        return;
+      }
+      finishSession();
+      return;
+    }
+    handleChangeSetup();
+  }, [sessionPhase, mistakeCount, finishSession, handleChangeSetup]);
+
+  const progressLabel =
+    (selectionMode === "topic" || selectionMode === "custom") && queueTotal > 0
+      ? formatQueueProgressLabel(
+          queueProgress,
+          queueTotal,
+          sessionPhase === "review",
+        )
+      : null;
 
   function handleReset() {
     if (window.confirm("Score en geschiedenis echt wissen?")) reset();
@@ -505,7 +554,12 @@ export function TypingQuizDeck() {
               <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                 {directionDisplayLabel(direction)}
               </span>
-              {selectionMode === "custom" && queueRemaining > 0 && (
+              {progressLabel && (
+                <span className="text-xs text-muted-foreground">
+                  {progressLabel}
+                </span>
+              )}
+              {selectionMode === "custom" && queueRemaining > 0 && !progressLabel && (
                 <span className="text-xs text-muted-foreground">
                   Nog {queueRemaining} in wachtrij
                 </span>
@@ -546,21 +600,36 @@ export function TypingQuizDeck() {
                 </button>
               </div>
             )}
+            {(sessionPhase === "main-complete" ||
+              sessionPhase === "all-complete") && (
+              <SessionCompleteState
+                phase={sessionPhase}
+                correctCount={correctCount}
+                totalCount={initialQueueTotal}
+                mistakeCount={mistakeCount}
+                skippedIneligible={skippedIneligible}
+                onStartMistakeReview={handleStartMistakeReview}
+                onFinish={handleFinishSession}
+              />
+            )}
             {srsComplete && (
               <SrsCompleteState
                 topic={selectedTopic}
                 onBack={handleChangeSetup}
               />
             )}
-            {!sessionComplete && !srsComplete && loading && <TypingExerciseSkeleton />}
-            {!sessionComplete && !srsComplete && !loading && error && (
+            {showPlayingUi && sessionLoading && <TypingExerciseSkeleton />}
+            {showPlayingUi && !sessionLoading && loading && (
+              <TypingExerciseSkeleton />
+            )}
+            {showPlayingUi && !sessionLoading && !loading && error && (
               <ExerciseErrorState
                 message={error}
                 status={errorStatus}
                 onRetry={loadNext}
               />
             )}
-            {!sessionComplete && !srsComplete && !loading && !error && item && (
+            {showPlayingUi && !sessionLoading && !loading && !error && item && (
               <TypingExercise
                 item={item}
                 mode={mode}
@@ -577,7 +646,7 @@ export function TypingQuizDeck() {
             )}
           </section>
 
-          {!sessionComplete && !srsComplete && !loading && !error && item && (
+          {showPlayingUi && !sessionLoading && !loading && !error && item && (
             <ExerciseChat
               key={item.id}
               exercise={item}

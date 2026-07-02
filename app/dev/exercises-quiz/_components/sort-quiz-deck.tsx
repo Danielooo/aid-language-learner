@@ -32,12 +32,17 @@ import {
 } from "./quiz-selection-screen";
 import { SortExercise, SortExerciseSkeleton } from "./sort-exercise";
 import { SortSetupScreen } from "./sort-setup-screen";
+import {
+  formatQueueProgressLabel,
+  SessionCompleteState,
+} from "./session-complete-state";
 import { SrsCompleteState } from "./srs-complete-state";
 import { SrsTopicPickerSection } from "./srs-topic-picker-section";
 import { TopicPickerGrid } from "./topic-picker-grid";
 import { useQuizSession } from "../_hooks/use-quiz-session";
 
 import type { SortFeedback } from "./sort-exercise";
+import type { ExercisePickerItem } from "@/app/api/dev/exercise-generator-quiz/list/route";
 import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
 import type {
   TopicStat,
@@ -89,15 +94,28 @@ export function SortQuizDeck() {
   const {
     item,
     loading,
+    sessionLoading,
     error,
     errorStatus,
     sessionComplete,
     srsComplete,
+    sessionPhase,
     queueRemaining,
+    queueProgress,
+    queueTotal,
+    initialQueueTotal,
+    correctCount,
+    mistakeCount,
+    skippedIneligible,
+    showPlayingUi,
     startSession,
     resetSession,
     fetchNext,
     fetchNextValidated,
+    recordAnswer,
+    recordSkip,
+    startMistakeReview,
+    finishSession,
     recordSrsReview,
     suspendExercise,
   } = useQuizSession();
@@ -117,9 +135,28 @@ export function SortQuizDeck() {
     setLastAnswer("");
   }, []);
 
+  const sortExerciseFilter = useCallback(
+    (pickerItem: ExercisePickerItem) => {
+      const candidate: ExerciseQuizItem = {
+        id: pickerItem.id,
+        source_text: pickerItem.source_text,
+        target_text: pickerItem.target_text,
+        topic: pickerItem.topic,
+        created_at: "",
+        alternative_translations: [],
+        mp3_url: null,
+        tatoeba_author: null,
+        tatoeba_license: null,
+        tatoeba_attribution_url: null,
+      };
+      return isSortExerciseEligible(getSortExerciseData(candidate, direction));
+    },
+    [direction],
+  );
+
   const loadNext = useCallback(() => {
     resetExerciseState();
-    if (selectionMode === "custom") {
+    if (selectionMode === "custom" || selectionMode === "topic") {
       void fetchNext();
       return;
     }
@@ -201,19 +238,23 @@ export function SortQuizDeck() {
     }
   }
 
-  function beginSession(
+  async function beginSession(
     selMode: typeof selectionMode,
     topic: string,
     customIds?: string[],
   ) {
-    startSession({
-      selectionMode: selMode,
-      topic,
-      customExerciseIds: customIds,
-    });
     resetExerciseState();
     setScreen("playing");
-    if (selMode === "custom") {
+    const ok = await startSession(
+      {
+        selectionMode: selMode,
+        topic,
+        customExerciseIds: customIds,
+      },
+      selMode === "topic" ? { exerciseFilter: sortExerciseFilter } : undefined,
+    );
+    if (!ok) return;
+    if (selMode === "custom" || selMode === "topic") {
       void fetchNext();
     } else {
       void fetchNextValidated(
@@ -266,9 +307,12 @@ export function SortQuizDeck() {
   }, []);
 
   const handleSkip = useCallback(() => {
-    if (loading) return;
+    if (loading || !item) return;
+    if (selectionMode === "topic") {
+      recordSkip(item.id);
+    }
     loadNext();
-  }, [loading, loadNext]);
+  }, [loading, item, selectionMode, recordSkip, loadNext]);
 
   const handleSubmit = useCallback(
     (userAnswer: string, result: SortFeedback) => {
@@ -284,11 +328,12 @@ export function SortQuizDeck() {
         isCorrect: result.isCorrect,
         at: Date.now(),
       });
+      recordAnswer(item.id, result.isCorrect);
       if (selectionMode === "srs") {
         void recordSrsReview(item.id, result.isCorrect);
       }
     },
-    [item, recordAttempt, selectionMode, recordSrsReview],
+    [item, recordAttempt, recordAnswer, selectionMode, recordSrsReview],
   );
 
   const handleNext = useCallback(() => {
@@ -304,6 +349,33 @@ export function SortQuizDeck() {
     await suspendExercise(item.id);
     loadNext();
   }, [item, suspendExercise, loadNext]);
+
+  const handleStartMistakeReview = useCallback(() => {
+    startMistakeReview();
+    resetExerciseState();
+    void fetchNext();
+  }, [startMistakeReview, resetExerciseState, fetchNext]);
+
+  const handleFinishSession = useCallback(() => {
+    if (sessionPhase === "main-complete") {
+      if (mistakeCount === 0) {
+        handleChangeSetup();
+        return;
+      }
+      finishSession();
+      return;
+    }
+    handleChangeSetup();
+  }, [sessionPhase, mistakeCount, finishSession, handleChangeSetup]);
+
+  const progressLabel =
+    (selectionMode === "topic" || selectionMode === "custom") && queueTotal > 0
+      ? formatQueueProgressLabel(
+          queueProgress,
+          queueTotal,
+          sessionPhase === "review",
+        )
+      : null;
 
   function handleReset() {
     if (window.confirm("Score en geschiedenis echt wissen?")) reset();
@@ -485,7 +557,12 @@ export function SortQuizDeck() {
               <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                 {directionDisplayLabel(direction)}
               </span>
-              {selectionMode === "custom" && queueRemaining > 0 && (
+              {progressLabel && (
+                <span className="text-xs text-muted-foreground">
+                  {progressLabel}
+                </span>
+              )}
+              {selectionMode === "custom" && queueRemaining > 0 && !progressLabel && (
                 <span className="text-xs text-muted-foreground">
                   Nog {queueRemaining} in wachtrij
                 </span>
@@ -526,21 +603,34 @@ export function SortQuizDeck() {
                 </button>
               </div>
             )}
+            {(sessionPhase === "main-complete" ||
+              sessionPhase === "all-complete") && (
+              <SessionCompleteState
+                phase={sessionPhase}
+                correctCount={correctCount}
+                totalCount={initialQueueTotal}
+                mistakeCount={mistakeCount}
+                skippedIneligible={skippedIneligible}
+                onStartMistakeReview={handleStartMistakeReview}
+                onFinish={handleFinishSession}
+              />
+            )}
             {srsComplete && (
               <SrsCompleteState
                 topic={selectedTopic}
                 onBack={handleChangeSetup}
               />
             )}
-            {!sessionComplete && !srsComplete && loading && <SortExerciseSkeleton />}
-            {!sessionComplete && !srsComplete && !loading && error && (
+            {showPlayingUi && sessionLoading && <SortExerciseSkeleton />}
+            {showPlayingUi && !sessionLoading && loading && <SortExerciseSkeleton />}
+            {showPlayingUi && !sessionLoading && !loading && error && (
               <ExerciseErrorState
                 message={error}
                 status={errorStatus}
                 onRetry={loadNext}
               />
             )}
-            {!sessionComplete && !srsComplete && !loading && !error && item && (
+            {showPlayingUi && !sessionLoading && !loading && !error && item && (
               <SortExercise
                 key={item.id}
                 item={item}
@@ -553,7 +643,7 @@ export function SortQuizDeck() {
             )}
           </section>
 
-          {!sessionComplete && !srsComplete && !loading && !error && item && (
+          {showPlayingUi && !sessionLoading && !loading && !error && item && (
             <ExerciseChat
               key={item.id}
               exercise={item}

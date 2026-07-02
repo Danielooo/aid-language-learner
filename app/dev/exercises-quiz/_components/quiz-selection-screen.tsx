@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import {
   QUIZ_SELECTION_MODE_KEY,
   QUIZ_SELECTION_MODES,
-  isValidQuizSelectionMode,
+  normalizeQuizSelectionMode,
   selectionModeDescription,
   selectionModeLabel,
 } from "@/lib/quiz/selection-config";
@@ -56,7 +56,7 @@ export function QuizSelectionScreen({
           Hoe wil je oefenen?
         </h2>
         <p className="text-xs text-muted-foreground">
-          Kies willekeurige oefeningen, spaced repetition of een eigen selectie.
+          Oefen een heel topic, herhaal met spaced repetition of kies zelf oefeningen.
         </p>
       </div>
 
@@ -121,7 +121,7 @@ export function QuizSelectionScreen({
 }
 
 /** Leest opgeslagen selectiemodus uit localStorage (client-only). */
-export function useQuizSelectionMode(defaultMode: QuizSelectionMode = "random") {
+export function useQuizSelectionMode(defaultMode: QuizSelectionMode = "topic") {
   const [mode, setMode] = useState<QuizSelectionMode>(defaultMode);
   const [hydrated, setHydrated] = useState(false);
 
@@ -129,7 +129,8 @@ export function useQuizSelectionMode(defaultMode: QuizSelectionMode = "random") 
     if (typeof window !== "undefined") {
       try {
         const stored = window.localStorage.getItem(QUIZ_SELECTION_MODE_KEY);
-        if (stored && isValidQuizSelectionMode(stored)) setMode(stored);
+        const normalized = stored ? normalizeQuizSelectionMode(stored) : null;
+        if (normalized) setMode(normalized);
       } catch {
         // localStorage geblokkeerd.
       }

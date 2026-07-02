@@ -25,6 +25,10 @@ import {
   QuizSelectionScreen,
   useQuizSelectionMode,
 } from "./quiz-selection-screen";
+import {
+  formatQueueProgressLabel,
+  SessionCompleteState,
+} from "./session-complete-state";
 import { SrsCompleteState } from "./srs-complete-state";
 import { SrsTopicPickerSection } from "./srs-topic-picker-section";
 import { TopicPickerGrid } from "./topic-picker-grid";
@@ -75,14 +79,27 @@ export function FlashcardDeck() {
   const {
     item,
     loading,
+    sessionLoading,
     error,
     errorStatus,
     sessionComplete,
     srsComplete,
+    sessionPhase,
     queueRemaining,
+    queueProgress,
+    queueTotal,
+    initialQueueTotal,
+    correctCount,
+    mistakeCount,
+    skippedIneligible,
+    showPlayingUi,
     startSession,
     resetSession,
     fetchNext,
+    recordAnswer,
+    recordSkip,
+    startMistakeReview,
+    finishSession,
     recordSrsReview,
     suspendExercise,
   } = useQuizSession();
@@ -137,20 +154,20 @@ export function FlashcardDeck() {
     }
   }
 
-  function beginSession(
+  async function beginSession(
     mode: typeof selectionMode,
     topic: string,
     customIds?: string[],
   ) {
-    startSession({
+    setPhase("front");
+    setAnimating(false);
+    setScreen("playing");
+    const ok = await startSession({
       selectionMode: mode,
       topic,
       customExerciseIds: customIds,
     });
-    setPhase("front");
-    setAnimating(false);
-    setScreen("playing");
-    void fetchNext();
+    if (ok) void fetchNext();
   }
 
   function handleSelectionContinue() {
@@ -193,10 +210,13 @@ export function FlashcardDeck() {
   }, [animating, loading]);
 
   const handleSkip = useCallback(() => {
-    if (animating || loading) return;
+    if (animating || loading || !item) return;
+    if (selectionMode === "topic") {
+      recordSkip(item.id);
+    }
     setPhase("front");
     void fetchNext();
-  }, [animating, loading, fetchNext]);
+  }, [animating, loading, item, selectionMode, recordSkip, fetchNext]);
 
   const handleGrade = useCallback(
     async (isCorrect: boolean) => {
@@ -221,6 +241,8 @@ export function FlashcardDeck() {
         at: Date.now(),
       });
 
+      recordAnswer(item.id, isCorrect);
+
       if (selectionMode === "srs") {
         void recordSrsReview(item.id, isCorrect);
       }
@@ -235,6 +257,7 @@ export function FlashcardDeck() {
       animating,
       loading,
       recordAttempt,
+      recordAnswer,
       fetchNext,
       selectionMode,
       recordSrsReview,
@@ -250,6 +273,33 @@ export function FlashcardDeck() {
     setPhase("front");
     void fetchNext();
   }, [item, suspendExercise, fetchNext]);
+
+  const handleStartMistakeReview = useCallback(() => {
+    startMistakeReview();
+    setPhase("front");
+    void fetchNext();
+  }, [startMistakeReview, fetchNext]);
+
+  const handleFinishSession = useCallback(() => {
+    if (sessionPhase === "main-complete") {
+      if (mistakeCount === 0) {
+        handleChangeSetup();
+        return;
+      }
+      finishSession();
+      return;
+    }
+    handleChangeSetup();
+  }, [sessionPhase, mistakeCount, finishSession, handleChangeSetup]);
+
+  const progressLabel =
+    (selectionMode === "topic" || selectionMode === "custom") && queueTotal > 0
+      ? formatQueueProgressLabel(
+          queueProgress,
+          queueTotal,
+          sessionPhase === "review",
+        )
+      : null;
 
   function handleReset() {
     if (window.confirm("Score en geschiedenis echt wissen?")) reset();
@@ -421,7 +471,12 @@ export function FlashcardDeck() {
                   {topicDisplayLabel(selectedTopic)}
                 </span>
               )}
-              {selectionMode === "custom" && queueRemaining > 0 && (
+              {progressLabel && (
+                <span className="text-xs text-muted-foreground">
+                  {progressLabel}
+                </span>
+              )}
+              {selectionMode === "custom" && queueRemaining > 0 && !progressLabel && (
                 <span className="text-xs text-muted-foreground">
                   Nog {queueRemaining} in wachtrij
                 </span>
@@ -462,21 +517,34 @@ export function FlashcardDeck() {
                 </button>
               </div>
             )}
+            {(sessionPhase === "main-complete" ||
+              sessionPhase === "all-complete") && (
+              <SessionCompleteState
+                phase={sessionPhase}
+                correctCount={correctCount}
+                totalCount={initialQueueTotal}
+                mistakeCount={mistakeCount}
+                skippedIneligible={skippedIneligible}
+                onStartMistakeReview={handleStartMistakeReview}
+                onFinish={handleFinishSession}
+              />
+            )}
             {srsComplete && (
               <SrsCompleteState
                 topic={selectedTopic}
                 onBack={handleChangeSetup}
               />
             )}
-            {!sessionComplete && !srsComplete && loading && <FlashcardSkeleton />}
-            {!sessionComplete && !srsComplete && !loading && error && (
+            {showPlayingUi && sessionLoading && <FlashcardSkeleton />}
+            {showPlayingUi && !sessionLoading && loading && <FlashcardSkeleton />}
+            {showPlayingUi && !sessionLoading && !loading && error && (
               <ExerciseErrorState
                 message={error}
                 status={errorStatus}
                 onRetry={() => void fetchNext()}
               />
             )}
-            {!sessionComplete && !srsComplete && !loading && !error && item && (
+            {showPlayingUi && !sessionLoading && !loading && !error && item && (
               <div ref={cardContainerRef}>
                 <Flashcard
                   item={item}
