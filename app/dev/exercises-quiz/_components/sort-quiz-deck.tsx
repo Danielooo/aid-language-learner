@@ -15,6 +15,7 @@ import {
   QUIZ_SHORTCUTS,
 } from "@/lib/keyboard/quiz-shortcuts";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
+import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
 import {
   MAX_SORT_FETCH_RETRIES,
   MIN_SORT_WORDS,
@@ -26,6 +27,7 @@ import {
 import { isValidTranslationDirection } from "@/lib/quiz/typing-config";
 
 import { ExercisePicker } from "./exercise-picker";
+import { ActiveTopicsEmptyBanner } from "./active-topics-empty-banner";
 import {
   QuizSelectionScreen,
   useQuizSelectionMode,
@@ -40,6 +42,7 @@ import { SrsCompleteState } from "./srs-complete-state";
 import { SrsTopicPickerSection } from "./srs-topic-picker-section";
 import { TopicPickerGrid } from "./topic-picker-grid";
 import { useQuizSession } from "../_hooks/use-quiz-session";
+import { useItemResponseTime } from "../_hooks/use-item-response-time";
 
 import type { SortFeedback } from "./sort-exercise";
 import type { ExercisePickerItem } from "@/app/api/dev/exercise-generator-quiz/list/route";
@@ -121,6 +124,7 @@ export function SortQuizDeck() {
   } = useQuizSession();
 
   const { score, attempts, recordAttempt, reset, hydrated } = useQuizStorage();
+  const getResponseTimeMs = useItemResponseTime(item?.id);
 
   const isSortEligible = useCallback(
     (candidate: ExerciseQuizItem) => {
@@ -319,21 +323,28 @@ export function SortQuizDeck() {
       if (!item) return;
       setFeedback(result);
       setLastAnswer(userAnswer);
-      recordAttempt({
-        exerciseId: item.id,
-        source_text: item.source_text,
-        target_text: item.target_text,
-        topic: item.topic,
-        userAnswer,
-        isCorrect: result.isCorrect,
-        at: Date.now(),
-      });
+      recordAttempt(
+        buildAttemptPayload({
+          exerciseId: item.id,
+          source_text: item.source_text,
+          target_text: item.target_text,
+          topic: item.topic,
+          userAnswer,
+          isCorrect: result.isCorrect,
+          at: Date.now(),
+          selectionMode,
+          practiceType: "sort",
+          direction,
+          isMistakeReview: sessionPhase === "review",
+          responseTimeMs: getResponseTimeMs(),
+        }),
+      );
       recordAnswer(item.id, result.isCorrect);
       if (selectionMode === "srs") {
         void recordSrsReview(item.id, result.isCorrect);
       }
     },
-    [item, recordAttempt, recordAnswer, selectionMode, recordSrsReview],
+    [item, recordAttempt, recordAnswer, selectionMode, sessionPhase, direction, getResponseTimeMs, recordSrsReview],
   );
 
   const handleNext = useCallback(() => {
@@ -498,13 +509,19 @@ export function SortQuizDeck() {
       )}
 
       {screen === "topic-picker" && selectionMode === "srs" && (
-        <SrsTopicPickerSection
+        <div className="space-y-4">
+          <ActiveTopicsEmptyBanner
+            topicStats={topicStats}
+            loading={!topicHydrated || topicsLoading}
+          />
+          <SrsTopicPickerSection
           topicStats={topicStats}
           topicsLoading={!topicHydrated || topicsLoading}
           selectedTopic={selectedTopic}
           onSelect={handleTopicSelect}
           onBack={() => setScreen("selection")}
         />
+        </div>
       )}
 
       {screen === "topic-picker" && selectionMode !== "srs" && (
@@ -517,6 +534,10 @@ export function SortQuizDeck() {
               {selectionModeLabel(selectionMode)} — selecteer een categorie.
             </p>
           </div>
+          <ActiveTopicsEmptyBanner
+            topicStats={topicStats}
+            loading={!topicHydrated || topicsLoading}
+          />
           <TopicPickerGrid
             stats={topicStats}
             loading={!topicHydrated || topicsLoading}
@@ -527,7 +548,12 @@ export function SortQuizDeck() {
       )}
 
       {screen === "exercise-picker" && (
-        <ExercisePicker
+        <div className="space-y-4">
+          <ActiveTopicsEmptyBanner
+            topicStats={topicStats}
+            loading={!topicHydrated || topicsLoading}
+          />
+          <ExercisePicker
           topicStats={topicStats}
           topicsLoading={!topicHydrated || topicsLoading}
           selectedTopic={selectedTopic}
@@ -540,6 +566,7 @@ export function SortQuizDeck() {
           onClear={() => setSelectedExerciseIds(new Set())}
           onStart={handleCustomStart}
         />
+        </div>
       )}
 
       {screen === "playing" && (

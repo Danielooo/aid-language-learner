@@ -15,6 +15,7 @@ import {
   QUIZ_SHORTCUTS,
 } from "@/lib/keyboard/quiz-shortcuts";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
+import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
 import {
   TYPING_DIRECTION_KEY,
   TYPING_MODE_KEY,
@@ -24,6 +25,7 @@ import {
 } from "@/lib/quiz/typing-config";
 
 import { ExercisePicker } from "./exercise-picker";
+import { ActiveTopicsEmptyBanner } from "./active-topics-empty-banner";
 import { QuizSetupScreen } from "./quiz-setup-screen";
 import {
   QuizSelectionScreen,
@@ -42,6 +44,7 @@ import {
   evaluateTypingAnswer,
 } from "./typing-exercise";
 import { useQuizSession } from "../_hooks/use-quiz-session";
+import { useItemResponseTime } from "../_hooks/use-item-response-time";
 
 import type { TypingFeedback } from "./typing-exercise";
 import type {
@@ -129,6 +132,7 @@ export function TypingQuizDeck() {
   } = useQuizSession();
 
   const { score, attempts, recordAttempt, reset, hydrated } = useQuizStorage();
+  const getResponseTimeMs = useItemResponseTime(item?.id);
 
   const resetExerciseState = useCallback(() => {
     setFeedback(null);
@@ -288,15 +292,23 @@ export function TypingQuizDeck() {
     if (!item || feedback) return;
     const result = evaluateTypingAnswer(mode, direction, item, answer);
     setFeedback(result);
-    recordAttempt({
-      exerciseId: item.id,
-      source_text: item.source_text,
-      target_text: item.target_text,
-      topic: item.topic,
-      userAnswer: answer,
-      isCorrect: result.isCorrect,
-      at: Date.now(),
-    });
+    recordAttempt(
+      buildAttemptPayload({
+        exerciseId: item.id,
+        source_text: item.source_text,
+        target_text: item.target_text,
+        topic: item.topic,
+        userAnswer: answer,
+        isCorrect: result.isCorrect,
+        at: Date.now(),
+        selectionMode,
+        practiceType: "typing",
+        direction,
+        typingMode: mode,
+        isMistakeReview: sessionPhase === "review",
+        responseTimeMs: getResponseTimeMs(),
+      }),
+    );
     recordAnswer(item.id, result.isCorrect);
     if (selectionMode === "srs") {
       void recordSrsReview(item.id, result.isCorrect);
@@ -310,6 +322,8 @@ export function TypingQuizDeck() {
     recordAttempt,
     recordAnswer,
     selectionMode,
+    sessionPhase,
+    getResponseTimeMs,
     recordSrsReview,
   ]);
 
@@ -492,13 +506,19 @@ export function TypingQuizDeck() {
       )}
 
       {screen === "topic-picker" && selectionMode === "srs" && (
-        <SrsTopicPickerSection
+        <div className="space-y-4">
+          <ActiveTopicsEmptyBanner
+            topicStats={topicStats}
+            loading={!topicHydrated || topicsLoading}
+          />
+          <SrsTopicPickerSection
           topicStats={topicStats}
           topicsLoading={!topicHydrated || topicsLoading}
           selectedTopic={selectedTopic}
           onSelect={handleTopicSelect}
           onBack={() => setScreen("selection")}
         />
+        </div>
       )}
 
       {screen === "topic-picker" && selectionMode !== "srs" && (
@@ -511,6 +531,10 @@ export function TypingQuizDeck() {
               {selectionModeLabel(selectionMode)} — selecteer een categorie.
             </p>
           </div>
+          <ActiveTopicsEmptyBanner
+            topicStats={topicStats}
+            loading={!topicHydrated || topicsLoading}
+          />
           <TopicPickerGrid
             stats={topicStats}
             loading={!topicHydrated || topicsLoading}
@@ -521,7 +545,12 @@ export function TypingQuizDeck() {
       )}
 
       {screen === "exercise-picker" && (
-        <ExercisePicker
+        <div className="space-y-4">
+          <ActiveTopicsEmptyBanner
+            topicStats={topicStats}
+            loading={!topicHydrated || topicsLoading}
+          />
+          <ExercisePicker
           topicStats={topicStats}
           topicsLoading={!topicHydrated || topicsLoading}
           selectedTopic={selectedTopic}
@@ -534,6 +563,7 @@ export function TypingQuizDeck() {
           onClear={() => setSelectedExerciseIds(new Set())}
           onStart={handleCustomStart}
         />
+        </div>
       )}
 
       {screen === "playing" && (

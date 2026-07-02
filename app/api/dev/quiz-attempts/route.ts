@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
+import { PRACTICE_TYPES } from "@/lib/quiz/record-quiz-attempt";
+import { QUIZ_SELECTION_MODES } from "@/lib/quiz/selection-config";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -10,10 +12,6 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 // `user_id = auth.uid()`. We checken zelf ook expliciet op user
 // zodat we 401 kunnen geven (RLS zou anders een lege array
 // teruggeven, wat moeilijker te debuggen is).
-//
-// Vorm van de GET-payload is bewust identiek aan het bestaande
-// `QuizAttempt`-type uit `use-quiz-storage.ts`, zodat de pure helpers
-// in `app/dev/dashboard/_components/stats.ts` ongewijzigd blijven.
 
 export const dynamic = "force-dynamic";
 
@@ -25,20 +23,20 @@ export type QuizAttemptDto = {
   userAnswer: string;
   isCorrect: boolean;
   at: number;
+  selectionMode?: string | null;
+  practiceType?: string | null;
+  direction?: string | null;
+  typingMode?: string | null;
+  isMistakeReview?: boolean;
+  responseTimeMs?: number | null;
+  isScheduledReview?: boolean;
 };
 
-// Default-cap op 500: ruim voldoende voor het dashboard (KPI + 7-daagse
-// trend + zwakke-oefeningen-top-5) maar verkleint de payload als de
-// tabel ooit hard groeit. Quiz-historie toont alle attempts, maar de
-// huidige UI lijst alleen de laatste 50 zichtbaar — geen overhead.
 const DEFAULT_LIMIT = 500;
 const MAX_LIMIT = 5000;
 
-// PostgREST embed via FK. Bij een eenduidige FK (exercise_id →
-// exercises.id) returnt het de relatie als single object, niet als
-// array.
 const SELECT_WITH_EXERCISE =
-  "id, exercise_id, user_answer, is_correct, created_at, exercises ( source_text, target_text, topic )";
+  "id, exercise_id, user_answer, is_correct, created_at, selection_mode, practice_type, direction, typing_mode, is_mistake_review, response_time_ms, is_scheduled_review, exercises ( source_text, target_text, topic )";
 
 type AttemptRowWithExercise = {
   id: string;
@@ -46,6 +44,13 @@ type AttemptRowWithExercise = {
   user_answer: string;
   is_correct: boolean;
   created_at: string;
+  selection_mode: string | null;
+  practice_type: string | null;
+  direction: string | null;
+  typing_mode: string | null;
+  is_mistake_review: boolean;
+  response_time_ms: number | null;
+  is_scheduled_review: boolean;
   exercises: {
     source_text: string;
     target_text: string;
@@ -53,10 +58,21 @@ type AttemptRowWithExercise = {
   } | null;
 };
 
+type ProgressSnapshot = {
+  interval_days: number;
+  repetition_count: number;
+};
+
 const postSchema = z.object({
   exerciseId: z.uuid(),
   userAnswer: z.string(),
   isCorrect: z.boolean(),
+  selectionMode: z.enum(QUIZ_SELECTION_MODES).optional().nullable(),
+  practiceType: z.enum(PRACTICE_TYPES).optional().nullable(),
+  direction: z.enum(["es-to-nl", "nl-to-es"]).optional().nullable(),
+  typingMode: z.enum(["full", "blank"]).optional().nullable(),
+  isMistakeReview: z.boolean().optional(),
+  responseTimeMs: z.number().int().nonnegative().optional().nullable(),
 });
 
 function toDto(row: AttemptRowWithExercise): QuizAttemptDto {
@@ -68,6 +84,32 @@ function toDto(row: AttemptRowWithExercise): QuizAttemptDto {
     userAnswer: row.user_answer,
     isCorrect: row.is_correct,
     at: new Date(row.created_at).getTime(),
+    selectionMode: row.selection_mode,
+    practiceType: row.practice_type,
+    direction: row.direction,
+    typingMode: row.typing_mode,
+    isMistakeReview: row.is_mistake_review,
+    responseTimeMs: row.response_time_ms,
+    isScheduledReview: row.is_scheduled_review,
+  };
+}
+
+async function loadSrsSnapshot(
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  userId: string,
+  exerciseId: string,
+): Promise<ProgressSnapshot | null> {
+  const { data } = await supabase
+    .from("exercise_progress")
+    .select("interval_days, repetition_count")
+    .eq("user_id", userId)
+    .eq("exercise_id", exerciseId)
+    .maybeSingle();
+
+  if (!data) return null;
+  return {
+    interval_days: data.interval_days,
+    repetition_count: data.repetition_count,
   };
 }
 
@@ -88,12 +130,9 @@ export async function GET(req: Request) {
     if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH) {
       return Response.json({ error: "Niet ingelogd." }, { status: 401 });
     }
-    // TIJDELIJK: zonder user_id geen quiz_attempts in Supabase (FK + NOT NULL).
     return Response.json({ attempts: [] });
   }
 
-  // RLS filtert al op user_id = auth.uid(); de extra .eq is verbose maar
-  // maakt de query expliciet en future-proof als RLS ooit zou wijzigen.
   const { data, error } = await supabase
     .from("quiz_attempts")
     .select(SELECT_WITH_EXERCISE)
@@ -137,6 +176,20 @@ export async function POST(req: Request) {
   const {
     data: { user },
   } = await serverSupabase.auth.getUser();
+  const {
+    exerciseId,
+    userAnswer,
+    isCorrect,
+    selectionMode,
+    practiceType,
+    direction,
+    typingMode,
+    isMistakeReview,
+    responseTimeMs,
+  } = parseResult.data;
+
+  const isScheduledReview = selectionMode === "srs";
+
   if (!user) {
     if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH) {
       return Response.json(
@@ -145,8 +198,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // TIJDELIJK: echo attempt zodat de quiz-UI werkt; geen persist zonder user_id.
-    const { exerciseId, userAnswer, isCorrect } = parseResult.data;
     const { data: exercise } = await getSupabaseAdmin()
       .from("exercises")
       .select("source_text, target_text, topic")
@@ -163,20 +214,42 @@ export async function POST(req: Request) {
         userAnswer,
         isCorrect,
         at: Date.now(),
+        selectionMode: selectionMode ?? null,
+        practiceType: practiceType ?? null,
+        direction: direction ?? null,
+        typingMode: typingMode ?? null,
+        isMistakeReview: isMistakeReview ?? false,
+        responseTimeMs: responseTimeMs ?? null,
+        isScheduledReview,
       } satisfies QuizAttemptDto,
     });
   }
 
-  const supabase = serverSupabase;
-  const { exerciseId, userAnswer, isCorrect } = parseResult.data;
+  let intervalDaysBefore: number | null = null;
+  let repetitionCountBefore: number | null = null;
 
-  const { data, error } = await supabase
+  if (isScheduledReview) {
+    const snapshot = await loadSrsSnapshot(serverSupabase, user.id, exerciseId);
+    intervalDaysBefore = snapshot?.interval_days ?? 0;
+    repetitionCountBefore = snapshot?.repetition_count ?? 0;
+  }
+
+  const { data, error } = await serverSupabase
     .from("quiz_attempts")
     .insert({
       exercise_id: exerciseId,
       user_answer: userAnswer,
       is_correct: isCorrect,
       user_id: user.id,
+      selection_mode: selectionMode ?? null,
+      practice_type: practiceType ?? null,
+      direction: direction ?? null,
+      typing_mode: typingMode ?? null,
+      is_mistake_review: isMistakeReview ?? false,
+      response_time_ms: responseTimeMs ?? null,
+      interval_days_before: intervalDaysBefore,
+      repetition_count_before: repetitionCountBefore,
+      is_scheduled_review: isScheduledReview,
     })
     .select(SELECT_WITH_EXERCISE)
     .single();
@@ -204,12 +277,9 @@ export async function DELETE() {
         { status: 401 },
       );
     }
-    // TIJDELIJK: niets te wissen zonder sessie.
     return Response.json({ ok: true, deleted: 0 });
   }
 
-  // Filter expliciet op user_id zodat we — ook als RLS faalt — alleen
-  // eigen rijen wissen. PostgREST eist een filter op DELETE.
   const { error, count } = await supabase
     .from("quiz_attempts")
     .delete({ count: "exact" })

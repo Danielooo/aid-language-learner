@@ -15,21 +15,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 //   * DELETE bij `reset`, ook optimistisch
 //   * `score` is een afgeleide van `attempts` — geen aparte teller meer
 
+import type { QuizAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
+import { toQuizAttemptPostBody } from "@/lib/quiz/record-quiz-attempt";
+
 export type QuizScore = {
   correct: number;
   incorrect: number;
   total: number;
 };
 
-export type QuizAttempt = {
-  exerciseId: string;
-  source_text: string;
-  target_text: string;
-  topic: string | null;
-  userAnswer: string;
-  isCorrect: boolean;
-  at: number;
-};
+export type QuizAttempt = QuizAttemptPayload;
 
 type GetResponse = {
   attempts: QuizAttempt[];
@@ -86,11 +81,7 @@ export function useQuizStorage() {
         const res = await fetch("/api/dev/quiz-attempts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            exerciseId: attempt.exerciseId,
-            userAnswer: attempt.userAnswer,
-            isCorrect: attempt.isCorrect,
-          }),
+          body: JSON.stringify(toQuizAttemptPostBody(attempt)),
         });
         if (!res.ok) {
           throw new Error(`Status ${res.status}`);
