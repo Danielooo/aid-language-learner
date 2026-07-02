@@ -9,6 +9,16 @@ De applicatie helpt gebruikers op een praktische manier om Spaans te leren door 
 Bestaande apps zoals Babbel of Duolingo bieden slechts de oefeningen en categorieën die zij zelf hebben bedacht. Als je bijvoorbeeld iets specifieks gaat doen in het buitenland — zoals een medische afspraak of werkgerelateerde communicatie — kun je niet je eigen categorie aanmaken of je oefeneningen afstemmen op jouw situatie.  
 Dat is de toegevoegde waarde van deze applicatie.
 
+## Gesprek met Tim:
+
+Kernfunctionaliteiten uitbouwen (Must haves)
+
+- taboeba api wel gebruiken
+- audio files gebruiken / ophalen. 1 knop als admin
+- metadata ervan verrijken
+- doorzoekbaar maken, toolcalling op los kunnen laten
+
+
 #### **Belangrijkste functionaliteiten**
 
 1. **Registreren en inloggen**
@@ -50,19 +60,25 @@ Dat is de toegevoegde waarde van deze applicatie.
 - ~~Als er audio bij zit dan een icon die de audio afspeelt~~
 
 **Oefeningen herhalen met eerder zwak resultaat**
-  - ~~Spaced repetition (regels voor goede en foute antwoorden)~~
+- ~~Spaced repetition (regels voor goede en foute antwoorden)~~
 
 **Voortgangsdashboard**
-  Een persoonlijk dashboard laat zien hoeveel woorden en zinnen de gebruiker heeft geleerd, welke thema’s goed gaan en waar nog verbetering mogelijk is. Dit is gebaseerd op opgeslagen scores en oefenresultaten in Supabase.
+- Dashboard met metrics en visuals
 
 
-**Global**
-- loading state maken
-- skeleton loader maken
+
+===============================================================================
+
+
+
 
 
 **Aan het eind**
 - Auth implementeren (User en Admin)
+
+**Global**
+- loading state maken
+- skeleton loader maken
 
 
 ## Nice to haves
@@ -73,16 +89,5 @@ Dat is de toegevoegde waarde van deze applicatie.
  (Kan ook EU: Zitadel of LogTo)
 - Eigen api key toevoegen
 
-## Settings
 
-- Naar sandbox
-
-## Gesprek met Tim:
-
-Kernfunctionaliteiten uitbouwen (Must haves)
-
-- taboeba api wel gebruiken
-- audio files gebruiken / ophalen. 1 knop als admin
-- metadata ervan verrijken
-- doorzoekbaar maken, toolcalling op los kunnen laten
 
