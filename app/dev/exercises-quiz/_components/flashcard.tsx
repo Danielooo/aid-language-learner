@@ -4,6 +4,11 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useEffect, useRef } from "react";
 
+import {
+  QUIZ_SHORTCUTS,
+  formatQuizShortcut,
+} from "@/lib/keyboard/quiz-shortcuts";
+
 import { FlashcardActionButton } from "./flashcard-action-button";
 
 import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
@@ -187,7 +192,7 @@ export function Flashcard({
             />
             <FlashcardActionButton
               label="Overslaan"
-              shortcut="S"
+              shortcut={formatQuizShortcut(QUIZ_SHORTCUTS.skip)}
               onClick={onSkip}
               disabled={animating}
             />
@@ -197,14 +202,14 @@ export function Flashcard({
           <>
             <FlashcardActionButton
               label="Goed"
-              shortcut="G"
+              shortcut={formatQuizShortcut(QUIZ_SHORTCUTS.gradeCorrect)}
               onClick={onGradeCorrect}
               disabled={animating}
               variant="success"
             />
             <FlashcardActionButton
               label="Fout"
-              shortcut="F"
+              shortcut={formatQuizShortcut(QUIZ_SHORTCUTS.gradeIncorrect)}
               onClick={onGradeIncorrect}
               disabled={animating}
               variant="danger"
@@ -217,7 +222,7 @@ export function Flashcard({
             />
             <FlashcardActionButton
               label="Overslaan"
-              shortcut="S"
+              shortcut={formatQuizShortcut(QUIZ_SHORTCUTS.skip)}
               onClick={onSkip}
               disabled={animating}
             />

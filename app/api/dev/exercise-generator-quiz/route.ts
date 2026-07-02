@@ -1,3 +1,4 @@
+import { getPublicAudioUrl } from "@/app/api/dev/exercises-admin/types";
 import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -19,6 +20,8 @@ export type ExerciseQuizItem = {
   target_text: string;
   topic: string | null;
   created_at: string;
+  alternative_translations: string[];
+  mp3_url: string | null;
 };
 
 export async function GET(req: Request) {
@@ -74,7 +77,9 @@ export async function GET(req: Request) {
 
   let rowQuery = supabase
     .from("exercises")
-    .select("id, source_text, target_text, topic, created_at")
+    .select(
+      "id, source_text, target_text, topic, created_at, alternative_translations, audio_path",
+    )
     .range(offset, offset);
   if (seedOnly) rowQuery = rowQuery.is("owner_id", null);
 
@@ -94,12 +99,19 @@ export async function GET(req: Request) {
     );
   }
 
+  const mp3Url =
+    row.audio_path != null && row.audio_path.length > 0
+      ? getPublicAudioUrl(supabase, row.audio_path)
+      : null;
+
   const payload: ExerciseQuizItem = {
     id: row.id,
     source_text: row.source_text,
     target_text: row.target_text,
     topic: row.topic,
     created_at: row.created_at,
+    alternative_translations: row.alternative_translations ?? [],
+    mp3_url: mp3Url,
   };
 
   return Response.json(payload);

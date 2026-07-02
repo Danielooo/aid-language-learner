@@ -14,12 +14,14 @@ const QUIZ_MODES = [
     title: "Typen",
     description:
       "Typ de vertaling van een oefening — volledig of met ontbrekend woord.",
-    comingSoon: true,
+    href: "/dev/exercises-quiz/typen",
+    comingSoon: false,
   },
   {
     title: "Sorteren",
     description: "Zet woorden of letters in de juiste volgorde.",
-    comingSoon: true,
+    href: "/dev/exercises-quiz/sorteren",
+    comingSoon: false,
   },
 ] as const;
 

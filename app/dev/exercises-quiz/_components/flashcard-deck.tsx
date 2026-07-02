@@ -13,6 +13,10 @@ import { ExerciseErrorState } from "@/app/dev/_components/quiz/exercise-error-st
 import { HistoryList } from "@/app/dev/_components/quiz/history-list";
 import { ScoreBar } from "@/app/dev/_components/quiz/score-bar";
 import { useQuizStorage } from "@/app/dev/exercise-generator-quiz/_components/use-quiz-storage";
+import {
+  isQuizShortcut,
+  QUIZ_SHORTCUTS,
+} from "@/lib/keyboard/quiz-shortcuts";
 
 import { animateCardExit, Flashcard } from "./flashcard";
 import { TopicPickerGrid } from "./topic-picker-grid";
@@ -198,15 +202,12 @@ export function FlashcardDeck() {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target;
-      if (
+      const inInput =
         target instanceof HTMLElement &&
         (target.tagName === "INPUT" ||
           target.tagName === "TEXTAREA" ||
           target.tagName === "SELECT" ||
-          target.isContentEditable)
-      ) {
-        return;
-      }
+          target.isContentEditable);
 
       if (e.key === "Escape") {
         e.preventDefault();
@@ -218,37 +219,42 @@ export function FlashcardDeck() {
         return;
       }
 
+      if (screen === "playing" && !loading && !animating && item) {
+        if (isQuizShortcut(e, QUIZ_SHORTCUTS.skip)) {
+          e.preventDefault();
+          handleSkip();
+          return;
+        }
+
+        if (phase === "back") {
+          if (isQuizShortcut(e, QUIZ_SHORTCUTS.gradeCorrect)) {
+            e.preventDefault();
+            void handleGrade(true);
+            return;
+          }
+
+          if (isQuizShortcut(e, QUIZ_SHORTCUTS.gradeIncorrect)) {
+            e.preventDefault();
+            void handleGrade(false);
+            return;
+          }
+        }
+      }
+
+      if (inInput) return;
+
       if (screen !== "playing" || loading || animating) return;
       if (!item) return;
 
       if (e.key === " " || e.key === "Enter") {
         e.preventDefault();
         handleFlip();
-        return;
-      }
-
-      if (e.key === "s" || e.key === "S") {
-        e.preventDefault();
-        handleSkip();
-        return;
-      }
-
-      if (phase !== "back") return;
-
-      if (e.key === "g" || e.key === "G") {
-        e.preventDefault();
-        void handleGrade(true);
-        return;
-      }
-
-      if (e.key === "f" || e.key === "F") {
-        e.preventDefault();
-        void handleGrade(false);
       }
     }
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", onKeyDown, { capture: true });
   }, [
     screen,
     loading,

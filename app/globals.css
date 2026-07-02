@@ -21,6 +21,10 @@
   --color-ring: var(--ring);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-chat-bubble-assistant: var(--chat-bubble-assistant);
+  --color-chat-bubble-assistant-foreground: var(--chat-bubble-assistant-foreground);
+  --color-chat-bubble-user: var(--chat-bubble-user);
+  --color-chat-thread-bg: var(--chat-thread-bg);
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
@@ -54,6 +58,11 @@
 
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
+
+  --chat-bubble-assistant: oklch(0.94 0 0);
+  --chat-bubble-assistant-foreground: var(--foreground);
+  --chat-bubble-user: var(--accent);
+  --chat-thread-bg: oklch(0.97 0 0);
 }
 
 .dark {
@@ -78,6 +87,11 @@
 
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
+
+  --chat-bubble-assistant: oklch(0.36 0 0);
+  --chat-bubble-assistant-foreground: var(--foreground);
+  --chat-bubble-user: var(--accent);
+  --chat-thread-bg: oklch(0.22 0 0);
 }
 
 @layer base {
@@ -104,4 +118,78 @@
       scroll-behavior: auto !important;
     }
   }
+}
+
+/*
+ * WhatsApp/iMessage-stijl bubble-staart via dubbele pseudo-elementen.
+ * Techniek: https://samuelkraft.com/blog/ios-chat-bubbles-css
+ * :before = gekleurde curve; :after = uitsparing in thread-kleur.
+ */
+.chat-bubble-sent::before,
+.chat-bubble-sent::after,
+.chat-bubble-received::before,
+.chat-bubble-received::after {
+  position: absolute;
+  bottom: 0;
+  height: 25px;
+  content: "";
+}
+
+.chat-bubble-sent::before,
+.chat-bubble-received::before {
+  width: 20px;
+}
+
+.chat-bubble-sent::after,
+.chat-bubble-received::after {
+  width: 26px;
+  background-color: var(--chat-thread-bg);
+}
+
+.chat-bubble-sent::before {
+  right: -7px;
+  background-color: var(--chat-bubble-user);
+  border-bottom-left-radius: 16px 14px;
+}
+
+.chat-bubble-sent::after {
+  right: -26px;
+  border-bottom-left-radius: 10px;
+}
+
+.chat-bubble-received::before {
+  left: -7px;
+  background-color: var(--chat-bubble-assistant);
+  border-bottom-right-radius: 16px 14px;
+}
+
+.chat-bubble-received::after {
+  left: -26px;
+  border-bottom-right-radius: 10px;
+}
+
+@keyframes chat-typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+.chat-typing-dot {
+  animation: chat-typing-bounce 1.2s ease-in-out infinite;
+}
+
+.animation-delay-150 {
+  animation-delay: 0.15s;
+}
+
+.animation-delay-300 {
+  animation-delay: 0.3s;
 }

@@ -40,11 +40,11 @@ Dat is de toegevoegde waarde van deze applicatie
 
 **Zelf oefeningen toevoegen**
 
-- Layout tekst-only oefeningen vergelijkbaar met AudioResultTable
-- Zelf kunnen aanpassen
+- ~~Layout tekst-only oefeningen vergelijkbaar met AudioResultTable~~
+- ~~Zelf kunnen aanpassen~~
 
 **Taaloefeningen kunnen maken**
-- Flashcards
+- Flashcards << HIERMEE VERDER >>
 - Typen
 - Als er audio bij zit dan een icon die de audio afspeelt
 
