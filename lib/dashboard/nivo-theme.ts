@@ -43,17 +43,5 @@ export const dashboardNivoTheme = {
 };
 
 export const chartColors = {
-  good: "#10b981",
-  attention: "#f59e0b",
-  weak: "#ef4444",
   progress: "#3b82f6",
-  secondary: "#8b5cf6",
-  neutral: "#94a3b8",
 };
-
-export function retentionBarColor(pct: number | null): string {
-  if (pct == null) return chartColors.neutral;
-  if (pct >= 85) return chartColors.good;
-  if (pct >= 75) return chartColors.attention;
-  return chartColors.weak;
-}

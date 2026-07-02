@@ -1,55 +1,19 @@
 export const METRIC_TERMS = {
-  "kpi-retentie": {
-    label: "Wat je onthoudt",
-    help: "Het percentage goede antwoorden op geplande herhalingen in de laatste 30 dagen. Zo zie je of je woorden echt blijft onthouden.",
+  "summary-totaal": {
+    label: "In SRS",
+    help: "Het aantal oefeningen in je herhaalschema uit actieve topics.",
   },
-  "kpi-beheerst": {
-    label: "Goed onthouden",
-    help: "Woorden die je vaak genoeg goed had. Die hoef je bijna niet meer te oefenen.",
+  "summary-due": {
+    label: "Nu aan de beurt",
+    help: "Oefeningen waarvan de volgende herhaling nu of eerder gepland staat.",
   },
-  "kpi-gemiddelde": {
-    label: "Gemiddelde woordscore",
-    help: "Een getal tussen 0 en 100 dat laat zien hoe goed je al je woorden gemiddeld kent. Hoger is beter.",
+  "summary-relearning": {
+    label: "In herkansing",
+    help: "Oefeningen die na een fout antwoord binnenkort opnieuw verschijnen.",
   },
-  "kpi-gepland": {
-    label: "Te doen deze week",
-    help: "Het aantal herhalingen dat de komende 7 dagen op je planning staat.",
-  },
-  "kpi-consistentie": {
-    label: "Dagen geoefend",
-    help: "Hoeveel van de laatste 30 dagen je hebt geoefend. Je reeks telt achter elkaar geoefende dagen.",
-  },
-  "grafiek-beheerst": {
-    label: "Goed onthouden over tijd",
-    help: "Hoe het aantal woorden dat je goed kent groeit door de tijd heen.",
-  },
-  "grafiek-verdeling": {
-    label: "Hoe goed je woorden kent",
-    help: "Verdeling van je woorden: van nieuw tot goed onthouden.",
-  },
-  "grafiek-retentie": {
-    label: "Onthouden over tijd",
-    help: "Laat zien of je woorden goed blijft onthouden. Gebaseerd op geplande herhalingen, niet op alle oefeningen.",
-  },
-  "grafiek-interval": {
-    label: "Onthouden per wachttijd",
-    help: "Hoe goed je woorden onthoudt na verschillende wachttijden tussen herhalingen.",
-  },
-  "grafiek-kalender": {
-    label: "Wanneer je oefende",
-    help: "Elk vakje is een dag. Donkerder betekent dat je die dag meer hebt geoefend.",
-  },
-  "grafiek-workload": {
-    label: "Wat er op de planning staat",
-    help: "Hoeveel herhalingen er per dag gepland staan. Zo zie je wanneer het druk wordt.",
-  },
-  "grafiek-moeilijk": {
-    label: "Woorden die lastig zijn",
-    help: "Woorden waar je vaak fouten maakt of lang over doet. Handig om extra te oefenen.",
-  },
-  "grafiek-oefentype": {
-    label: "Resultaat per oefening",
-    help: "Vergelijkt hoe goed je het doet bij flashcards, typen en sorteren.",
+  "grafiek-srs-stappen": {
+    label: "Oefeningen per SRS-stap",
+    help: "Hoeveel oefeningen je op elke stap van het spaced repetition-schema hebt staan.",
   },
 } as const;
 

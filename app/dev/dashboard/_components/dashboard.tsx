@@ -2,22 +2,15 @@
 
 import Link from "next/link";
 
-import { formatCount, formatPct } from "@/lib/dashboard/format";
+import { SrsExplainer } from "@/app/dev/exercises-quiz/_components/srs-explainer";
+import { formatCount } from "@/lib/dashboard/format";
 
-import { HardestWordsTable } from "./hardest-words-table";
-import { KpiCard } from "./kpi-card";
-import { MasteredWordsChart } from "./mastered-words-chart";
-import { MasteryDistributionChart } from "./mastery-distribution-chart";
-import { PeriodFilter } from "./period-filter";
-import { PracticeTypePerformanceChart } from "./practice-type-chart";
-import { RetentionByIntervalChart } from "./retention-by-interval-chart";
-import { RetentionTrendChart } from "./retention-trend-chart";
-import { StudyCalendarHeatmap } from "./study-calendar-heatmap";
-import { WorkloadForecastChart } from "./workload-forecast-chart";
+import { MetricTooltip } from "./metric-tooltip";
+import { SrsStepDistributionChart } from "./srs-step-distribution-chart";
 import { useDashboardStats } from "../_hooks/use-dashboard-stats";
 
 export function Dashboard() {
-  const { stats, loading, error, period, setPeriod } = useDashboardStats();
+  const { stats, loading, error } = useDashboardStats();
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -32,30 +25,9 @@ export function Dashboard() {
     );
   }
 
-  const { kpis, insights } = stats;
-  const retentionInsight = insights.find((i) => i.includes("interval"));
-  const practiceInsight = insights.find(
-    (i) => i.includes("gaat sterk") || i.includes("blijft achter"),
-  );
-  const workloadInsight = insights.find((i) => i.includes("workload"));
-
-  const lastRetention7 =
-    [...stats.retentionOverTime].reverse().find((p) => p.retention7d != null)
-      ?.retention7d ?? null;
-
-  const retentionTone =
-    kpis.retention30d == null
-      ? "neutral"
-      : kpis.retention30d >= 85
-        ? "positive"
-        : kpis.retention30d < 75
-          ? "negative"
-          : "neutral";
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <PeriodFilter value={period} onChange={setPeriod} />
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <Link
           href="/dev/exercises-quiz"
           className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground hover:bg-accent/90"
@@ -64,84 +36,41 @@ export function Dashboard() {
         </Link>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <KpiCard
-          metric="kpi-retentie"
-          value={formatPct(kpis.retention30d)}
-          tone={retentionTone}
-        />
-        <KpiCard
-          metric="kpi-beheerst"
-          value={formatCount(kpis.masteredWords)}
-          sub={
-            kpis.masteredWordsDeltaWeek !== 0
-              ? `${kpis.masteredWordsDeltaWeek > 0 ? "+" : ""}${kpis.masteredWordsDeltaWeek} deze week`
-              : undefined
-          }
-        />
-        <KpiCard metric="kpi-gemiddelde" value={`${kpis.averageMasteryScore}`} />
-        <KpiCard metric="kpi-gepland" value={formatCount(kpis.reviewsNext7Days)} />
-        <KpiCard
-          metric="kpi-consistentie"
-          value={`${kpis.activeDaysLast30}/${kpis.activeDaysTotal30}`}
-          sub={`Reeks: ${kpis.currentStreak} dagen · langste: ${kpis.longestStreak} dagen`}
-        />
+      <section className="grid gap-3 sm:grid-cols-3">
+        <SummaryStat metric="summary-totaal" value={formatCount(stats.totalExercises)} />
+        <SummaryStat metric="summary-due" value={formatCount(stats.dueNowCount)} />
+        <SummaryStat metric="summary-relearning" value={formatCount(stats.relearningCount)} />
       </section>
 
-      <section className="space-y-1">
-        <h2 className="text-sm font-semibold text-foreground">Voortgang</h2>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <MasteredWordsChart
-            data={stats.masteredOverTime}
-            deltaWeek={kpis.masteredWordsDeltaWeek}
-          />
-          <MasteryDistributionChart data={stats.masteryDistribution} />
-        </div>
-      </section>
+      <SrsStepDistributionChart
+        data={stats.srsStepDistribution}
+        totalExercises={stats.totalExercises}
+      />
 
-      <section className="space-y-1">
-        <h2 className="text-sm font-semibold text-foreground">Hoe goed je onthoudt</h2>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <RetentionTrendChart
-            data={stats.retentionOverTime}
-            retention7d={lastRetention7}
-            retention30d={kpis.retention30d}
-          />
-          <RetentionByIntervalChart
-            data={stats.retentionByInterval}
-            insight={retentionInsight}
-          />
-        </div>
-      </section>
+      <SrsExplainer compact />
+    </div>
+  );
+}
 
-      <section className="space-y-1">
-        <h2 className="text-sm font-semibold text-foreground">Oefenen en planning</h2>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <StudyCalendarHeatmap
-            data={stats.studyHeatmap}
-            activeDays={kpis.activeDaysLast30}
-            activeDaysTotal={kpis.activeDaysTotal30}
-            currentStreak={kpis.currentStreak}
-            longestStreak={kpis.longestStreak}
-          />
-          <WorkloadForecastChart
-            data={stats.workloadForecast}
-            reviewsNext7={kpis.reviewsNext7Days}
-            insight={workloadInsight}
-          />
-        </div>
-      </section>
+type SummaryStatProps = {
+  metric: "summary-totaal" | "summary-due" | "summary-relearning";
+  value: string;
+};
 
-      <section className="space-y-1">
-        <h2 className="text-sm font-semibold text-foreground">Waar het lastig gaat</h2>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <HardestWordsTable data={stats.hardestWords} />
-          <PracticeTypePerformanceChart
-            data={stats.performanceByPracticeType}
-            insight={practiceInsight}
-          />
-        </div>
-      </section>
+const SUMMARY_LABELS: Record<SummaryStatProps["metric"], string> = {
+  "summary-totaal": "In SRS",
+  "summary-due": "Nu aan de beurt",
+  "summary-relearning": "In herkansing",
+};
+
+function SummaryStat({ metric, value }: SummaryStatProps) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center gap-2">
+        <p className="text-xs text-muted-foreground">{SUMMARY_LABELS[metric]}</p>
+        <MetricTooltip term={metric} />
+      </div>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{value}</p>
     </div>
   );
 }
@@ -149,21 +78,15 @@ export function Dashboard() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="h-9 w-64 animate-pulse rounded-md bg-muted/50" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid gap-3 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
             className="h-20 animate-pulse rounded-lg border border-border bg-muted/40"
           />
         ))}
       </div>
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div
-          key={i}
-          className="h-72 animate-pulse rounded-lg border border-border bg-muted/40"
-        />
-      ))}
+      <div className="h-80 animate-pulse rounded-lg border border-border bg-muted/40" />
     </div>
   );
 }

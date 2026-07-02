@@ -91,6 +91,37 @@ export const SRS_INTERVAL_GUIDE: readonly SrsGuideEntry[] = [
   },
 ];
 
+/** Hoofdladder-stappen (zonder relearning-groep). */
+export const SRS_MAIN_LADDER_STEPS = SRS_INTERVAL_GUIDE.filter(
+  (entry) => entry.group !== "relearning",
+);
+
+const MAX_SRS_STEP_INDEX = SRS_MAIN_LADDER_STEPS.length - 1;
+
+/** Zet repetition_count om naar een stapindex (0–10). */
+export function getSrsStepIndex(repetitionCount: number): number {
+  if (repetitionCount <= 0) return 0;
+  if (repetitionCount >= MAX_SRS_STEP_INDEX) return MAX_SRS_STEP_INDEX;
+  return repetitionCount;
+}
+
+/** Label en beschrijving voor een stapindex op de hoofdladder. */
+export function getSrsStepInfo(stepIndex: number): Pick<SrsGuideEntry, "label" | "description"> {
+  const clamped = Math.min(Math.max(0, stepIndex), MAX_SRS_STEP_INDEX);
+  return SRS_MAIN_LADDER_STEPS[clamped];
+}
+
+/** Of een kaart in herkansing staat na een fout antwoord. */
+export function isInRelearning(
+  input: Pick<SrsCardState, "repetitionCount" | "intervalDays" | "lastReviewedAt" | "nextReviewAt">,
+): boolean {
+  if (input.repetitionCount <= 0 || input.intervalDays !== 0 || !input.lastReviewedAt) {
+    return false;
+  }
+  const gapMs = input.nextReviewAt.getTime() - input.lastReviewedAt.getTime();
+  return gapMs >= 0 && gapMs < 60 * 60 * 1000;
+}
+
 export function createNewSrsCard(): SrsCardState {
   return {
     easeFactor: SRS_DEFAULT_EASE,
