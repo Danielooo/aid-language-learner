@@ -54,6 +54,37 @@ export function matchWordsByPrefix(
   );
 }
 
+/**
+ * Lengte van het gematchte prefix in weergavetekst (zelfde regels als matchWordsByPrefix).
+ */
+export function getPrefixMatchLength(word: string, prefix: string): number {
+  if (prefix.length === 0) return 0;
+
+  if (word.startsWith(prefix)) return prefix.length;
+
+  const normalizedPrefix = normalizeWord(prefix);
+  const normalizedWord = normalizeWord(word);
+  if (normalizedWord.startsWith(normalizedPrefix)) return normalizedPrefix.length;
+
+  return 0;
+}
+
+/** Exacte match: getypt prefix === volledig woord (case-sensitive, anders genormaliseerd). */
+export function isExactPrefixMatch(word: string, prefix: string): boolean {
+  if (prefix.length === 0) return false;
+  if (word === prefix) return true;
+  return normalizeWord(word) === normalizeWord(prefix);
+}
+
+/** Exacte matches in de pool (0, 1 of meer bij duplicaat-woorden). */
+export function findExactPrefixMatches(
+  prefix: string,
+  pool: SortPoolItem[],
+): SortPoolItem[] {
+  if (prefix.length === 0) return [];
+  return pool.filter((item) => isExactPrefixMatch(item.word, prefix));
+}
+
 /** Bouwt de zin uit pool-items in slot-volgorde. */
 export function buildSentenceFromSlots(
   slots: (string | null)[],

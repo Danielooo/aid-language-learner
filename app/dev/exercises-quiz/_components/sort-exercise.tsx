@@ -15,6 +15,7 @@ import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ExerciseAudioButton } from "@/app/dev/exercises-quiz/_components/exercise-audio-button";
+import { useSortWordPlacementAnimation } from "@/app/dev/exercises-quiz/_hooks/use-sort-word-placement-animation";
 import {
   QUIZ_SHORTCUTS,
   formatQuizShortcut,
@@ -27,8 +28,11 @@ import {
 } from "@/lib/quiz/sort-config";
 import {
   evaluateSortOrder,
+  findExactPrefixMatches,
+  getPrefixMatchLength,
   getWordsFromSlots,
   isAllSlotsFilled,
+  isExactPrefixMatch,
   matchWordsByPrefix,
 } from "@/lib/quiz/sort-validate";
 
@@ -70,6 +74,13 @@ export function SortExercise({
   const [prefixError, setPrefixError] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const sortAreaRef = useRef<HTMLDivElement>(null);
+
+  const { placeWordWithAnimation, isAnimating, cleanupFlyingElement } =
+    useSortWordPlacementAnimation({
+      containerRef: sortAreaRef,
+      setSortState,
+    });
 
   const poolById = useMemo(
     () => new Map(sortState.allItems.map((p) => [p.id, p])),
@@ -81,10 +92,11 @@ export function SortExercise({
   );
 
   useEffect(() => {
+    cleanupFlyingElement();
     setSortState(createInitialSortState(exerciseData.tokens));
     setPrefixError(false);
     setActiveDragId(null);
-  }, [item.id, exerciseData.tokens]);
+  }, [item.id, exerciseData.tokens, cleanupFlyingElement]);
 
   useEffect(() => {
     if (!feedback) {
@@ -95,6 +107,11 @@ export function SortExercise({
   const ambiguousMatches = useMemo(() => {
     if (sortState.typePrefix.trim().length === 0) return [];
     return matchWordsByPrefix(sortState.typePrefix, sortState.pool);
+  }, [sortState.typePrefix, sortState.pool]);
+
+  const exactMatches = useMemo(() => {
+    if (sortState.typePrefix.trim().length === 0) return [];
+    return findExactPrefixMatches(sortState.typePrefix, sortState.pool);
   }, [sortState.typePrefix, sortState.pool]);
 
   useEffect(() => {
@@ -110,25 +127,35 @@ export function SortExercise({
     }
 
     setPrefixError(false);
-    if (matches.length === 1) {
-      setSortState((prev) =>
-        placeWordInSlot(prev, matches[0]!.id, prev.activeSlotIndex),
-      );
+    if (matches.length === 1 && !isAnimating) {
+      placeWordWithAnimation(matches[0]!.id, sortState.activeSlotIndex);
     }
-  }, [sortState.typePrefix, sortState.pool, sortState.activeSlotIndex, feedback]);
+  }, [
+    sortState.typePrefix,
+    sortState.pool,
+    sortState.activeSlotIndex,
+    feedback,
+    placeWordWithAnimation,
+    isAnimating,
+  ]);
 
   function handleTypePrefixChange(value: string) {
     setSortState((prev) => ({ ...prev, typePrefix: value }));
   }
 
   function handlePrefixKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== "Enter" || feedback) return;
+    if (e.key !== "Enter" || feedback || isAnimating) return;
     e.preventDefault();
+
     const matches = matchWordsByPrefix(sortState.typePrefix, sortState.pool);
+    const exact = findExactPrefixMatches(sortState.typePrefix, sortState.pool);
+
+    if (exact.length === 1) {
+      placeWordWithAnimation(exact[0]!.id, sortState.activeSlotIndex);
+      return;
+    }
     if (matches.length === 1) {
-      setSortState((prev) =>
-        placeWordInSlot(prev, matches[0]!.id, prev.activeSlotIndex),
-      );
+      placeWordWithAnimation(matches[0]!.id, sortState.activeSlotIndex);
     }
   }
 
@@ -221,7 +248,7 @@ export function SortExercise({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="space-y-4">
+        <div ref={sortAreaRef} className="space-y-4">
           <div className="space-y-2">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Volgorde
@@ -242,6 +269,7 @@ export function SortExercise({
 
           <WordPool
             items={sortState.pool}
+            typePrefix={sortState.typePrefix}
             disabled={disabled}
           />
         </div>
@@ -265,7 +293,7 @@ export function SortExercise({
             value={sortState.typePrefix}
             onChange={(e) => handleTypePrefixChange(e.target.value)}
             onKeyDown={handlePrefixKeyDown}
-            disabled={sortState.pool.length === 0}
+            disabled={sortState.pool.length === 0 || isAnimating}
             placeholder="Eerste letter(s) van het woord..."
             autoComplete="off"
             className={clsx(
@@ -275,7 +303,12 @@ export function SortExercise({
                 : "border-input",
             )}
           />
-          {ambiguousMatches.length > 1 && (
+          {ambiguousMatches.length > 1 && exactMatches.length === 1 && (
+            <p className="text-xs text-muted-foreground">
+              Druk Enter om «{exactMatches[0]!.word}» te kiezen
+            </p>
+          )}
+          {ambiguousMatches.length > 1 && exactMatches.length !== 1 && (
             <p className="text-xs text-muted-foreground">
               Meer letters typen — kandidaten:{" "}
               {ambiguousMatches.map((m) => m.word).join(", ")}
@@ -344,6 +377,7 @@ function SortSlot({
   return (
     <div
       ref={setNodeRef}
+      data-sort-slot-index={index}
       className={clsx(
         "rounded-lg border border-dashed transition-colors",
         item
@@ -372,15 +406,24 @@ function SortSlot({
 
 function WordPool({
   items,
+  typePrefix,
   disabled,
 }: {
   items: SortPoolItem[];
+  typePrefix: string;
   disabled: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: "pool",
     disabled,
   });
+
+  const prefixMatches = useMemo(() => {
+    if (typePrefix.trim().length === 0) return new Set<string>();
+    return new Set(
+      matchWordsByPrefix(typePrefix, items).map((item) => item.id),
+    );
+  }, [typePrefix, items]);
 
   return (
     <div className="space-y-2">
@@ -400,7 +443,14 @@ function WordPool({
           </span>
         ) : (
           items.map((item) => (
-            <DraggableWordChip key={item.id} item={item} disabled={disabled} />
+            <DraggableWordChip
+              key={item.id}
+              item={item}
+              typePrefix={typePrefix}
+              isPrefixMatch={prefixMatches.has(item.id)}
+              isExactMatch={isExactPrefixMatch(item.word, typePrefix)}
+              disabled={disabled}
+            />
           ))
         )}
       </div>
@@ -410,9 +460,15 @@ function WordPool({
 
 function DraggableWordChip({
   item,
+  typePrefix = "",
+  isPrefixMatch = false,
+  isExactMatch = false,
   disabled,
 }: {
   item: SortPoolItem;
+  typePrefix?: string;
+  isPrefixMatch?: boolean;
+  isExactMatch?: boolean;
   disabled: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -429,34 +485,63 @@ function DraggableWordChip({
     <div
       ref={setNodeRef}
       style={style}
+      data-sort-pool-word-id={item.id}
       className="inline-flex"
       {...listeners}
       {...attributes}
     >
-      <WordChip item={item} isDragging={isDragging} />
+      <WordChip
+        item={item}
+        typePrefix={typePrefix}
+        isPrefixMatch={isPrefixMatch}
+        isExactMatch={isExactMatch}
+        isDragging={isDragging}
+      />
     </div>
   );
 }
 
 function WordChip({
   item,
+  typePrefix = "",
+  isPrefixMatch = false,
+  isExactMatch = false,
   isDragging,
   overlay,
 }: {
   item: SortPoolItem;
+  typePrefix?: string;
+  isPrefixMatch?: boolean;
+  isExactMatch?: boolean;
   isDragging?: boolean;
   overlay?: boolean;
 }) {
   return (
     <span
+      data-sort-word-chip
       className={clsx(
-        "inline-flex cursor-grab items-center rounded-md border border-border bg-card px-2.5 py-1 text-sm font-medium text-foreground shadow-sm active:cursor-grabbing",
+        "inline-flex cursor-grab items-center rounded-md border bg-card px-2.5 py-1 text-sm font-medium text-foreground shadow-sm active:cursor-grabbing",
+        isExactMatch && isPrefixMatch
+          ? "border-accent ring-1 ring-accent/30"
+          : "border-border",
         isDragging && "opacity-40",
         overlay && "cursor-grabbing shadow-md ring-2 ring-accent/40",
       )}
     >
-      {item.word}
+      <WordChipLabel word={item.word} prefix={isPrefixMatch ? typePrefix : ""} />
     </span>
+  );
+}
+
+function WordChipLabel({ word, prefix }: { word: string; prefix: string }) {
+  const matchLength = getPrefixMatchLength(word, prefix);
+  if (matchLength === 0) return <>{word}</>;
+
+  return (
+    <>
+      <span className="font-bold">{word.slice(0, matchLength)}</span>
+      {word.slice(matchLength)}
+    </>
   );
 }
 
