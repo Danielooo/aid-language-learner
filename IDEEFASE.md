@@ -58,13 +58,19 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 - ~~Typen~~
 - ~~Sorteren~~
 - ~~Als er audio bij zit dan een icon die de audio afspeelt~~
+- Kunnen aanvinken uitvinken welke oefeningen ik actief oefen in spaced repetition
 
 **Oefeningen herhalen met eerder zwak resultaat**
 - ~~Spaced repetition (regels voor goede en foute antwoorden)~~
 
 **Voortgangsdashboard**
 - Dashboard met metrics en visuals
+  - Welke topics gaan goed? Welke heb ik vaak fouten in?
+  - Hoeveel oefeningen moet ik per komende dag maken (spaced repetition)
+  - Hoeveel oefeningen heb ik gehaald per interval?
+  - Hoeveel oefeningen doe ik per dag, week, maand?
 
+**Registreren en inloggen**
 
 
 ===============================================================================
