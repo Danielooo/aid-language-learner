@@ -51,6 +51,7 @@ import type {
   TopicStat,
   TopicsResponse,
 } from "@/app/api/dev/exercise-generator-quiz/topics/route";
+import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
 import type {
   TranslationDirection,
   TypingMode,
@@ -243,8 +244,9 @@ export function TypingQuizDeck() {
     setScreen("selection");
   }
 
-  function handleSelectionContinue() {
-    if (selectionMode === "custom") {
+  function handleSelectMode(mode: QuizSelectionMode) {
+    setSelectionMode(mode);
+    if (mode === "custom") {
       setScreen("exercise-picker");
       return;
     }
@@ -500,8 +502,7 @@ export function TypingQuizDeck() {
       {screen === "selection" && selectionHydrated && (
         <QuizSelectionScreen
           selectedMode={selectionMode}
-          onSelect={setSelectionMode}
-          onContinue={handleSelectionContinue}
+          onSelect={handleSelectMode}
         />
       )}
 

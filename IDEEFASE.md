@@ -58,7 +58,7 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 - ~~Typen~~
 - ~~Sorteren~~
 - ~~Als er audio bij zit dan een icon die de audio afspeelt~~
-- Kunnen aanvinken uitvinken welke oefeningen ik actief oefen in spaced repetition
+- ~~Kunnen aanvinken uitvinken welke oefeningen ik actief oefen in spaced repetition~~
 
 **Oefeningen herhalen met eerder zwak resultaat**
 - ~~Spaced repetition (regels voor goede en foute antwoorden)~~

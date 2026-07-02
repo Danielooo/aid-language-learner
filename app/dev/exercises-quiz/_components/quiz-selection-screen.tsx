@@ -19,13 +19,11 @@ import type { ProgressStatsResponse } from "@/app/api/dev/exercise-progress/rout
 type QuizSelectionScreenProps = {
   selectedMode: QuizSelectionMode;
   onSelect: (mode: QuizSelectionMode) => void;
-  onContinue: () => void;
 };
 
 export function QuizSelectionScreen({
   selectedMode,
   onSelect,
-  onContinue,
 }: QuizSelectionScreenProps) {
   const [stats, setStats] = useState<ProgressStatsResponse | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -106,16 +104,6 @@ export function QuizSelectionScreen({
       </div>
 
       {selectedMode === "srs" && <SrsExplainer compact />}
-
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={onContinue}
-          className="cursor-pointer rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
-        >
-          Verder
-        </button>
-      </div>
     </section>
   );
 }
