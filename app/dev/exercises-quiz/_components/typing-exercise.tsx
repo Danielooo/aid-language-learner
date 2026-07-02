@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef } from "react";
 
-import { ExerciseAudioButton } from "@/app/dev/exercises-quiz/_components/exercise-audio-button";
+import { ExerciseAudioAttribution } from "@/app/dev/exercises-quiz/_components/exercise-audio-attribution";
+import { ExerciseAudioControls } from "@/app/dev/exercises-quiz/_components/exercise-audio-controls";
 import {
   QUIZ_SHORTCUTS,
   formatQuizShortcut,
@@ -83,7 +84,7 @@ export function TypingExercise({
 
   return (
     <form onSubmit={handleFormSubmit} className="space-y-4">
-      <div className="space-y-1">
+      <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {promptAndAnswer.promptLabel}
@@ -93,11 +94,20 @@ export function TypingExercise({
               {item.topic}
             </span>
           )}
-          {item.mp3_url && <ExerciseAudioButton mp3Url={item.mp3_url} />}
         </div>
         <p className="text-xl font-medium leading-snug text-foreground">
           {promptAndAnswer.prompt}
         </p>
+        {item.mp3_url && (
+          <ExerciseAudioControls mp3Url={item.mp3_url} variant="large" />
+        )}
+        {item.mp3_url && (
+          <ExerciseAudioAttribution
+            author={item.tatoeba_author}
+            license={item.tatoeba_license}
+            attributionUrl={item.tatoeba_attribution_url}
+          />
+        )}
         <p className="font-mono text-[10px] text-muted-foreground/70">
           #{item.id.slice(0, 8)}
         </p>

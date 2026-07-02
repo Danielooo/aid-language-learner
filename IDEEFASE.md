@@ -44,9 +44,12 @@ Dat is de toegevoegde waarde van deze applicatie
 - ~~Zelf kunnen aanpassen~~
 
 **Taaloefeningen kunnen maken**
-- Flashcards << HIERMEE VERDER >>
-- Typen
-- Als er audio bij zit dan een icon die de audio afspeelt
+- ~~Flashcards~~ 
+- ~~Typen~~
+- ~~Sorteren~~
+- ~~Als er audio bij zit dan een icon die de audio afspeelt~~
+
+**Taaloefeningen kunnen maken**
 
 
 **Global**

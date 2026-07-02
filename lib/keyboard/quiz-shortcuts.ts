@@ -3,6 +3,7 @@ export const QUIZ_SHORTCUTS = {
   skip: "s",
   gradeCorrect: "g",
   gradeIncorrect: "f",
+  playAudio: "p",
 } as const;
 
 function letterToCode(letter: string): string {

@@ -9,6 +9,8 @@ import {
   formatQuizShortcut,
 } from "@/lib/keyboard/quiz-shortcuts";
 
+import { ExerciseAudioAttribution } from "./exercise-audio-attribution";
+import { ExerciseAudioControls } from "./exercise-audio-controls";
 import { FlashcardActionButton } from "./flashcard-action-button";
 
 import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
@@ -137,7 +139,7 @@ export function Flashcard({
             className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/15 via-accent/5 to-card p-6 text-center shadow-lg shadow-accent/10 [backface-visibility:hidden]"
             style={{ backfaceVisibility: "hidden" }}
           >
-            <div className="flex flex-col items-center gap-3">
+            <div className="flex w-full flex-col items-center gap-3">
               {item.topic && (
                 <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
                   {item.topic}
@@ -149,6 +151,19 @@ export function Flashcard({
               <p className="text-2xl font-semibold leading-snug text-foreground sm:text-3xl">
                 {item.source_text}
               </p>
+              {item.mp3_url && (
+                <ExerciseAudioControls
+                  mp3Url={item.mp3_url}
+                  variant="large"
+                />
+              )}
+              {item.mp3_url && (
+                <ExerciseAudioAttribution
+                  author={item.tatoeba_author}
+                  license={item.tatoeba_license}
+                  attributionUrl={item.tatoeba_attribution_url}
+                />
+              )}
             </div>
             <p className="absolute bottom-4 text-[11px] text-muted-foreground/80">
               Klik of druk Spatie om te draaien

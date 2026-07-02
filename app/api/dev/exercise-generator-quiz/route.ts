@@ -22,6 +22,9 @@ export type ExerciseQuizItem = {
   created_at: string;
   alternative_translations: string[];
   mp3_url: string | null;
+  tatoeba_author: string | null;
+  tatoeba_license: string | null;
+  tatoeba_attribution_url: string | null;
 };
 
 export async function GET(req: Request) {
@@ -78,7 +81,7 @@ export async function GET(req: Request) {
   let rowQuery = supabase
     .from("exercises")
     .select(
-      "id, source_text, target_text, topic, created_at, alternative_translations, audio_path",
+      "id, source_text, target_text, topic, created_at, alternative_translations, audio_path, tatoeba_author, tatoeba_license, tatoeba_attribution_url",
     )
     .range(offset, offset);
   if (seedOnly) rowQuery = rowQuery.is("owner_id", null);
@@ -112,6 +115,9 @@ export async function GET(req: Request) {
     created_at: row.created_at,
     alternative_translations: row.alternative_translations ?? [],
     mp3_url: mp3Url,
+    tatoeba_author: row.tatoeba_author ?? null,
+    tatoeba_license: row.tatoeba_license ?? null,
+    tatoeba_attribution_url: row.tatoeba_attribution_url ?? null,
   };
 
   return Response.json(payload);
