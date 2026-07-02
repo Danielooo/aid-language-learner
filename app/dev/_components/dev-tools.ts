@@ -26,6 +26,13 @@ export const DEV_TOOLS: DevTool[] = [
     category: "lab",
   },
   {
+    href: "/dev/exercise-generator-quiz",
+    title: "Oefeningen-generator-quiz",
+    description:
+      "Quiz op je gegenereerde oefeningen uit Supabase. Topic-filter, lenient vergelijking, score en historie in localStorage.",
+    category: "lab",
+  },
+  {
     href: "/dev/tatoeba-audio",
     title: "Tatoeba-audio",
     description:
@@ -75,10 +82,10 @@ export const DEV_TOOLS: DevTool[] = [
     category: "use",
   },
   {
-    href: "/dev/exercise-generator-quiz",
-    title: "Oefeningen-generator-quiz",
+    href: "/dev/exercises-quiz",
+    title: "Oefeningen-quiz",
     description:
-      "Quiz op je gegenereerde oefeningen uit Supabase. Topic-filter, lenient vergelijking, score en historie in localStorage.",
+      "Kies een quiz-vorm voor je oefeningen: flashcards, typen of sorteren.",
     category: "use",
   },
   {

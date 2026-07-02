@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { ALL_TOPICS } from "@/app/dev/_components/quiz/constants";
+import { ExerciseErrorState } from "@/app/dev/_components/quiz/exercise-error-state";
+import { HistoryList } from "@/app/dev/_components/quiz/history-list";
+import { ScoreBar } from "@/app/dev/_components/quiz/score-bar";
+import { TopicSelector } from "@/app/dev/_components/quiz/topic-selector";
 import { isAnswerCorrect } from "@/lib/quiz/compare";
 
 import { ExerciseChat } from "./exercise-chat";
@@ -16,10 +21,6 @@ type Feedback = {
   correctAnswer: string;
 };
 
-// "all" is de sentinel voor "geen topic-filter". We sturen dan ook
-// geen `topic` query param mee. Aparte localStorage-key zodat de
-// keuze blijft hangen tussen sessies, los van de score-historie.
-const ALL_TOPICS = "all";
 const TOPIC_KEY = "aid:exercise-generator-quiz:topic";
 
 export function Quiz() {
@@ -51,7 +52,6 @@ export function Quiz() {
         topic === ALL_TOPICS
           ? "/api/dev/exercise-generator-quiz"
           : `/api/dev/exercise-generator-quiz?topic=${encodeURIComponent(topic)}`;
-      // cache: "no-store" → elke klik echt een nieuwe random oefening.
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -68,16 +68,13 @@ export function Quiz() {
     }
   }, []);
 
-  // Topic-keuze hydrateren uit localStorage en topic-lijst ophalen.
-  // We doen dit eenmalig op mount; de lijst is klein en verandert
-  // alleen als je via /dev/exercise-generator nieuwe rijen genereert.
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
         const stored = window.localStorage.getItem(TOPIC_KEY);
         if (stored && stored.length > 0) setSelectedTopic(stored);
       } catch {
-        // localStorage geblokkeerd — niet erg, default blijft ALL_TOPICS.
+        // localStorage geblokkeerd — default blijft ALL_TOPICS.
       }
     }
     setTopicHydrated(true);
@@ -92,8 +89,6 @@ export function Quiz() {
         const data = (await res.json()) as TopicsResponse;
         if (!cancelled) setTopics(data.topics);
       } catch {
-        // Topics ophalen mag stilletjes falen: dropdown valt dan terug
-        // op alleen "Alle topics", quiz zelf blijft werken.
         if (!cancelled) setTopics([]);
       } finally {
         if (!cancelled) setTopicsLoading(false);
@@ -104,17 +99,12 @@ export function Quiz() {
     };
   }, []);
 
-  // Eerste oefening laden zodra de topic-keuze gehydrateerd is. Volgende
-  // fetches gebeuren via knop-handlers met de actuele topic.
   useEffect(() => {
     if (!topicHydrated) return;
     void fetchNext(selectedTopic);
-    // We willen alleen op de initiële hydratie + bij topic-change opnieuw
-    // ophalen, niet bij elke render van fetchNext.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topicHydrated, selectedTopic]);
 
-  // Focus terug naar input na nieuwe oefening (UX: direct typen kunnen).
   useEffect(() => {
     if (!loading && item && !feedback) {
       inputRef.current?.focus();
@@ -127,7 +117,7 @@ export function Quiz() {
       try {
         window.localStorage.setItem(TOPIC_KEY, next);
       } catch {
-        // Niets aan te doen — keuze geldt dan alleen voor deze sessie.
+        // Keuze geldt alleen voor deze sessie.
       }
     }
   }
@@ -188,7 +178,7 @@ export function Quiz() {
       <section className="rounded-lg border border-border bg-card p-5 text-card-foreground">
         {loading && <SkeletonRow />}
         {!loading && error && (
-          <ErrorState
+          <ExerciseErrorState
             message={error}
             status={errorStatus}
             onRetry={() => void fetchNext(selectedTopic)}
@@ -291,139 +281,6 @@ export function Quiz() {
   );
 }
 
-function TopicSelector({
-  topics,
-  topicsLoading,
-  selected,
-  onChange,
-}: {
-  topics: string[];
-  topicsLoading: boolean;
-  selected: string;
-  onChange: (next: string) => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card px-4 py-3 text-sm text-card-foreground">
-      <label
-        htmlFor="topic-select"
-        className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-      >
-        Topic
-      </label>
-      <select
-        id="topic-select"
-        value={selected}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={topicsLoading}
-        className="cursor-pointer rounded-md border border-input bg-background px-2 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <option value={ALL_TOPICS}>Alle topics</option>
-        {topics.map((t) => (
-          <option key={t} value={t}>
-            {t}
-          </option>
-        ))}
-      </select>
-      {topicsLoading && (
-        <span className="text-xs text-muted-foreground">topics laden…</span>
-      )}
-      {!topicsLoading && topics.length === 0 && (
-        <span className="text-xs text-muted-foreground">
-          Geen topics beschikbaar
-        </span>
-      )}
-    </div>
-  );
-}
-
-function ErrorState({
-  message,
-  status,
-  onRetry,
-}: {
-  message: string;
-  status: number | null;
-  onRetry: () => void;
-}) {
-  // 404 op een lege tabel is geen "fout" maar een onboarding-moment:
-  // verwijs door naar de generator zodat er überhaupt rijen bestaan.
-  if (status === 404) {
-    return (
-      <div className="space-y-3 text-sm">
-        <p className="font-medium text-foreground">{message}</p>
-        <Link
-          href="/dev/exercise-generator"
-          className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
-        >
-          Naar de oefeningen-generator
-        </Link>
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-3 text-sm">
-      <p className="font-medium text-destructive">Kon geen oefening laden.</p>
-      <p className="font-mono text-xs text-muted-foreground">{message}</p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="inline-flex h-9 cursor-pointer items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-muted"
-      >
-        Opnieuw proberen
-      </button>
-    </div>
-  );
-}
-
-function ScoreBar({
-  score,
-  hydrated,
-  onReset,
-}: {
-  score: { correct: number; incorrect: number; total: number };
-  hydrated: boolean;
-  onReset: () => void;
-}) {
-  const pct = score.total === 0 ? 0 : Math.round((score.correct / score.total) * 100);
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-4 py-2 text-sm">
-      <div className="flex flex-wrap items-center gap-3">
-        <span>
-          Goed:{" "}
-          <strong className="text-foreground">
-            {hydrated ? score.correct : "…"}
-          </strong>
-        </span>
-        <span aria-hidden>·</span>
-        <span>
-          Fout:{" "}
-          <strong className="text-foreground">
-            {hydrated ? score.incorrect : "…"}
-          </strong>
-        </span>
-        <span aria-hidden>·</span>
-        <span>
-          Totaal:{" "}
-          <strong className="text-foreground">
-            {hydrated ? score.total : "…"}
-          </strong>
-        </span>
-        {hydrated && score.total > 0 && (
-          <span className="text-muted-foreground">({pct}%)</span>
-        )}
-      </div>
-      <button
-        type="button"
-        onClick={onReset}
-        disabled={!hydrated || score.total === 0}
-        className="cursor-pointer text-xs text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        Reset score
-      </button>
-    </div>
-  );
-}
-
 function FeedbackBanner({ feedback }: { feedback: Feedback }) {
   if (feedback.isCorrect) {
     return (
@@ -443,67 +300,6 @@ function FeedbackBanner({ feedback }: { feedback: Feedback }) {
         <span className="font-medium">{feedback.correctAnswer}</span>
       </p>
     </div>
-  );
-}
-
-function HistoryList({
-  attempts,
-}: {
-  attempts: ReadonlyArray<{
-    exerciseId: string;
-    source_text: string;
-    target_text: string;
-    topic: string | null;
-    userAnswer: string;
-    isCorrect: boolean;
-    at: number;
-  }>;
-}) {
-  if (attempts.length === 0) {
-    return (
-      <p className="px-4 pb-4 text-xs text-muted-foreground">
-        Nog geen pogingen — controleer een oefening om te beginnen.
-      </p>
-    );
-  }
-  return (
-    <ul className="divide-y divide-border px-4 pb-3 text-xs">
-      {attempts.map((a) => (
-        <li
-          key={`${a.exerciseId}-${a.at}`}
-          className="flex flex-col gap-0.5 py-2"
-        >
-          <div className="flex items-center gap-2">
-            <span
-              className={
-                a.isCorrect
-                  ? "rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300"
-                  : "rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-medium text-destructive"
-              }
-            >
-              {a.isCorrect ? "goed" : "fout"}
-            </span>
-            <span className="font-medium text-foreground">{a.source_text}</span>
-            {a.topic && (
-              <span className="rounded bg-muted px-1 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">
-                {a.topic}
-              </span>
-            )}
-          </div>
-          <div className="ml-1 text-muted-foreground">
-            <span className="opacity-70">jij:</span>{" "}
-            <span>{a.userAnswer || "(leeg)"}</span>
-            {!a.isCorrect && (
-              <>
-                {" "}
-                <span className="opacity-70">→ moest:</span>{" "}
-                <span>{a.target_text}</span>
-              </>
-            )}
-          </div>
-        </li>
-      ))}
-    </ul>
   );
 }
 

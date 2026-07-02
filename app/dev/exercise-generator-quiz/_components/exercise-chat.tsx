@@ -4,6 +4,8 @@ import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { ChatComposer } from "@/app/_components/features/chat/chat-composer";
+import { ChatThread } from "@/app/_components/features/chat/chat-thread";
 import {
   EXERCISE_QUIZ_CHAT_MODEL,
   buildQuizChatSystemPrompt,
@@ -40,6 +42,7 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
   const [open, setOpen] = useState(false);
 
   const mode: QuizChatMode = feedback ? "after" : "before";
+  const chatId = `quiz-chat-${exercise.id}`;
 
   // Refs zodat de body-functie van de DefaultChatTransport altijd verse
   // waarden ziet, ook als ze wijzigen tussen mount en send (bv. mode flipt
@@ -84,7 +87,8 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
   }, []);
   /* eslint-enable react-hooks/refs */
 
-  const { messages, sendMessage, status, error, stop } = useChat({
+  const { messages, sendMessage, status, error, stop, setMessages } = useChat({
+    id: chatId,
     transport,
   });
 
@@ -103,6 +107,11 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
     setOpen(true);
   }
 
+  function handleClearConversation() {
+    setMessages([]);
+    stop();
+  }
+
   return (
     <section className="space-y-3 rounded-lg border border-border bg-card p-4 text-card-foreground">
       <header className="flex flex-wrap items-center justify-between gap-2">
@@ -116,29 +125,39 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
               : "Vraag uitleg, vervoegingen of of een alternatief ook geldig was."}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="cursor-pointer rounded-md border border-input bg-background px-3 py-1.5 text-xs hover:bg-muted"
-        >
-          {open ? "Verberg chat" : "Open chat"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {messages.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearConversation}
+              className="cursor-pointer rounded-md border border-input bg-background px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              Gesprek wissen
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="cursor-pointer rounded-md border border-input bg-background px-3 py-1.5 text-xs hover:bg-muted"
+          >
+            {open ? "Verberg chat" : "Open chat"}
+          </button>
+        </div>
       </header>
 
       {open && (
         <>
           <Suggestions mode={mode} onPick={applySuggestion} />
 
-          <div className="min-h-[80px] space-y-2 rounded-md border border-dashed border-border bg-muted/30 p-3 text-sm">
-            {messages.length === 0 && (
+          <ChatThread
+            messages={messages}
+            status={status}
+            emptyState={
               <p className="text-xs text-muted-foreground">
                 Nog geen berichten. Stel een vraag of klik een suggestie.
               </p>
-            )}
-            {messages.map((m) => (
-              <MessageBubble key={m.id} message={m} />
-            ))}
-          </div>
+            }
+          />
 
           {error && (
             <div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
@@ -147,36 +166,18 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={isBusy}
-              placeholder={
-                mode === "before"
-                  ? "bv. Wat betekent het woord 'coche' letterlijk?"
-                  : "bv. Is 'auto' ook een geldig alternatief?"
-              }
-              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
-            />
-            {isBusy ? (
-              <button
-                type="button"
-                onClick={() => stop()}
-                className="cursor-pointer rounded-md border border-border px-3 text-xs font-medium hover:bg-muted"
-              >
-                Stop
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={!input.trim()}
-                className="cursor-pointer rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Verstuur
-              </button>
-            )}
-          </form>
+          <ChatComposer
+            input={input}
+            onInputChange={setInput}
+            onSubmit={handleSubmit}
+            onStop={stop}
+            isBusy={isBusy}
+            placeholder={
+              mode === "before"
+                ? "bv. Wat betekent het woord 'coche' letterlijk?"
+                : "bv. Is 'auto' ook een geldig alternatief?"
+            }
+          />
 
           <DebugPanels
             exercise={exercise}
@@ -226,35 +227,6 @@ function Suggestions({
         </li>
       ))}
     </ul>
-  );
-}
-
-function MessageBubble({ message }: { message: UIMessage }) {
-  const isUser = message.role === "user";
-  return (
-    <div
-      className={`rounded-md border px-2.5 py-1.5 ${
-        isUser
-          ? "border-accent/40 bg-accent/10"
-          : "border-border bg-background"
-      }`}
-    >
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {message.role}
-      </p>
-      <div className="mt-0.5 space-y-1 text-sm text-foreground">
-        {message.parts.map((part, i) => {
-          if (part.type === "text") {
-            return (
-              <span key={i} className="whitespace-pre-wrap">
-                {part.text}
-              </span>
-            );
-          }
-          return null;
-        })}
-      </div>
-    </div>
   );
 }
 

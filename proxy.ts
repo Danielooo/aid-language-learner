@@ -23,11 +23,12 @@ import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-au
 // TIJDELIJK: leeg zolang DEV_EXERCISE_TOOLS_REQUIRE_AUTH false is.
 const PROTECTED_PAGE_PREFIXES = DEV_EXERCISE_TOOLS_REQUIRE_AUTH
   ? ([
-      "/dev/exercise-generator",
-      "/dev/my-exercises",
-      "/dev/exercise-generator-quiz",
-      "/dev/dashboard",
-    ] as const)
+    "/dev/exercise-generator",
+    "/dev/my-exercises",
+    "/dev/exercises-quiz",
+    "/dev/exercise-generator-quiz",
+    "/dev/dashboard",
+  ] as const)
   : ([] as const);
 
 function isProtectedPagePath(pathname: string): boolean {
