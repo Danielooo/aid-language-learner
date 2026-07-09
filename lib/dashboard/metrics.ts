@@ -37,7 +37,6 @@ function isRelearningRow(row: ProgressRow): boolean {
 
 export function computeSrsStepDistribution(
   progressRows: ReadonlyArray<ProgressRow>,
-  now = new Date(),
 ): SrsStepBar[] {
   const activeRows = progressRows.filter((row) => !row.is_suspended);
   const counts = new Map<number, number>();
@@ -81,6 +80,6 @@ export function buildDashboardStats(
     totalExercises: activeRows.length,
     dueNowCount,
     relearningCount,
-    srsStepDistribution: computeSrsStepDistribution(progressRows, now),
+    srsStepDistribution: computeSrsStepDistribution(progressRows),
   };
 }

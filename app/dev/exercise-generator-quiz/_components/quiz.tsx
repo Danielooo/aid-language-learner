@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ALL_TOPICS } from "@/app/dev/_components/quiz/constants";
-import { ExerciseErrorState } from "@/app/dev/_components/quiz/exercise-error-state";
-import { HistoryList } from "@/app/dev/_components/quiz/history-list";
-import { ScoreBar } from "@/app/dev/_components/quiz/score-bar";
-import { TopicSelector } from "@/app/dev/_components/quiz/topic-selector";
+import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
+import { ExerciseErrorState } from "@/app/_components/features/quiz/exercise-error-state";
+import { HistoryList } from "@/app/_components/features/quiz/history-list";
+import { ScoreBar } from "@/app/_components/features/quiz/score-bar";
+import { TopicSelector } from "@/app/_components/features/quiz/topic-selector";
 import { isAnswerCorrect } from "@/lib/quiz/compare";
 
-import { ExerciseChat } from "./exercise-chat";
-import { useQuizStorage } from "./use-quiz-storage";
+import { ExerciseChat } from "@/app/_components/features/quiz/exercise-chat";
+import { useQuizStorage } from "@/app/_components/features/quiz/use-quiz-storage";
 
 import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
 import type { TopicsResponse } from "@/app/api/dev/exercise-generator-quiz/topics/route";
@@ -72,6 +72,8 @@ export function Quiz() {
     if (typeof window !== "undefined") {
       try {
         const stored = window.localStorage.getItem(TOPIC_KEY);
+        // SSR-hydratie: localStorage is pas na mount leesbaar.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (stored && stored.length > 0) setSelectedTopic(stored);
       } catch {
         // localStorage geblokkeerd — default blijft ALL_TOPICS.
@@ -101,6 +103,8 @@ export function Quiz() {
 
   useEffect(() => {
     if (!topicHydrated) return;
+    // fetchNext zet synchronoon loading-state; acceptabel voor deze dev-tool.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchNext(selectedTopic);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topicHydrated, selectedTopic]);

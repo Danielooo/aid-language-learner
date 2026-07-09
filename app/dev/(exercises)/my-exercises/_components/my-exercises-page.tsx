@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { ExercisesListPage } from "@/app/dev/_components/exercises-list-page";
+import { ExercisesListPage } from "@/app/_components/features/exercises/exercises-list-page";
 
 export function MyExercisesPage() {
   return (

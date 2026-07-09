@@ -258,6 +258,8 @@ export function AudioResultTable({
     }
     const restored = readHiddenCols(key);
     if (restored !== null) {
+      // SSR-hydratie: localStorage-voorkeur kan pas na mount gelezen worden.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHiddenColumns(restored);
     }
     hydratedRef.current = true;

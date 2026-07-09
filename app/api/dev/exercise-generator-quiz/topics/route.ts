@@ -1,4 +1,4 @@
-import { ALL_TOPICS } from "@/app/dev/_components/quiz/constants";
+import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
 import { getExerciseUserAccess } from "@/lib/dev/exercise-access";
 import {
   activeTopicsToArray,

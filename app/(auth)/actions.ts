@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { APP_ROUTES } from "@/lib/routes";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -52,14 +54,56 @@ function usernameToEmail(username: string): string {
   return `${username.toLowerCase()}@aid.local`;
 }
 
+// Alleen interne paden toestaan als post-login-redirect; voorkomt open
+// redirects via `?next=https://evil.example`.
+function sanitizeNextPath(value: FormDataEntryValue | string | null): string {
+  if (typeof value !== "string") return APP_ROUTES.vandaag;
+  if (!value.startsWith("/") || value.startsWith("//")) {
+    return APP_ROUTES.vandaag;
+  }
+  return value;
+}
+
 export async function signUp(
   _prev: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
+  const rawUsername = formData.get("username");
+  const rawPassword = formData.get("password");
   const parsed = credentialsSchema.safeParse({
-    username: formData.get("username"),
-    password: formData.get("password"),
+    username: rawUsername,
+    password: rawPassword,
   });
+
+  // #region agent log
+  fetch("http://127.0.0.1:7865/ingest/0922b9b0-9fbf-4ddb-a3a6-2516b9e67588", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "618d0e",
+    },
+    body: JSON.stringify({
+      sessionId: "618d0e",
+      runId: "pre-fix",
+      hypothesisId: "A",
+      location: "actions.ts:signUp:parse",
+      message: "signUp input parsed",
+      data: {
+        hasUsername: typeof rawUsername === "string" && rawUsername.length > 0,
+        usernameLen:
+          typeof rawUsername === "string" ? rawUsername.length : null,
+        hasPassword: typeof rawPassword === "string" && rawPassword.length > 0,
+        passwordLen:
+          typeof rawPassword === "string" ? rawPassword.length : null,
+        parseOk: parsed.success,
+        parseIssues: parsed.success
+          ? []
+          : parsed.error.issues.map((i) => i.message),
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 
   if (!parsed.success) {
     const fieldErrors: AuthActionState["fieldErrors"] = {};
@@ -75,13 +119,65 @@ export async function signUp(
   const { username, password } = parsed.data;
   const email = usernameToEmail(username);
 
-  const admin = getSupabaseAdmin();
+  let admin;
+  try {
+    admin = getSupabaseAdmin();
+  } catch (adminInitError) {
+    // #region agent log
+    fetch("http://127.0.0.1:7865/ingest/0922b9b0-9fbf-4ddb-a3a6-2516b9e67588", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "618d0e",
+      },
+      body: JSON.stringify({
+        sessionId: "618d0e",
+        runId: "pre-fix",
+        hypothesisId: "B",
+        location: "actions.ts:signUp:admin-init",
+        message: "getSupabaseAdmin threw",
+        data: {
+          error:
+            adminInitError instanceof Error
+              ? adminInitError.message
+              : String(adminInitError),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    throw adminInitError;
+  }
+
   const { error: createError } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
     user_metadata: { username },
   });
+
+  // #region agent log
+  fetch("http://127.0.0.1:7865/ingest/0922b9b0-9fbf-4ddb-a3a6-2516b9e67588", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "618d0e",
+    },
+    body: JSON.stringify({
+      sessionId: "618d0e",
+      runId: "pre-fix",
+      hypothesisId: "B",
+      location: "actions.ts:signUp:createUser",
+      message: "admin.createUser result",
+      data: {
+        emailDomain: email.split("@")[1] ?? null,
+        createError: createError?.message ?? null,
+        createErrorStatus: createError?.status ?? null,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 
   if (createError) {
     const msg = createError.message.toLowerCase();
@@ -102,6 +198,25 @@ export async function signUp(
     password,
   });
 
+  // #region agent log
+  fetch("http://127.0.0.1:7865/ingest/0922b9b0-9fbf-4ddb-a3a6-2516b9e67588", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "618d0e",
+    },
+    body: JSON.stringify({
+      sessionId: "618d0e",
+      runId: "pre-fix",
+      hypothesisId: "F",
+      location: "actions.ts:signUp:postCreateSignIn",
+      message: "signIn after createUser",
+      data: { signInError: signInError?.message ?? null },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+
   if (signInError) {
     return {
       ok: false,
@@ -110,29 +225,78 @@ export async function signUp(
   }
 
   revalidatePath("/", "layout");
-  redirect("/dev/dashboard");
+  redirect(sanitizeNextPath(formData.get("next")));
 }
 
 export async function signIn(
   _prev: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
+  const rawUsername = formData.get("username");
+  const rawPassword = formData.get("password");
   const parsed = credentialsSchema.safeParse({
-    username: formData.get("username"),
-    password: formData.get("password"),
+    username: rawUsername,
+    password: rawPassword,
   });
+
+  // #region agent log
+  fetch("http://127.0.0.1:7865/ingest/0922b9b0-9fbf-4ddb-a3a6-2516b9e67588", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "618d0e",
+    },
+    body: JSON.stringify({
+      sessionId: "618d0e",
+      runId: "pre-fix",
+      hypothesisId: "C",
+      location: "actions.ts:signIn:parse",
+      message: "signIn input parsed",
+      data: {
+        hasUsername: typeof rawUsername === "string" && rawUsername.length > 0,
+        hasPassword: typeof rawPassword === "string" && rawPassword.length > 0,
+        parseOk: parsed.success,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 
   if (!parsed.success) {
     return { ok: false, error: "Vul username en wachtwoord in." };
   }
 
   const { username, password } = parsed.data;
+  const email = usernameToEmail(username);
   const supabase = await getSupabaseServerClient();
 
   const { error } = await supabase.auth.signInWithPassword({
-    email: usernameToEmail(username),
+    email,
     password,
   });
+
+  // #region agent log
+  fetch("http://127.0.0.1:7865/ingest/0922b9b0-9fbf-4ddb-a3a6-2516b9e67588", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "618d0e",
+    },
+    body: JSON.stringify({
+      sessionId: "618d0e",
+      runId: "pre-fix",
+      hypothesisId: "D",
+      location: "actions.ts:signIn:result",
+      message: "signInWithPassword result",
+      data: {
+        emailDomain: email.split("@")[1] ?? null,
+        error: error?.message ?? null,
+        errorStatus: error?.status ?? null,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 
   if (error) {
     return {
@@ -142,7 +306,69 @@ export async function signIn(
   }
 
   revalidatePath("/", "layout");
-  redirect("/dev/dashboard");
+  redirect(sanitizeNextPath(formData.get("next")));
+}
+
+const oauthProviderSchema = z.enum(["google", "github"]);
+
+export type OAuthProvider = z.infer<typeof oauthProviderSchema>;
+
+/**
+ * Start de OAuth-flow (PKCE) via Supabase. De SSR-client zet de
+ * code-verifier-cookie; de provider stuurt de gebruiker terug naar
+ * /auth/callback waar de code voor een sessie wordt ingewisseld.
+ */
+export async function signInWithOAuthProvider(
+  formData: FormData,
+): Promise<void> {
+  const parsed = oauthProviderSchema.safeParse(formData.get("provider"));
+  if (!parsed.success) redirect(APP_ROUTES.login);
+
+  const next = sanitizeNextPath(formData.get("next"));
+
+  const headerStore = await headers();
+  const origin =
+    headerStore.get("origin") ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    "http://localhost:3000";
+
+  const supabase = await getSupabaseServerClient();
+  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: parsed.data,
+    options: { redirectTo },
+  });
+
+  // #region agent log
+  fetch("http://127.0.0.1:7865/ingest/0922b9b0-9fbf-4ddb-a3a6-2516b9e67588", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "618d0e",
+    },
+    body: JSON.stringify({
+      sessionId: "618d0e",
+      runId: "pre-fix",
+      hypothesisId: "E",
+      location: "actions.ts:signInWithOAuth",
+      message: "OAuth start",
+      data: {
+        provider: parsed.data,
+        origin,
+        redirectTo,
+        error: error?.message ?? null,
+        hasUrl: Boolean(data.url),
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+
+  if (error || !data.url) {
+    redirect(`${APP_ROUTES.login}?fout=oauth`);
+  }
+
+  redirect(data.url);
 }
 
 export async function signOut(): Promise<void> {

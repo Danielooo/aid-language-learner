@@ -139,6 +139,8 @@ export function AudioTable() {
         limit: String(snap.limit),
       };
       const qs = new URLSearchParams(params);
+      // Cache-restore bij mount/taalwissel; bewuste sync setState.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoad({
         status: "loaded",
         rows: snap.response.rows,

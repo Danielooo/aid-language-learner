@@ -8,7 +8,6 @@ const DESTRUCTIVE_BTN =
 
 type AdminActionBarProps = {
   selectedCount: number;
-  pageCount: number;
   page: number;
   totalPages: number;
   total: number;
@@ -27,7 +26,6 @@ type AdminActionBarProps = {
 
 export function AdminActionBar({
   selectedCount,
-  pageCount,
   page,
   totalPages,
   total,

@@ -49,6 +49,8 @@ export function Quiz() {
 
   // Eerste zin laden zodra de component mount.
   useEffect(() => {
+    // fetchNext zet synchroon loading-state; acceptabel voor dev-tool.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchNext();
   }, [fetchNext]);
 

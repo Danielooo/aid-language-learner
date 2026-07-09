@@ -20,8 +20,17 @@ import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-au
 // `response.cookies` (zodat de browser de refresh ontvangt). Dit is de
 // canonieke @supabase/ssr-pattern voor middleware/proxy.
 
-// TIJDELIJK: leeg zolang DEV_EXERCISE_TOOLS_REQUIRE_AUTH false is.
-const PROTECTED_PAGE_PREFIXES = DEV_EXERCISE_TOOLS_REQUIRE_AUTH
+// Productie-app: altijd login vereist, onafhankelijk van de dev-flag.
+const APP_PAGE_PREFIXES = [
+  "/vandaag",
+  "/oefenen",
+  "/leerplan",
+  "/oefeningen",
+  "/voortgang",
+] as const;
+
+// /dev-lab: alleen beschermd wanneer de dev-flag aan staat.
+const DEV_PAGE_PREFIXES = DEV_EXERCISE_TOOLS_REQUIRE_AUTH
   ? ([
     "/dev/exercise-generator",
     "/dev/my-exercises",
@@ -30,6 +39,8 @@ const PROTECTED_PAGE_PREFIXES = DEV_EXERCISE_TOOLS_REQUIRE_AUTH
     "/dev/dashboard",
   ] as const)
   : ([] as const);
+
+const PROTECTED_PAGE_PREFIXES = [...APP_PAGE_PREFIXES, ...DEV_PAGE_PREFIXES];
 
 function isProtectedPagePath(pathname: string): boolean {
   return PROTECTED_PAGE_PREFIXES.some((prefix) => pathname.startsWith(prefix));

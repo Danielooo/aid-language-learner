@@ -57,6 +57,7 @@ export function useQuizStorage() {
 
   // Hydratie pas in useEffect zodat SSR-output deterministisch is.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setScore(readJson<QuizScore>(SCORE_KEY, EMPTY_SCORE));
     setAttempts(readJson<QuizAttempt[]>(HISTORY_KEY, []));
     setHydrated(true);

@@ -1,6 +1,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-import { Dashboard } from "./_components/dashboard";
+import { Dashboard } from "@/app/_components/features/dashboard/dashboard";
 
 // Server Component wrapper: header + intro hier, zodat alleen de
 // daadwerkelijk-interactieve <Dashboard /> in de client-bundle landt.

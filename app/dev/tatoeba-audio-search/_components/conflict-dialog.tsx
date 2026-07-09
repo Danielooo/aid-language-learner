@@ -77,6 +77,8 @@ export function ConflictDialog({
     for (const item of items) {
       initial[String(item.audio_id)] = "skip";
     }
+    // Bewuste reset bij nieuwe items; begrensd tot dialog-open.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setResolutions(initial);
   }, [open, items]);
 

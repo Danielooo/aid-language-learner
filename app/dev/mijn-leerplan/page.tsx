@@ -1,4 +1,4 @@
-import { LearningTopicsPage } from "./_components/learning-topics-page";
+import { LearningTopicsPage } from "@/app/_components/features/topics/learning-topics-page";
 
 export const dynamic = "force-dynamic";
 
