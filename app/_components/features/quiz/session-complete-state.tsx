@@ -89,7 +89,7 @@ export function SessionCompleteState({
             {mistakeCount > 0 ? "Klaar" : "Nieuwe sessie starten"}
           </button>
         </div>
-        <BackToVandaagLink />
+        <BackToOefenenLink />
       </div>
     );
   }
@@ -111,10 +111,10 @@ export function SessionCompleteState({
             Nog een ronde
           </button>
           <Link
-            href={APP_ROUTES.vandaag}
+            href={APP_ROUTES.oefenen}
             className="rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
-            Terug naar Vandaag
+            Terug naar Oefenen
           </Link>
         </div>
       </div>
@@ -162,14 +162,14 @@ function ScoreSummary({
   );
 }
 
-function BackToVandaagLink() {
+function BackToOefenenLink() {
   return (
     <p>
       <Link
-        href={APP_ROUTES.vandaag}
+        href={APP_ROUTES.oefenen}
         className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
       >
-        Terug naar Vandaag
+        Terug naar Oefenen
       </Link>
     </p>
   );

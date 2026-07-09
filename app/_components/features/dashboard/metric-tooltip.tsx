@@ -1,19 +1,15 @@
 export const METRIC_TERMS = {
-  "summary-totaal": {
-    label: "In SRS",
-    help: "Het aantal oefeningen in je herhaalschema uit actieve topics.",
-  },
-  "summary-due": {
-    label: "Nu aan de beurt",
-    help: "Oefeningen waarvan de volgende herhaling nu of eerder gepland staat.",
-  },
-  "summary-relearning": {
-    label: "In herkansing",
-    help: "Oefeningen die na een fout antwoord binnenkort opnieuw verschijnen.",
-  },
   "grafiek-srs-stappen": {
     label: "Oefeningen per SRS-stap",
-    help: "Hoeveel oefeningen je op elke stap van het spaced repetition-schema hebt staan.",
+    help: "Per SRS-stap: hoeveel oefeningen je X keer goed hebt gehad. Standaard zie je het totaal; schakel naar Verdeeld om aan de beurt (blauw) en wachten (groen) te zien.",
+  },
+  "grafiek-activiteit": {
+    label: "Oefenactiviteit",
+    help: "Schakel tussen Pogingen (donkerblauw = veel, lichtblauw = weinig, grijs = geen) en Nauwkeurigheid (groen = meer goed, rood = meer fout). Nauwkeurigheidskleur geldt vanaf 10 pogingen per dag. Streak telt aaneengesloten dagen met minstens één poging.",
+  },
+  "grafiek-accuracy": {
+    label: "Goed vs fout",
+    help: "Verdeling van je quiz-pogingen: groen = goed, rood = fout. Kies een periode via het menu. Altijd toont maximaal je 5000 meest recente pogingen uit actieve topics.",
   },
 } as const;
 

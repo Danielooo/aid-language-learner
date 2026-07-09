@@ -1,6 +1,11 @@
 import { z } from "zod";
 
 import { getExerciseUserAccess } from "@/lib/dev/exercise-access";
+import { countSrsDue, type SrsDueCounts } from "@/lib/srs/due-exercises";
+import {
+  activeTopicsToArray,
+  getActiveTopicsForUser,
+} from "@/lib/topics/active-topics";
 
 export const dynamic = "force-dynamic";
 
@@ -34,18 +39,20 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const includeGlobal = url.searchParams.get("includeGlobal") === "true";
 
-  const [exercisesRes, prefsRes, dueRes] = await Promise.all([
+  const activeTopics = await getActiveTopicsForUser(access.supabase, access.userId);
+  const activeList = activeTopicsToArray(activeTopics);
+
+  const [exercisesRes, prefsRes, dueCountsRes] = await Promise.all([
     access.supabase.from("exercises").select("topic, owner_id").not("topic", "is", null),
     access.supabase
       .from("user_topic_preferences")
       .select("topic, is_active")
       .eq("user_id", access.userId),
-    access.supabase
-      .from("exercise_progress")
-      .select("exercise_id, exercises!inner(topic)")
-      .eq("user_id", access.userId)
-      .eq("is_suspended", false)
-      .lte("next_review_at", new Date().toISOString()),
+    activeList
+      ? countSrsDue(access.supabase, access.userId, activeList).catch((error: unknown) => ({
+          error: error instanceof Error ? error.message : "Onbekende fout",
+        }))
+      : Promise.resolve({ total: 0, byTopic: {} } satisfies SrsDueCounts),
   ]);
 
   if (exercisesRes.error) {
@@ -54,8 +61,8 @@ export async function GET(req: Request) {
   if (prefsRes.error) {
     return Response.json({ error: prefsRes.error.message }, { status: 500 });
   }
-  if (dueRes.error) {
-    return Response.json({ error: dueRes.error.message }, { status: 500 });
+  if ("error" in dueCountsRes) {
+    return Response.json({ error: dueCountsRes.error }, { status: 500 });
   }
 
   const prefsByTopic = new Map<string, boolean>();
@@ -63,13 +70,7 @@ export async function GET(req: Request) {
     prefsByTopic.set(pref.topic, pref.is_active);
   }
 
-  const dueByTopic = new Map<string, number>();
-  for (const row of dueRes.data ?? []) {
-    const exercise = row.exercises as unknown as { topic: string | null } | null;
-    const topic = exercise?.topic?.trim();
-    if (!topic) continue;
-    dueByTopic.set(topic, (dueByTopic.get(topic) ?? 0) + 1);
-  }
+  const dueByTopic: Record<string, number> = dueCountsRes.byTopic;
 
   const topicMeta = new Map<string, { exerciseCount: number; isOwn: boolean }>();
 
@@ -93,7 +94,7 @@ export async function GET(req: Request) {
       exerciseCount: meta.exerciseCount,
       isActive: prefsByTopic.get(topic) ?? false,
       isOwn: meta.isOwn,
-      dueCount: dueByTopic.get(topic) ?? 0,
+      dueCount: (prefsByTopic.get(topic) ?? false) ? (dueByTopic[topic] ?? 0) : 0,
     }));
 
   const payload: LearningTopicsResponse = {

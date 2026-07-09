@@ -15,10 +15,8 @@ type AppShellNavProps = {
   username: string | null;
 };
 
-// Actief = exacte match of sub-route (bijv. /oefenen/typen hoort bij
-// /oefenen). Vandaag matcht alleen exact zodat het niet altijd actief is.
+// Actief = exacte match of sub-route (bijv. /oefenen/typen hoort bij /oefenen).
 function isActive(pathname: string, href: string): boolean {
-  if (href === APP_ROUTES.vandaag) return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -32,8 +30,8 @@ export function AppTopNav({ username }: AppShellNavProps) {
         <div className="flex min-h-14 items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <Link
-              href={APP_ROUTES.vandaag}
-              aria-label="AID Language Learner — vandaag"
+              href={APP_ROUTES.oefenen}
+              aria-label="AID Language Learner — oefenen"
               className="text-2xl font-bold tracking-tighter text-foreground"
             >
               LL
@@ -92,7 +90,7 @@ export function AppTabBar() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="grid grid-cols-5">
+      <ul className="grid grid-cols-4">
         {APP_NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href);
           return (

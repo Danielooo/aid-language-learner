@@ -38,10 +38,10 @@ export function SrsCompleteState({ topic, onBack }: SrsCompleteStateProps) {
 
       <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
         <Link
-          href={APP_ROUTES.vandaag}
+          href={APP_ROUTES.oefenen}
           className="rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
         >
-          Terug naar Vandaag
+          Terug naar Oefenen
         </Link>
         <button
           type="button"

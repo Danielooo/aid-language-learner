@@ -14,6 +14,7 @@ type ChartShellProps = {
   emptyMessage?: string;
   children: ReactNode;
   className?: string;
+  contentClassName?: string;
 };
 
 export function ChartShell({
@@ -25,6 +26,7 @@ export function ChartShell({
   emptyMessage,
   children,
   className = "",
+  contentClassName = "h-64 w-full min-h-[16rem]",
 }: ChartShellProps) {
   return (
     <section
@@ -40,7 +42,7 @@ export function ChartShell({
       {isEmpty ? (
         <ChartEmptyState title={emptyTitle ?? "Nog niet genoeg data"} message={emptyMessage} />
       ) : (
-        <div className="h-64 w-full min-h-[16rem]">{children}</div>
+        <div className={contentClassName}>{children}</div>
       )}
     </section>
   );

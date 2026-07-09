@@ -3,6 +3,7 @@ import {
   EXERCISE_QUIZ_SELECT,
   toExerciseQuizItem,
 } from "@/lib/quiz/exercise-quiz-item";
+import { pickRandomSrsDueExercise } from "@/lib/srs/due-exercises";
 import {
   activeTopicsToArray,
   getActiveTopicsForUser,
@@ -91,31 +92,20 @@ async function fetchSrsDue(
     };
   }
 
-  const now = new Date().toISOString();
+  try {
+    const item = await pickRandomSrsDueExercise(
+      access.supabase,
+      access.userId,
+      activeList,
+      { topic },
+    );
 
-  let dueQuery = access.supabase
-    .from("exercise_progress")
-    .select(`exercise_id, exercises!inner(${EXERCISE_QUIZ_SELECT})`)
-    .eq("user_id", access.userId)
-    .eq("is_suspended", false)
-    .lte("next_review_at", now)
-    .in("exercises.topic", activeList)
-    .order("next_review_at", { ascending: true })
-    .limit(20);
-
-  if (topic) {
-    dueQuery = dueQuery.eq("exercises.topic", topic);
-  }
-
-  const { data: dueRows, error: dueError } = await dueQuery;
-  if (dueError) {
-    return { error: Response.json({ error: dueError.message }, { status: 500 }) };
-  }
-
-  if (dueRows && dueRows.length > 0) {
-    const pick = dueRows[Math.floor(Math.random() * dueRows.length)];
-    const exercise = pick.exercises as unknown as Parameters<typeof toExerciseQuizItem>[1];
-    return { item: toExerciseQuizItem(access.supabase, exercise) };
+    if (item) {
+      return { item };
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Onbekende fout";
+    return { error: Response.json({ error: message }, { status: 500 }) };
   }
 
   return {

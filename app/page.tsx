@@ -7,7 +7,7 @@ import { APP_ROUTES } from "@/lib/routes";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 // Publieke landingspagina. Ingelogde gebruikers gaan direct door naar
-// de app (/vandaag) — de landing is alleen voor bezoekers.
+// de app (/oefenen) — de landing is alleen voor bezoekers.
 export default async function Home() {
   const supabase = await getSupabaseServerClient();
   const {
@@ -15,7 +15,7 @@ export default async function Home() {
   } = await supabase.auth.getUser();
 
   if (user) {
-    redirect(APP_ROUTES.vandaag);
+    redirect(APP_ROUTES.oefenen);
   }
 
   return (

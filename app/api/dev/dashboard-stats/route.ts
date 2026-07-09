@@ -4,9 +4,16 @@ import { getExerciseUserAccess } from "@/lib/dev/exercise-access";
 import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
 import { getActiveTopicsForUser, isTopicActive } from "@/lib/topics/active-topics";
 
-import type { ProgressRow } from "@/lib/dashboard/types";
+import type { AttemptRow, ProgressRow } from "@/lib/dashboard/types";
 
 export const dynamic = "force-dynamic";
+
+type AttemptRowWithExercise = {
+  created_at: string;
+  is_correct: boolean;
+  exercise_id: string;
+  exercises: { topic: string | null } | null;
+};
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -24,9 +31,10 @@ export async function GET(req: Request) {
     return Response.json(createMockDashboardStats());
   }
 
+  const now = new Date();
   const activeTopics = await getActiveTopicsForUser(access.supabase, access.userId);
 
-  const [progressRes, exerciseTopicsRes] = await Promise.all([
+  const [progressRes, exerciseTopicsRes, attemptsRes] = await Promise.all([
     access.supabase
       .from("exercise_progress")
       .select(
@@ -34,6 +42,12 @@ export async function GET(req: Request) {
       )
       .eq("user_id", access.userId),
     access.supabase.from("exercises").select("id, topic"),
+    access.supabase
+      .from("quiz_attempts")
+      .select("created_at, is_correct, exercise_id, exercises(topic)")
+      .eq("user_id", access.userId)
+      .order("created_at", { ascending: false })
+      .limit(5000),
   ]);
 
   if (progressRes.error) {
@@ -41,6 +55,9 @@ export async function GET(req: Request) {
   }
   if (exerciseTopicsRes.error) {
     return Response.json({ error: exerciseTopicsRes.error.message }, { status: 500 });
+  }
+  if (attemptsRes.error) {
+    return Response.json({ error: attemptsRes.error.message }, { status: 500 });
   }
 
   const topicByExerciseId = new Map<string, string | null>();
@@ -55,5 +72,15 @@ export async function GET(req: Request) {
     },
   );
 
-  return Response.json(buildDashboardStats(progressRows));
+  const attemptRows: AttemptRow[] = (
+    (attemptsRes.data ?? []) as unknown as AttemptRowWithExercise[]
+  )
+    .map((row) => ({
+      created_at: row.created_at,
+      is_correct: row.is_correct,
+      topic: row.exercises?.topic ?? topicByExerciseId.get(row.exercise_id) ?? null,
+    }))
+    .filter((row) => isTopicActive(activeTopics, row.topic));
+
+  return Response.json(buildDashboardStats(progressRows, attemptRows, now));
 }

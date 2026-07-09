@@ -22,7 +22,6 @@ import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-au
 
 // Productie-app: altijd login vereist, onafhankelijk van de dev-flag.
 const APP_PAGE_PREFIXES = [
-  "/vandaag",
   "/oefenen",
   "/leerplan",
   "/oefeningen",

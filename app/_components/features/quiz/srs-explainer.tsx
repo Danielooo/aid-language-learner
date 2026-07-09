@@ -30,9 +30,10 @@ export function SrsExplainer({ compact = false }: SrsExplainerProps) {
       <div className="space-y-4 border-t border-border px-4 py-4 text-sm text-muted-foreground">
         <p>
           Je oefent alleen kaarten die <strong className="text-foreground">nu aan de beurt</strong>{" "}
-          zijn. Bij een goed antwoord schuift een oefening door naar het volgende,
-          langere interval. Bij een fout antwoord niet — je krijgt eerst een korte
-          herkansing.
+          zijn. Oefeningen uit actieve topics in je leerplan staan direct in je
+          herhaalschema. Bij een goed antwoord schuift een oefening door naar het volgende,
+          langere interval. Bij een fout antwoord blijft dezelfde oefening meteen in de
+          queue staan tot je hem goed hebt.
         </p>
 
         {GROUP_ORDER.map((group) => {
@@ -59,9 +60,8 @@ export function SrsExplainer({ compact = false }: SrsExplainerProps) {
         })}
 
         <p className="text-xs">
-          Oefeningen komen in je herhaalschema zodra je ze minstens één keer in
-          spaced repetition hebt geoefend. Overslaan telt niet mee. Via{" "}
-          <em>Niet meer tonen</em> kun je een oefening uitsluiten.
+          Overslaan telt niet mee. Via <em>Niet meer tonen</em> kun je een oefening
+          uitsluiten.
         </p>
       </div>
     </details>

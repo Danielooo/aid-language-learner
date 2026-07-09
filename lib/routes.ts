@@ -3,7 +3,6 @@
 // componenten kunnen gebruiken zonder hard-coded paden.
 export const APP_ROUTES = {
   landing: "/",
-  vandaag: "/vandaag",
   oefenen: "/oefenen",
   flashcards: "/oefenen/flashcards",
   typen: "/oefenen/typen",

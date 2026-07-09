@@ -1,6 +1,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-import { Dashboard } from "@/app/_components/features/dashboard/dashboard";
+import { DashboardWithStats } from "@/app/_components/features/dashboard/dashboard";
 
 // Server Component wrapper: header + intro hier, zodat alleen de
 // daadwerkelijk-interactieve <Dashboard /> in de client-bundle landt.
@@ -37,7 +37,7 @@ export default async function DashboardPage() {
         </p>
       </header>
 
-      <Dashboard />
+      <DashboardWithStats />
     </div>
   );
 }

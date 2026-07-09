@@ -1,16 +1,24 @@
 "use client";
 
-import Link from "next/link";
-
-import { SrsExplainer } from "@/app/_components/features/quiz/srs-explainer";
-import { formatCount } from "@/lib/dashboard/format";
-
-import { MetricTooltip } from "./metric-tooltip";
+import { AccuracyPieChart } from "./accuracy-pie-chart";
+import { ActivityCalendarChart } from "./activity-calendar-chart";
 import { SrsStepDistributionChart } from "./srs-step-distribution-chart";
 import { useDashboardStats } from "./use-dashboard-stats";
 
-export function Dashboard() {
+import type { DashboardStatsResponse } from "@/lib/dashboard/types";
+
+type DashboardProps = {
+  stats: DashboardStatsResponse | null;
+  loading: boolean;
+  error: string | null;
+};
+
+export function DashboardWithStats() {
   const { stats, loading, error } = useDashboardStats();
+  return <Dashboard stats={stats} loading={loading} error={error} />;
+}
+
+export function Dashboard({ stats, loading, error }: DashboardProps) {
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -27,50 +35,15 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        <Link
-          href="/oefenen"
-          className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground hover:bg-accent/90"
-        >
-          Verder oefenen
-        </Link>
-      </div>
-
-      <section className="grid gap-3 sm:grid-cols-3">
-        <SummaryStat metric="summary-totaal" value={formatCount(stats.totalExercises)} />
-        <SummaryStat metric="summary-due" value={formatCount(stats.dueNowCount)} />
-        <SummaryStat metric="summary-relearning" value={formatCount(stats.relearningCount)} />
-      </section>
-
       <SrsStepDistributionChart
         data={stats.srsStepDistribution}
         totalExercises={stats.totalExercises}
       />
 
-      <SrsExplainer compact />
-    </div>
-  );
-}
-
-type SummaryStatProps = {
-  metric: "summary-totaal" | "summary-due" | "summary-relearning";
-  value: string;
-};
-
-const SUMMARY_LABELS: Record<SummaryStatProps["metric"], string> = {
-  "summary-totaal": "In SRS",
-  "summary-due": "Nu aan de beurt",
-  "summary-relearning": "In herkansing",
-};
-
-function SummaryStat({ metric, value }: SummaryStatProps) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center gap-2">
-        <p className="text-xs text-muted-foreground">{SUMMARY_LABELS[metric]}</p>
-        <MetricTooltip term={metric} />
-      </div>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{value}</p>
+      <section className="grid gap-6 lg:grid-cols-2">
+        <ActivityCalendarChart data={stats.activityDays} streakDays={stats.streakDays} />
+        <AccuracyPieChart attempts={stats.attemptSnapshots} />
+      </section>
     </div>
   );
 }
@@ -78,15 +51,11 @@ function SummaryStat({ metric, value }: SummaryStatProps) {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-20 animate-pulse rounded-lg border border-border bg-muted/40"
-          />
-        ))}
-      </div>
       <div className="h-80 animate-pulse rounded-lg border border-border bg-muted/40" />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="h-64 animate-pulse rounded-lg border border-border bg-muted/40" />
+        <div className="h-64 animate-pulse rounded-lg border border-border bg-muted/40" />
+      </div>
     </div>
   );
 }

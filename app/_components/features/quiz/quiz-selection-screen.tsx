@@ -110,7 +110,7 @@ export function QuizSelectionScreen({
 /**
  * Leest opgeslagen selectiemodus uit localStorage (client-only).
  * Een `?modus=` query-param wint van localStorage, zodat bijvoorbeeld
- * de Vandaag-pagina direct naar SRS-herhaling kan deeplinken.
+ * de Oefenen-pagina direct naar SRS-herhaling kan deeplinken.
  */
 export function useQuizSelectionMode(defaultMode: QuizSelectionMode = "topic") {
   const [mode, setMode] = useState<QuizSelectionMode>(defaultMode);

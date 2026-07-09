@@ -1,4 +1,4 @@
-// Dagelijkse streak-berekening voor de Vandaag-pagina. Dagen worden
+// Dagelijkse streak-berekening voor dashboard-metrics. Dagen worden
 // bepaald in Europe/Amsterdam — dezelfde tijdzone als het SRS-schema.
 
 const TIME_ZONE = "Europe/Amsterdam";

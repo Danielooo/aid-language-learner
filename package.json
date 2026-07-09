@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "npx --yes tsx --test lib/srs/schedule.test.ts lib/dashboard/metrics.test.ts lib/dashboard/attempt-metrics.test.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "seed:users": "npx --yes tsx --env-file=.env.local supabase/seed-users.ts"

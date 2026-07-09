@@ -1,6 +1,7 @@
 "use client";
 
 import { QuizModeCard } from "./quiz-mode-card";
+import { SrsDueCard } from "./srs-due-card";
 
 const QUIZ_MODES = [
   {
@@ -37,6 +38,8 @@ export function ExercisesQuizPage() {
           repetition of een eigen selectie.
         </p>
       </header>
+
+      <SrsDueCard />
 
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {QUIZ_MODES.map((mode) => (

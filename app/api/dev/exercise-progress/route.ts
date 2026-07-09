@@ -5,6 +5,7 @@ import {
   createNewSrsCard,
   reviewSrsCard,
 } from "@/lib/srs/schedule";
+import { countSrsDue } from "@/lib/srs/due-exercises";
 import {
   activeTopicsToArray,
   getActiveTopicsForUser,
@@ -97,23 +98,23 @@ export async function GET(req: Request) {
 
   let dueCount = 0;
   let dueError: { message: string } | null = null;
+  let dueByTopic: Record<string, number> | undefined;
 
   if (activeList) {
-    let dueQuery = access.supabase
-      .from("exercise_progress")
-      .select("exercise_id, exercises!inner(topic)", { count: "exact", head: true })
-      .eq("user_id", access.userId)
-      .eq("is_suspended", false)
-      .lte("next_review_at", now)
-      .in("exercises.topic", activeList);
-
-    if (topic) {
-      dueQuery = dueQuery.eq("exercises.topic", topic);
+    try {
+      const dueCounts = await countSrsDue(access.supabase, access.userId, activeList, {
+        topic,
+        now: new Date(now),
+      });
+      dueCount = dueCounts.total;
+      if (breakdown === "topics") {
+        dueByTopic = dueCounts.byTopic;
+      }
+    } catch (error) {
+      dueError = {
+        message: error instanceof Error ? error.message : "Onbekende fout",
+      };
     }
-
-    const dueResult = await dueQuery;
-    dueCount = dueResult.count ?? 0;
-    dueError = dueResult.error;
   }
 
   if (dueError) {
@@ -137,35 +138,6 @@ export async function GET(req: Request) {
 
   if (suspendedError) {
     return Response.json({ error: suspendedError.message }, { status: 500 });
-  }
-
-  let dueByTopic: Record<string, number> | undefined;
-  if (breakdown === "topics") {
-    dueByTopic = {};
-
-    if (activeList) {
-      const { data: dueRows, error: rowsError } = await access.supabase
-        .from("exercise_progress")
-        .select("exercise_id, exercises!inner(topic)")
-        .eq("user_id", access.userId)
-        .eq("is_suspended", false)
-        .lte("next_review_at", now)
-        .in("exercises.topic", activeList);
-
-      if (rowsError) {
-        return Response.json({ error: rowsError.message }, { status: 500 });
-      }
-
-      for (const row of dueRows ?? []) {
-        const exercise = row.exercises as unknown as { topic: string | null } | null;
-        const key =
-          typeof exercise?.topic === "string" && exercise.topic.trim().length > 0
-            ? exercise.topic.trim()
-            : null;
-        if (!key || !isTopicActive(activeTopics, key)) continue;
-        dueByTopic[key] = (dueByTopic[key] ?? 0) + 1;
-      }
-    }
   }
 
   const payload: ProgressStatsResponse = {

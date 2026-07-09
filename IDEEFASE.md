@@ -19,6 +19,7 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 - doorzoekbaar maken, toolcalling op los kunnen laten
 
 
+
 #### **Belangrijkste functionaliteiten**
 
 1. **Registreren en inloggen**
@@ -38,6 +39,8 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 
 ---
 
+
+
 ## TODO
 
 **Vooraf ophalen en verrijken audio oefeningen**
@@ -54,6 +57,7 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 - ~~Zelf kunnen aanpassen~~
 
 **Taaloefeningen kunnen maken**
+
 - ~~Flashcards~~ 
 - ~~Typen~~
 - ~~Sorteren~~
@@ -61,9 +65,15 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 - ~~Kunnen aanvinken uitvinken welke oefeningen ik actief oefen in spaced repetition~~
 
 **Oefeningen herhalen met eerder zwak resultaat**
+
 - ~~Spaced repetition (regels voor goede en foute antwoorden)~~
 
+**Fix**
+
+- SRS, direct na toevoegen oefeningen in leerplan > verschijnen in SRS
+
 **Voortgangsdashboard**
+
 - Dashboard met metrics en visuals
   - Welke topics gaan goed? Welke heb ik vaak fouten in?
   - Hoeveel oefeningen moet ik per komende dag maken (spaced repetition)
@@ -72,19 +82,17 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 
 **Registreren en inloggen**
 
-
 ===============================================================================
 
-
-
-
-
 **Aan het eind**
+
 - Auth implementeren (User en Admin)
 
 **Global**
+
 - loading state maken
 - skeleton loader maken
+
 
 
 ## Nice to haves
@@ -94,6 +102,4 @@ Kernfunctionaliteiten uitbouwen (Must haves)
  (Login knop met Google, of Github). 
  (Kan ook EU: Zitadel of LogTo)
 - Eigen api key toevoegen
-
-
 

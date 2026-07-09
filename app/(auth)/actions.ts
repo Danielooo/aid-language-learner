@@ -57,9 +57,9 @@ function usernameToEmail(username: string): string {
 // Alleen interne paden toestaan als post-login-redirect; voorkomt open
 // redirects via `?next=https://evil.example`.
 function sanitizeNextPath(value: FormDataEntryValue | string | null): string {
-  if (typeof value !== "string") return APP_ROUTES.vandaag;
+  if (typeof value !== "string") return APP_ROUTES.oefenen;
   if (!value.startsWith("/") || value.startsWith("//")) {
-    return APP_ROUTES.vandaag;
+    return APP_ROUTES.oefenen;
   }
   return value;
 }

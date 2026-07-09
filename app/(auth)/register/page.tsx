@@ -24,7 +24,7 @@ export default async function RegisterPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect(APP_ROUTES.vandaag);
+  if (user) redirect(APP_ROUTES.oefenen);
 
   return <AuthForm mode="signup" action={signUp} next={next} />;
 }

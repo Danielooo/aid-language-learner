@@ -18,7 +18,6 @@ export default function DevLayout({ children }: { children: ReactNode }) {
         <div className="rounded-md border border-dashed border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
           <strong className="font-semibold text-foreground">/dev</strong> —
           exploratie-pagina&apos;s en lab-tooling. De productie-app leeft op{" "}
-          <code className="font-mono">/vandaag</code>,{" "}
           <code className="font-mono">/oefenen</code>,{" "}
           <code className="font-mono">/leerplan</code> en{" "}
           <code className="font-mono">/voortgang</code>.

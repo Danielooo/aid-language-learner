@@ -1,6 +1,6 @@
 import { buildDashboardStats } from "./metrics";
 
-import type { ProgressRow } from "./types";
+import type { AttemptRow, ProgressRow } from "./types";
 
 function daysAgo(n: number): string {
   const d = new Date();
@@ -51,6 +51,39 @@ function makeProgress(): ProgressRow[] {
   return rows;
 }
 
+function makeAttempts(): AttemptRow[] {
+  const rows: AttemptRow[] = [];
+  const pattern: Array<{ daysAgo: number; count: number; correctRatio: number }> = [
+    { daysAgo: 0, count: 8, correctRatio: 0.75 },
+    { daysAgo: 1, count: 12, correctRatio: 0.67 },
+    { daysAgo: 2, count: 5, correctRatio: 0.8 },
+    { daysAgo: 3, count: 0, correctRatio: 0 },
+    { daysAgo: 4, count: 6, correctRatio: 0.5 },
+    { daysAgo: 5, count: 10, correctRatio: 0.7 },
+    { daysAgo: 6, count: 4, correctRatio: 0.75 },
+    { daysAgo: 10, count: 7, correctRatio: 0.86 },
+    { daysAgo: 14, count: 3, correctRatio: 0.67 },
+    { daysAgo: 21, count: 9, correctRatio: 0.78 },
+    { daysAgo: 30, count: 5, correctRatio: 0.6 },
+    { daysAgo: 45, count: 4, correctRatio: 0.5 },
+    { daysAgo: 60, count: 6, correctRatio: 0.83 },
+    { daysAgo: 90, count: 2, correctRatio: 1 },
+  ];
+
+  for (const entry of pattern) {
+    for (let i = 0; i < entry.count; i++) {
+      const correctCount = Math.round(entry.count * entry.correctRatio);
+      rows.push({
+        created_at: daysAgo(entry.daysAgo),
+        is_correct: i < correctCount,
+        topic: "mock",
+      });
+    }
+  }
+
+  return rows;
+}
+
 export function createMockDashboardStats() {
-  return buildDashboardStats(makeProgress());
+  return buildDashboardStats(makeProgress(), makeAttempts());
 }

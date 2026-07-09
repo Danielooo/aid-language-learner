@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 function sanitizeNextPath(value: string | null): string {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return APP_ROUTES.vandaag;
+    return APP_ROUTES.oefenen;
   }
   return value;
 }
