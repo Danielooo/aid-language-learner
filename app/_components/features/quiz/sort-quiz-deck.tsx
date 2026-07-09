@@ -1,8 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import { useAppProfile } from "@/app/(app)/_components/app-profile-provider";
+import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 
 import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
 import { ExerciseErrorState } from "@/app/_components/features/quiz/exercise-error-state";
@@ -16,6 +18,7 @@ import {
 } from "@/lib/keyboard/quiz-shortcuts";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
 import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
+import { useExerciseSummaryStats } from "@/lib/dashboard/use-exercise-summary-stats";
 import {
   MAX_SORT_FETCH_RETRIES,
   MIN_SORT_WORDS,
@@ -27,6 +30,7 @@ import {
 import { isValidTranslationDirection } from "@/lib/quiz/typing-config";
 
 import { ExercisePicker } from "./exercise-picker";
+import { QuizSubPageMeta } from "./quiz-sub-page-meta";
 import { ActiveTopicsEmptyBanner } from "./active-topics-empty-banner";
 import {
   QuizSelectionScreen,
@@ -71,6 +75,8 @@ function directionDisplayLabel(direction: TranslationDirection): string {
 
 export function SortQuizDeck() {
   const router = useRouter();
+  const { username } = useAppProfile();
+  const { stats, loading: statsLoading } = useExerciseSummaryStats();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [screen, setScreen] = useState<DeckScreen>("setup");
@@ -463,26 +469,19 @@ export function SortQuizDeck() {
 
   return (
     <div ref={containerRef} tabIndex={-1} className="space-y-6 outline-none">
-      <header className="space-y-1">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <Link
-            href="/oefenen"
-            className="underline hover:text-foreground"
-          >
-            ← Oefeningen-quiz
-          </Link>
-          <span aria-hidden>·</span>
-          <span>{escHint}</span>
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Sorteren
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {screen === "playing"
+      <AppPageHeader
+        eyebrow="Oefenen"
+        title="Sorteren"
+        username={username}
+        meta={<QuizSubPageMeta escHint={escHint} />}
+        description={
+          screen === "playing"
             ? "Sleep woorden of typ de eerste letter(s) per positie."
-            : "Kies richting, selectie en oefeningen voor je sorteer-quiz."}
-        </p>
-      </header>
+            : "Kies richting, selectie en oefeningen voor je sorteer-quiz."
+        }
+        stats={stats.map((stat) => ({ ...stat, loading: statsLoading }))}
+        hideStats={screen === "playing"}
+      />
 
       {screen !== "playing" && (
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">

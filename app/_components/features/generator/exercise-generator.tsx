@@ -5,12 +5,16 @@ import { useChat } from "@ai-sdk/react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { useAppProfile } from "@/app/(app)/_components/app-profile-provider";
+import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 import {
   EXERCISE_CHAT_MODEL,
   EXERCISE_CHAT_SYSTEM_PROMPT,
   EXERCISE_CHAT_TOOL_DESCRIPTOR,
 } from "@/lib/ai/exercise-generator-config";
 import { DEV_MOCK_USER_USERNAME } from "@/lib/dev/dev-identities";
+import { useMyExercisesSummary } from "@/lib/exercises/use-my-exercises-summary";
+import { APP_ROUTES } from "@/lib/routes";
 
 import { ProposalTable } from "./proposal-table";
 import type {
@@ -65,6 +69,8 @@ type ExerciseGeneratorProps = {
 };
 
 export function ExerciseGenerator({ showDebug = false }: ExerciseGeneratorProps) {
+  const { username } = useAppProfile();
+  const { stats: exerciseStats, loading: summaryLoading } = useMyExercisesSummary();
   const [input, setInput] = useState("");
   const [batches, setBatches] = useState<ProposalBatch[]>([]);
   const processedBatchIds = useRef(new Set<string>());
@@ -218,36 +224,44 @@ export function ExerciseGenerator({ showDebug = false }: ExerciseGeneratorProps)
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Oefeningen-generator
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Vraag de chatbot om Spaans→Nederlands vertaaloefeningen voor een
-          onderwerp, bijvoorbeeld &quot;10 zinnen voor in een restaurant&quot;.
-          Je reviewt het voorstel en klikt &quot;Opslaan&quot; om ze aan je
-          eigen oefeningen toe te voegen.
+      <AppPageHeader
+        eyebrow="Mijn materiaal"
+        title="Generator"
+        username={username}
+        meta={
+          <Link
+            href={APP_ROUTES.oefeningen}
+            className="underline hover:text-foreground"
+          >
+            ← Oefeningen
+          </Link>
+        }
+        description='Vraag de chatbot om Spaans→Nederlands vertaaloefeningen voor een onderwerp, bijvoorbeeld "10 zinnen voor in een restaurant". Je reviewt het voorstel en klikt "Opslaan" om ze aan je eigen oefeningen toe te voegen.'
+        stats={exerciseStats.map((stat) => ({
+          ...stat,
+          loading: summaryLoading,
+        }))}
+      />
+
+      {showDebug && (
+        <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Opgeslagen oefeningen horen bij{" "}
+          <code className="font-mono">@{DEV_MOCK_USER_USERNAME}</code> in
+          dev-modus. Beheer ze via de tab &quot;Mijn oefeningen&quot;.
         </p>
-        {showDebug && (
-          <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            Opgeslagen oefeningen horen bij{" "}
-            <code className="font-mono">@{DEV_MOCK_USER_USERNAME}</code> in
-            dev-modus. Beheer ze via de tab &quot;Mijn oefeningen&quot;.
-          </p>
-        )}
-        {persistState.status === "success" && (
-          <p className="rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-foreground">
-            Opgeslagen. Vink topics aan om ze te oefenen via{" "}
-            <Link
-              href="/leerplan"
-              className="font-medium text-accent underline-offset-2 hover:underline"
-            >
-              Mijn leerplan
-            </Link>
-            .
-          </p>
-        )}
-      </header>
+      )}
+      {persistState.status === "success" && (
+        <p className="rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-foreground">
+          Opgeslagen. Vink topics aan om ze te oefenen via{" "}
+          <Link
+            href="/leerplan"
+            className="font-medium text-accent underline-offset-2 hover:underline"
+          >
+            Mijn leerplan
+          </Link>
+          .
+        </p>
+      )}
 
       <section className="space-y-3 rounded-lg border border-border bg-card p-5 text-card-foreground">
         <header className="flex items-center justify-between">

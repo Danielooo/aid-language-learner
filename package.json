@@ -10,11 +10,14 @@
     "test": "npx --yes tsx --test lib/srs/schedule.test.ts lib/dashboard/metrics.test.ts lib/dashboard/attempt-metrics.test.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "seed:users": "npx --yes tsx --env-file=.env.local supabase/seed-users.ts"
+    "seed:users": "npx --yes tsx --env-file=.env.local supabase/seed-users.ts",
+    "seed:auth0-users": "npx --yes tsx --env-file=.env.local scripts/seed-auth0-users.ts",
+    "setup:auth0-grants": "npx --yes tsx --env-file=.env.local scripts/setup-auth0-grants.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.66",
     "@ai-sdk/react": "^3.0.193",
+    "@auth0/nextjs-auth0": "^4.25.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",

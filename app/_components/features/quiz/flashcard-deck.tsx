@@ -1,8 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import { useAppProfile } from "@/app/(app)/_components/app-profile-provider";
+import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 
 import {
   ALL_TOPICS,
@@ -19,8 +21,10 @@ import {
 } from "@/lib/keyboard/quiz-shortcuts";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
 import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
+import { useExerciseSummaryStats } from "@/lib/dashboard/use-exercise-summary-stats";
 
 import { ExercisePicker } from "./exercise-picker";
+import { QuizSubPageMeta } from "./quiz-sub-page-meta";
 import { ActiveTopicsEmptyBanner } from "./active-topics-empty-banner";
 import { animateCardExit, Flashcard } from "./flashcard";
 import {
@@ -58,6 +62,8 @@ function topicDisplayLabel(topic: string): string {
 
 export function FlashcardDeck() {
   const router = useRouter();
+  const { username } = useAppProfile();
+  const { stats, loading: statsLoading } = useExerciseSummaryStats();
   const containerRef = useRef<HTMLDivElement>(null);
   const cardContainerRef = useRef<HTMLDivElement>(null);
 
@@ -402,26 +408,19 @@ export function FlashcardDeck() {
 
   return (
     <div ref={containerRef} tabIndex={-1} className="space-y-6 outline-none">
-      <header className="space-y-1">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <Link
-            href="/oefenen"
-            className="underline hover:text-foreground"
-          >
-            ← Oefeningen-quiz
-          </Link>
-          <span aria-hidden>·</span>
-          <span>{escHint}</span>
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Flashcards
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {screen === "playing"
+      <AppPageHeader
+        eyebrow="Oefenen"
+        title="Flashcards"
+        username={username}
+        meta={<QuizSubPageMeta escHint={escHint} />}
+        description={
+          screen === "playing"
             ? "Bekijk de Spaanse zin, draai de kaart om en beoordeel jezelf."
-            : "Kies hoe en welke oefeningen je wilt oefenen."}
-        </p>
-      </header>
+            : "Kies hoe en welke oefeningen je wilt oefenen."
+        }
+        stats={stats.map((stat) => ({ ...stat, loading: statsLoading }))}
+        hideStats={screen === "playing"}
+      />
 
       {screen === "selection" && selectionHydrated && (
         <QuizSelectionScreen

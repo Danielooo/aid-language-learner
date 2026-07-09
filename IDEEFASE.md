@@ -70,23 +70,23 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 
 **Fix**
 
-- SRS, direct na toevoegen oefeningen in leerplan > verschijnen in SRS
+- ~~SRS, direct na toevoegen oefeningen in leerplan > verschijnen in SRS~~
 
 **Voortgangsdashboard**
 
-- Dashboard met metrics en visuals
-  - Welke topics gaan goed? Welke heb ik vaak fouten in?
-  - Hoeveel oefeningen moet ik per komende dag maken (spaced repetition)
-  - Hoeveel oefeningen heb ik gehaald per interval?
-  - Hoeveel oefeningen doe ik per dag, week, maand?
+- ~~Dashboard met metrics en visuals~~
+  - ~~Hoeveel oefeningen heb ik gehaald per interval?~~
+  - ~~Hoeveel oefeningen doe ik per dag, week, maand?~~
 
 **Registreren en inloggen**
 
-===============================================================================
+- Implementeer Auth0 (HIER GEBLEVEN, REG/INLOG WERKT NIET)
+- Creer profiel
+- Mogelijkheid tot profiel aanpassen
 
-**Aan het eind**
+========================================================
 
-- Auth implementeren (User en Admin)
+
 
 **Global**
 
@@ -102,4 +102,5 @@ Kernfunctionaliteiten uitbouwen (Must haves)
  (Login knop met Google, of Github). 
  (Kan ook EU: Zitadel of LogTo)
 - Eigen api key toevoegen
+- Hoeveel oefeningen moet ik per komende periode maken (spaced repetition)
 

@@ -6,8 +6,8 @@ import {
   EXERCISE_QUIZ_CHAT_MODEL,
   buildQuizChatSystemPrompt,
 } from "@/lib/ai/exercise-quiz-chat-config";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 import type { UIMessage } from "ai";
 
@@ -41,11 +41,8 @@ export async function POST(req: Request) {
   // Quiz-chat is alleen nuttig als je ingelogd bent en daadwerkelijk
   // oefent. Voorkomt dat een onauth'd client de chat aanroept.
   if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH) {
-    const supabase = await getSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+    const { isAuthenticated } = await getAuthContext();
+    if (!isAuthenticated) {
       return Response.json({ error: "Niet ingelogd." }, { status: 401 });
     }
   }

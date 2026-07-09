@@ -6,8 +6,8 @@ import {
   EXERCISE_CHAT_MODEL,
   EXERCISE_CHAT_SYSTEM_PROMPT,
 } from "@/lib/ai/exercise-generator-config";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 import type { UIMessage } from "ai";
 
@@ -104,11 +104,8 @@ export async function POST(req: Request) {
   // al via `proxy.ts`, maar de route zelf moet ook 401-en bij directe
   // aanroepen — anders zou een onauth'd client tokens kunnen verbranden.
   if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH) {
-    const supabase = await getSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+    const { isAuthenticated } = await getAuthContext();
+    if (!isAuthenticated) {
       return Response.json({ error: "Niet ingelogd." }, { status: 401 });
     }
   }

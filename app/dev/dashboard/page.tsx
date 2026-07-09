@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 
 import { DashboardWithStats } from "@/app/_components/features/dashboard/dashboard";
 
@@ -10,19 +10,8 @@ import { DashboardWithStats } from "@/app/_components/features/dashboard/dashboa
 export default async function DashboardPage() {
   // TIJDELIJK: proxy vereist geen sessie zolang DEV_EXERCISE_TOOLS_REQUIRE_AUTH
   // false is; fallback "gast" als er geen profile is.
-  const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: profile } = user
-    ? await supabase
-        .from("profiles")
-        .select("username")
-        .eq("id", user.id)
-        .maybeSingle()
-    : { data: null as { username: string } | null };
-
-  const username = profile?.username ?? (user ? "jij" : "gast");
+  const { isAuthenticated, username: profileUsername } = await getAuthContext();
+  const username = profileUsername ?? (isAuthenticated ? "jij" : "gast");
 
   return (
     <div className="space-y-6">

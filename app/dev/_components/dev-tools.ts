@@ -12,6 +12,13 @@ export type DevTool = {
 
 export const DEV_TOOLS: DevTool[] = [
   {
+    href: "/dev/credentials",
+    title: "Test credentials",
+    description:
+      "Leest CRED.md en toont testaccounts met kopieerknoppen per veld en per gebruiker. Alleen lokaal beschikbaar.",
+    category: "use",
+  },
+  {
     href: "/dev/tatoeba",
     title: "Tatoeba",
     description:

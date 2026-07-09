@@ -1,5 +1,9 @@
 "use client";
 
+import { useAppProfile } from "@/app/(app)/_components/app-profile-provider";
+import { AppPageHeader } from "@/app/_components/ui/app-page-header";
+import { useExerciseSummaryStats } from "@/lib/dashboard/use-exercise-summary-stats";
+
 import { QuizModeCard } from "./quiz-mode-card";
 import { SrsDueCard } from "./srs-due-card";
 
@@ -27,17 +31,18 @@ const QUIZ_MODES = [
 ] as const;
 
 export function ExercisesQuizPage() {
+  const { username } = useAppProfile();
+  const { stats, loading } = useExerciseSummaryStats();
+
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Oefeningen-quiz
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Kies een quiz-vorm en hoe je wilt oefenen: willekeurig, spaced
-          repetition of een eigen selectie.
-        </p>
-      </header>
+      <AppPageHeader
+        eyebrow="Oefenen"
+        title="Oefenen"
+        username={username}
+        description="Kies een quiz-vorm en hoe je wilt oefenen: willekeurig, spaced repetition of een eigen selectie."
+        stats={stats.map((stat) => ({ ...stat, loading }))}
+      />
 
       <SrsDueCard />
 

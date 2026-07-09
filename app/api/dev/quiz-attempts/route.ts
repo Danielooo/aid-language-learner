@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
 import { PRACTICE_TYPES } from "@/lib/quiz/record-quiz-attempt";
 import { QUIZ_SELECTION_MODES } from "@/lib/quiz/selection-config";
@@ -122,11 +123,9 @@ export async function GET(req: Request) {
       ? Math.min(parsedLimit, MAX_LIMIT)
       : DEFAULT_LIMIT;
 
+  const { supabaseUserId } = await getAuthContext();
   const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  if (!supabaseUserId) {
     if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH) {
       return Response.json({ error: "Niet ingelogd." }, { status: 401 });
     }
@@ -136,7 +135,7 @@ export async function GET(req: Request) {
   const { data, error } = await supabase
     .from("quiz_attempts")
     .select(SELECT_WITH_EXERCISE)
-    .eq("user_id", user.id)
+    .eq("user_id", supabaseUserId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -172,10 +171,8 @@ export async function POST(req: Request) {
     );
   }
 
+  const { supabaseUserId } = await getAuthContext();
   const serverSupabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await serverSupabase.auth.getUser();
   const {
     exerciseId,
     userAnswer,
@@ -190,7 +187,7 @@ export async function POST(req: Request) {
 
   const isScheduledReview = selectionMode === "srs";
 
-  if (!user) {
+  if (!supabaseUserId) {
     if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH) {
       return Response.json(
         { ok: false, error: "Niet ingelogd." },
@@ -229,7 +226,7 @@ export async function POST(req: Request) {
   let repetitionCountBefore: number | null = null;
 
   if (isScheduledReview) {
-    const snapshot = await loadSrsSnapshot(serverSupabase, user.id, exerciseId);
+    const snapshot = await loadSrsSnapshot(serverSupabase, supabaseUserId, exerciseId);
     intervalDaysBefore = snapshot?.interval_days ?? 0;
     repetitionCountBefore = snapshot?.repetition_count ?? 0;
   }
@@ -240,7 +237,7 @@ export async function POST(req: Request) {
       exercise_id: exerciseId,
       user_answer: userAnswer,
       is_correct: isCorrect,
-      user_id: user.id,
+      user_id: supabaseUserId,
       selection_mode: selectionMode ?? null,
       practice_type: practiceType ?? null,
       direction: direction ?? null,
@@ -266,11 +263,9 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE() {
+  const { supabaseUserId } = await getAuthContext();
   const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  if (!supabaseUserId) {
     if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH) {
       return Response.json(
         { ok: false, error: "Niet ingelogd." },
@@ -283,7 +278,7 @@ export async function DELETE() {
   const { error, count } = await supabase
     .from("quiz_attempts")
     .delete({ count: "exact" })
-    .eq("user_id", user.id);
+    .eq("user_id", supabaseUserId);
 
   if (error) {
     return Response.json(
