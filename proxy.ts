@@ -1,21 +1,23 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-import { auth0 } from "@/lib/auth0";
 import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
 
 // Next.js 16 hernoemt `middleware.ts` → `proxy.ts` (zelfde semantiek,
 // nieuwe naam — zie docs/01-app/03-api-reference/03-file-conventions/proxy.md).
 //
-// Drie verantwoordelijkheden:
-//   1. Auth0 SDK-routes (`/auth/*`) en rolling Auth0-sessies.
-//   2. Supabase cookie-refresh zodat RLS (`auth.uid()`) blijft werken.
-//   3. Redirect naar /login bij ontbrekende Auth0-sessie op beschermde routes.
+// Twee verantwoordelijkheden:
+//   1. Auth-sessie refreshen op elke request → cookies blijven geldig.
+//      We gebruiken `getClaims()` (NIET `getSession()`) zodat de JWT
+//      lokaal tegen de project-JWKS wordt gevalideerd.
+//   2. Onauth'd users redirecten als ze een beschermde page-route
+//      bezoeken. API-routes valideren zelf en geven 401 terug.
 
 const APP_PAGE_PREFIXES = [
   "/oefenen",
   "/leerplan",
   "/oefeningen",
+  "/generator",
   "/voortgang",
 ] as const;
 
@@ -24,7 +26,6 @@ const DEV_PAGE_PREFIXES = DEV_EXERCISE_TOOLS_REQUIRE_AUTH
       "/dev/exercise-generator",
       "/dev/my-exercises",
       "/dev/exercises-quiz",
-      "/dev/exercise-generator-quiz",
       "/dev/dashboard",
     ] as const)
   : ([] as const);
@@ -36,45 +37,36 @@ function isProtectedPagePath(pathname: string): boolean {
 }
 
 export async function proxy(request: NextRequest) {
-  let response = await auth0.middleware(request);
-  const { pathname } = request.nextUrl;
-
-  // Auth0 SDK afhandelt login/logout/callback volledig zelf.
-  if (pathname.startsWith("/auth")) {
-    return response;
-  }
+  let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-  if (url && publishableKey) {
-    const supabase = createServerClient(url, publishableKey, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          for (const { name, value } of cookiesToSet) {
-            request.cookies.set(name, value);
-          }
-          const merged = NextResponse.next({ request });
-          for (const cookie of response.cookies.getAll()) {
-            merged.cookies.set(cookie);
-          }
-          for (const { name, value, options } of cookiesToSet) {
-            merged.cookies.set(name, value, options);
-          }
-          response = merged;
-        },
+  if (!url || !publishableKey) return response;
+
+  const supabase = createServerClient(url, publishableKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
       },
-    });
+      setAll(cookiesToSet) {
+        for (const { name, value } of cookiesToSet) {
+          request.cookies.set(name, value);
+        }
+        response = NextResponse.next({ request });
+        for (const { name, value, options } of cookiesToSet) {
+          response.cookies.set(name, value, options);
+        }
+      },
+    },
+  });
 
-    await supabase.auth.getClaims();
-  }
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims ?? null;
 
-  const session = await auth0.getSession(request);
+  const { pathname } = request.nextUrl;
 
-  if (isProtectedPagePath(pathname) && !session) {
+  if (isProtectedPagePath(pathname) && !claims) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("next", pathname);

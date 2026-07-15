@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useActionState } from "react";
 
+import { signInWithOAuthProvider } from "@/app/(auth)/actions";
 import { initialAuthState } from "@/app/(auth)/_lib/state";
-import { APP_ROUTES } from "@/lib/routes";
 
 import type { AuthActionState } from "@/app/(auth)/_lib/state";
 
@@ -44,7 +44,6 @@ const COPY = {
 export function AuthForm({ mode, action, next, externalError }: AuthFormProps) {
   const [state, formAction, pending] = useActionState(action, initialAuthState);
   const copy = COPY[mode];
-  const returnTo = encodeURIComponent(next ?? APP_ROUTES.oefenen);
 
   return (
     <div className="space-y-5">
@@ -64,7 +63,7 @@ export function AuthForm({ mode, action, next, externalError }: AuthFormProps) {
         </div>
       )}
 
-      <OAuthButtons returnTo={returnTo} />
+      <OAuthButtons next={next} />
 
       <div className="flex items-center gap-3" aria-hidden="true">
         <span className="h-px flex-1 bg-border" />
@@ -123,26 +122,25 @@ export function AuthForm({ mode, action, next, externalError }: AuthFormProps) {
 }
 
 const OAUTH_PROVIDERS = [
-  { connection: "google-oauth2", label: "Verder met Google" },
-  { connection: "github", label: "Verder met GitHub" },
+  { id: "google", label: "Verder met Google" },
+  { id: "github", label: "Verder met GitHub" },
 ] as const;
 
-function OAuthButtons({ returnTo }: { returnTo: string }) {
+function OAuthButtons({ next }: { next?: string }) {
   return (
     <div className="grid gap-2">
       {OAUTH_PROVIDERS.map((provider) => (
-        <a
-          key={provider.connection}
-          href={`/auth/login?connection=${provider.connection}&returnTo=${returnTo}`}
-          className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-        >
-          {provider.connection === "google-oauth2" ? (
-            <GoogleIcon />
-          ) : (
-            <GitHubIcon />
-          )}
-          {provider.label}
-        </a>
+        <form key={provider.id} action={signInWithOAuthProvider}>
+          <input type="hidden" name="provider" value={provider.id} />
+          {next && <input type="hidden" name="next" value={next} />}
+          <button
+            type="submit"
+            className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+          >
+            {provider.id === "google" ? <GoogleIcon /> : <GitHubIcon />}
+            {provider.label}
+          </button>
+        </form>
       ))}
     </div>
   );

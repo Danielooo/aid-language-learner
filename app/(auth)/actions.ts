@@ -1,25 +1,30 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { createAuth0User } from "@/lib/auth/auth0-management";
-import { getPasswordRealmAuthErrorMessage } from "@/lib/auth/auth0-token-errors";
-import {
-  establishAuth0SessionFromTokens,
-  fetchPasswordRealmTokens,
-} from "@/lib/auth/establish-auth0-session";
 import { getPasswordSchema } from "@/lib/auth/password-policy";
 import { usernameToEmail } from "@/lib/auth/username";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { APP_ROUTES } from "@/lib/routes";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 import type { AuthActionState } from "@/app/(auth)/_lib/state";
 
-// Server Actions voor auth-flows via Auth0 + Supabase-provisioning.
-// Username/wachtwoord: Auth0 Management API (signUp) en password-realm grant (signIn).
-// OAuth: Auth0 SDK-routes (/auth/login?connection=...).
+// Server Actions voor auth-flows. Houden Supabase Auth + cookies aan
+// de server-zijde (geen tokens in de client-bundle), valideren input
+// met Zod en geven typeerbare fouten terug aan `useActionState`.
+//
+// Synthetisch e-mailadres `<username>@aid.local` zorgt dat we met een
+// pure username-UX kunnen werken zonder echte e-mail.
+//
+// Bij signUp gebruiken we `auth.admin.createUser({ email_confirm: true })`
+// in plaats van het reguliere `auth.signUp` — synthetische e-mailadressen
+// kunnen geen confirmation-mail ontvangen. Username gaat mee als
+// `user_metadata.username` → komt via de `handle_new_user`-trigger in
+// `public.profiles.username`.
 
 const usernameSchema = z
   .string()
@@ -28,11 +33,9 @@ const usernameSchema = z
   .max(32, "Maximaal 32 tekens")
   .regex(/^[a-zA-Z0-9_-]+$/, "Alleen letters, cijfers, _ en - toegestaan");
 
-const passwordSchema = getPasswordSchema();
-
 const credentialsSchema = z.object({
   username: usernameSchema,
-  password: passwordSchema,
+  password: getPasswordSchema(),
 });
 
 function sanitizeNextPath(value: FormDataEntryValue | string | null): string {
@@ -66,50 +69,35 @@ export async function signUp(
   const { username, password } = parsed.data;
   const email = usernameToEmail(username);
 
-  try {
-    await createAuth0User({ email, password, username });
-  } catch (error) {
-    const msg =
-      error instanceof Error ? error.message.toLowerCase() : String(error);
+  const admin = getSupabaseAdmin();
+  const { error: createError } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { username },
+  });
+
+  if (createError) {
+    const msg = createError.message.toLowerCase();
     return {
       ok: false,
       error:
-        msg.includes("already") || msg.includes("exists")
+        msg.includes("already") || msg.includes("registered")
           ? "Deze username is al in gebruik."
-          : error instanceof Error
-            ? error.message
-            : "Registratie mislukt.",
+          : createError.message,
     };
   }
 
-  let tokenResponse;
-  try {
-    tokenResponse = await fetchPasswordRealmTokens(email, password);
-  } catch (error) {
-    return {
-      ok: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Inloggen na registratie mislukt.",
-    };
-  }
+  const supabase = await getSupabaseServerClient();
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-  if (tokenResponse.error || !tokenResponse.id_token) {
+  if (signInError) {
     return {
       ok: false,
-      error:
-        getPasswordRealmAuthErrorMessage(tokenResponse) ??
-        "Account aangemaakt, maar inloggen mislukte. Probeer login.",
-    };
-  }
-
-  try {
-    await establishAuth0SessionFromTokens(tokenResponse);
-  } catch {
-    return {
-      ok: false,
-      error: "Account aangemaakt, maar sessie opzetten mislukte. Probeer login.",
+      error: "Account aangemaakt, maar inloggen mislukte. Probeer login.",
     };
   }
 
@@ -132,33 +120,17 @@ export async function signIn(
 
   const { username, password } = parsed.data;
   const email = usernameToEmail(username);
+  const supabase = await getSupabaseServerClient();
 
-  let tokenResponse;
-  try {
-    tokenResponse = await fetchPasswordRealmTokens(email, password);
-  } catch (error) {
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : "Inloggen mislukt. Probeer opnieuw.",
-    };
-  }
-
-  if (tokenResponse.error || !tokenResponse.id_token) {
-    return {
-      ok: false,
-      error:
-        getPasswordRealmAuthErrorMessage(tokenResponse) ??
-        "Username of wachtwoord onjuist.",
-    };
-  }
-
-  try {
-    await establishAuth0SessionFromTokens(tokenResponse);
-  } catch {
-    return {
-      ok: false,
-      error: "Inloggen mislukt. Probeer het opnieuw.",
+      error: "Username of wachtwoord onjuist.",
     };
   }
 
@@ -166,9 +138,46 @@ export async function signIn(
   redirect(sanitizeNextPath(formData.get("next")));
 }
 
+const oauthProviderSchema = z.enum(["google", "github"]);
+
+export type OAuthProvider = z.infer<typeof oauthProviderSchema>;
+
+/**
+ * Start de OAuth-flow (PKCE) via Supabase. De SSR-client zet de
+ * code-verifier-cookie; de provider stuurt de gebruiker terug naar
+ * /auth/callback waar de code voor een sessie wordt ingewisseld.
+ */
+export async function signInWithOAuthProvider(
+  formData: FormData,
+): Promise<void> {
+  const parsed = oauthProviderSchema.safeParse(formData.get("provider"));
+  if (!parsed.success) redirect(APP_ROUTES.login);
+
+  const next = sanitizeNextPath(formData.get("next"));
+
+  const headerStore = await headers();
+  const origin =
+    headerStore.get("origin") ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    "http://localhost:3000";
+
+  const supabase = await getSupabaseServerClient();
+  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: parsed.data,
+    options: { redirectTo },
+  });
+
+  if (error || !data.url) {
+    redirect(`${APP_ROUTES.login}?fout=oauth`);
+  }
+
+  redirect(data.url);
+}
+
 export async function signOut(): Promise<void> {
   const supabase = await getSupabaseServerClient();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
-  redirect("/auth/logout");
+  redirect("/");
 }

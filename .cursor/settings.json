@@ -2,9 +2,6 @@
   "plugins": {
     "gsap-skills": {
       "enabled": true
-    },
-    "auth0": {
-      "enabled": true
     }
   }
 }

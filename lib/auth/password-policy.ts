@@ -4,9 +4,6 @@ import { z } from "zod";
  * Strikte wachtwoordvalidatie aan/uit via env.
  * Tijdelijk uit: zet `AUTH_STRICT_PASSWORD=false` in `.env.local`.
  * Later weer aan: verwijder de regel of zet `AUTH_STRICT_PASSWORD=true`.
- *
- * Let op: Auth0 heeft óók een connection password policy in het dashboard
- * (Authentication → Database → Password Policy). Die staat los van deze flag.
  */
 export function isStrictPasswordPolicyEnabled(): boolean {
   const raw = process.env.AUTH_STRICT_PASSWORD?.trim().toLowerCase();

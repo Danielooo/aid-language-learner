@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 
 import { AuthForm } from "@/app/(auth)/_components/auth-form";
 import { signIn } from "@/app/(auth)/actions";
-import { auth0 } from "@/lib/auth0";
 import { APP_ROUTES } from "@/lib/routes";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 import type { Metadata } from "next";
 
@@ -18,8 +18,11 @@ type LoginPageProps = {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { next, fout } = await searchParams;
 
-  const session = await auth0.getSession();
-  if (session) redirect(APP_ROUTES.oefenen);
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) redirect(APP_ROUTES.oefenen);
 
   return (
     <AuthForm
