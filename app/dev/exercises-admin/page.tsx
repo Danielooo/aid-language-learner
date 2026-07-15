@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 
 import { ExercisesAdminPage } from "./_components/exercises-admin-page";
-import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,17 +12,14 @@ export default function ExercisesAdminRoutePage() {
           Oefeningen — admin
         </h1>
         <p className="text-sm text-muted-foreground">
-          Overzicht van alle oefeningen in Supabase. Bekijk, bewerk,
-          verrijk of verwijder records met server-side paginatie.
-          Bewerkingen, verrijking en verwijderen worden direct in de
-          database opgeslagen — wijzigingen zijn meteen zichtbaar na
-          verversen of na een voltooide actie.
+          Overzicht van <strong>globale</strong> oefeningen (owner_id null).
+          Bewerk, verrijk of verwijder corpus-records. Persoonlijke oefeningen
+          van users zijn hier niet zichtbaar.
         </p>
-        {!DEV_EXERCISE_TOOLS_REQUIRE_AUTH && (
-          <p className="text-xs text-muted-foreground">
-            Dev-modus · admin-overzicht (alle oefeningen, ongeacht eigenaar)
-          </p>
-        )}
+        <p className="text-xs text-muted-foreground">
+          Productiebeheer:{" "}
+          <code className="font-mono">/admin/oefeningen</code>
+        </p>
       </header>
 
       <Suspense

@@ -12,6 +12,10 @@ export const APP_ROUTES = {
   generator: "/generator",
   voortgang: "/voortgang",
   profiel: "/profiel",
+  admin: "/admin",
+  adminOefeningen: "/admin/oefeningen",
+  adminReview: "/admin/review",
+  adminGebruikers: "/admin/gebruikers",
   login: "/login",
   register: "/register",
 } as const;

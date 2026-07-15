@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { assertAdmin } from "@/lib/dev/assert-admin";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 import {
   EXERCISE_SELECT_COLUMNS,
@@ -75,11 +75,12 @@ export async function PATCH(
     updates.target_text_manually_edited = true;
   }
 
-  const supabase = await getSupabaseServerClient();
+  const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("exercises")
     .update(updates)
     .eq("id", id)
+    .is("owner_id", null)
     .select(EXERCISE_SELECT_COLUMNS)
     .maybeSingle();
 

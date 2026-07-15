@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import {
+  assertAndConsumeAiQuota,
+  getSessionUser,
+} from "@/lib/auth/assert-ai-quota";
 import { enrichExercises } from "@/lib/dev/exercises-enrich";
 import { requireExerciseUser } from "@/lib/dev/require-exercise-user";
 
@@ -32,6 +36,19 @@ export async function POST(req: Request): Promise<Response> {
   const auth = await requireExerciseUser();
   if (!auth.ok) return auth.response;
 
+  const user = await getSessionUser();
+  const quota = await assertAndConsumeAiQuota(user);
+  if (!quota.ok) {
+    return Response.json(
+      {
+        ok: false,
+        error: quota.error,
+        reason: "ai_quota",
+      } satisfies MyExercisesEnrichFailure,
+      { status: quota.status },
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -49,7 +66,11 @@ export async function POST(req: Request): Promise<Response> {
   const parse = inputSchema.safeParse(body);
   if (!parse.success) {
     return Response.json(
-      { ok: false, error: "Validatie mislukt.", reason: "validation" } satisfies MyExercisesEnrichFailure,
+      {
+        ok: false,
+        error: "Validatie mislukt.",
+        reason: "validation",
+      } satisfies MyExercisesEnrichFailure,
       { status: 400 },
     );
   }

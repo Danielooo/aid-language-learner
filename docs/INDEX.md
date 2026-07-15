@@ -12,6 +12,8 @@ Dit `docs/` directory is het verantwoordingssysteem voor de eindopdracht
 | [`PROMPT-LOG.md`](./PROMPT-LOG.md) | System prompts, agent-instructies (de prompts ín de applicatie) |
 | [`AI-FAILURES.md`](./AI-FAILURES.md) | Wanneer AI iets onverwachts/fout deed |
 | [`DECISIONS.md`](./DECISIONS.md) | Architectuurkeuzes (mini-ADRs) |
+| [`REQUIREMENTS-ROLES.md`](./REQUIREMENTS-ROLES.md) | Bevroren productrechten admin vs user (capability-matrix) |
+| [`IMPLEMENTATION-ROLES.md`](./IMPLEMENTATION-ROLES.md) | Bouwplan om die rollen-requirements te implementeren |
 
 ## Werkstroom: één event, één bestand
 

@@ -38,12 +38,15 @@ type EnrichExercisesOptions = {
   exerciseIds: string[];
   /** Optioneel: beperk topics-lookup tot eigen rijen (user-flow). */
   ownerId?: string;
+  /** Alleen global corpus (owner_id IS NULL) — admin-flow. */
+  globalsOnly?: boolean;
 };
 
 export async function enrichExercises({
   supabase,
   exerciseIds,
   ownerId,
+  globalsOnly,
 }: EnrichExercisesOptions): Promise<EnrichExercisesResult> {
   if (!process.env.OPENAI_API_KEY) {
     return {
@@ -61,6 +64,8 @@ export async function enrichExercises({
 
   if (ownerId) {
     fetchQuery = fetchQuery.eq("owner_id", ownerId);
+  } else if (globalsOnly) {
+    fetchQuery = fetchQuery.is("owner_id", null);
   }
 
   const { data: rows, error: fetchError } = await fetchQuery;

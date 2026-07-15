@@ -3,10 +3,13 @@ import "server-only";
 import { isAdminUser } from "@/lib/auth/is-admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
+import type { User } from "@supabase/supabase-js";
+
 /**
  * Controleert of de ingelogde gebruiker `app_metadata.role === "admin"` heeft.
+ * Retourneert de user voor audit-velden (reviewed_by, enz.).
  */
-export async function assertAdmin(): Promise<void> {
+export async function assertAdmin(): Promise<User> {
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
@@ -25,4 +28,6 @@ export async function assertAdmin(): Promise<void> {
       headers: { "Content-Type": "application/json" },
     });
   }
+
+  return user;
 }
