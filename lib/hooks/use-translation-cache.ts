@@ -2,7 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-// Cache voor AI-enrichments op /dev/tatoeba-audio-search en oefeningen-UI.
+// Cache voor AI-enrichments op Tatoeba-import en oefeningen-UI.
 // Bewust client-only (localStorage) omdat
 // de enrich-feature in dit stadium een dev-tool is — geen multi-device
 // sync nodig, en geen Supabase-tabel om op te onderhouden. Bij latere

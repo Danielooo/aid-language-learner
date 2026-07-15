@@ -25,10 +25,10 @@ export default async function AdminLayout({
   }
 
   const links = [
-    { href: APP_ROUTES.admin, label: "Overzicht" },
     { href: APP_ROUTES.adminOefeningen, label: "Global oefeningen" },
     { href: APP_ROUTES.adminReview, label: "Review-queue" },
     { href: APP_ROUTES.adminGebruikers, label: "Gebruikers" },
+    { href: APP_ROUTES.adminTatoebaImport, label: "Tatoeba-import" },
   ] as const;
 
   return (

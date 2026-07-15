@@ -11,7 +11,7 @@ import {
   buildQuizChatSystemPrompt,
 } from "@/lib/ai/exercise-quiz-chat-config";
 
-import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
+import type { ExerciseQuizItem } from "@/types/quiz";
 import type { QuizChatMode } from "@/lib/ai/exercise-quiz-chat-config";
 import type { UIMessage } from "ai";
 
@@ -71,7 +71,7 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
   /* eslint-disable react-hooks/refs */
   const transport = useMemo(() => {
     return new DefaultChatTransport<UIMessage>({
-      api: "/api/dev/exercise-quiz-chat",
+      api: "/api/quiz/chat",
       body: () => ({
         mode: modeRef.current,
         exercise: {

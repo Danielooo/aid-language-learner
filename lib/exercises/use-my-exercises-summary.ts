@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import type { MyExercisesListResponse } from "@/app/api/dev/my-exercises/route";
+import type { MyExercisesListResponse } from "@/lib/exercises/types";
 
 type TopicsResponse =
   | { ok: true; topics: string[] }
@@ -28,8 +28,8 @@ export function useMyExercisesSummary() {
     (async () => {
       try {
         const [listRes, topicsRes] = await Promise.all([
-          fetch("/api/dev/my-exercises?page=1&pageSize=1", { cache: "no-store" }),
-          fetch("/api/dev/my-exercises/topics", { cache: "no-store" }),
+          fetch("/api/exercises/mine?page=1&pageSize=1", { cache: "no-store" }),
+          fetch("/api/exercises/mine/topics", { cache: "no-store" }),
         ]);
 
         if (!listRes.ok || !topicsRes.ok) {

@@ -5,8 +5,8 @@ import { useCallback, useRef, useState } from "react";
 import { fetchTopicExerciseIds } from "@/lib/quiz/fetch-topic-exercise-ids";
 import { fisherYatesShuffle } from "@/lib/quiz/shuffle";
 
-import type { ExercisePickerItem } from "@/app/api/dev/exercise-generator-quiz/list/route";
-import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
+import type { ExercisePickerItem } from "@/types/quiz";
+import type { ExerciseQuizItem } from "@/types/quiz";
 import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
 
 export type QuizSessionPhase =
@@ -27,7 +27,7 @@ export type StartSessionOptions = {
 
 function buildFetchUrl(config: QuizSessionConfig, exerciseId?: string): string {
   if (exerciseId) {
-    return `/api/dev/exercise-generator-quiz?id=${encodeURIComponent(exerciseId)}`;
+    return `/api/quiz?id=${encodeURIComponent(exerciseId)}`;
   }
 
   const params = new URLSearchParams();
@@ -41,8 +41,8 @@ function buildFetchUrl(config: QuizSessionConfig, exerciseId?: string): string {
 
   const qs = params.toString();
   return qs.length > 0
-    ? `/api/dev/exercise-generator-quiz?${qs}`
-    : "/api/dev/exercise-generator-quiz";
+    ? `/api/quiz?${qs}`
+    : "/api/quiz";
 }
 
 function usesQueue(mode: QuizSelectionMode): boolean {
@@ -410,7 +410,7 @@ export function useQuizSession() {
       if (!config || config.selectionMode !== "srs") return;
 
       try {
-        await fetch("/api/dev/exercise-progress", {
+        await fetch("/api/exercise-progress", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ exerciseId, isCorrect }),
@@ -424,7 +424,7 @@ export function useQuizSession() {
 
   const suspendExercise = useCallback(async (exerciseId: string) => {
     try {
-      await fetch("/api/dev/exercise-progress", {
+      await fetch("/api/exercise-progress", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ exerciseId, isSuspended: true }),

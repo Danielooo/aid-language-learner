@@ -7,12 +7,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAppProfile } from "@/app/(app)/_components/app-profile-provider";
 import { AppPageHeader } from "@/app/_components/ui/app-page-header";
-import {
-  EXERCISE_CHAT_MODEL,
-  EXERCISE_CHAT_SYSTEM_PROMPT,
-  EXERCISE_CHAT_TOOL_DESCRIPTOR,
-} from "@/lib/ai/exercise-generator-config";
-import { DEV_MOCK_USER_USERNAME } from "@/lib/dev/dev-identities";
 import { useMyExercisesSummary } from "@/lib/exercises/use-my-exercises-summary";
 
 import { ProposalTable } from "./proposal-table";
@@ -28,9 +22,6 @@ import type { UIMessage } from "ai";
 // Genereert Spaans→NL vertaaloefeningen via de Vercel AI SDK. De chatbot
 // krijgt één tool `proposeExercises` aangereikt; zodra die met output is
 // aangeroepen rendert de UI een tabel met een "Opslaan"-knop.
-//
-// `showDebug` (alleen /dev-lab): vier collapsible panels die de JSON
-// heen-en-weer tonen richting OpenAI en Supabase.
 
 type PersistResponse =
   | {
@@ -62,12 +53,7 @@ const SUGGESTIONS = [
 
 const APPEND_SUGGESTION = "Voeg nog 5 zinnen toe";
 
-type ExerciseGeneratorProps = {
-  /** Toon dev-debug-panels en dev-modus-teksten (alleen /dev-lab). */
-  showDebug?: boolean;
-};
-
-export function ExerciseGenerator({ showDebug = false }: ExerciseGeneratorProps) {
+export function ExerciseGenerator() {
   const { displayLabel } = useAppProfile();
   const { stats: exerciseStats, loading: summaryLoading } = useMyExercisesSummary();
   const [input, setInput] = useState("");
@@ -97,7 +83,7 @@ export function ExerciseGenerator({ showDebug = false }: ExerciseGeneratorProps)
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: "/api/dev/exercise-chat",
+        api: "/api/exercises/chat",
         body: () => {
           const draft = mergedProposalRef.current;
           if (!draft || draft.exercises.length === 0) return {};
@@ -189,7 +175,7 @@ export function ExerciseGenerator({ showDebug = false }: ExerciseGeneratorProps)
     });
 
     try {
-      const res = await fetch("/api/dev/exercises", {
+      const res = await fetch("/api/exercises", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
@@ -234,13 +220,6 @@ export function ExerciseGenerator({ showDebug = false }: ExerciseGeneratorProps)
         }))}
       />
 
-      {showDebug && (
-        <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Opgeslagen oefeningen horen bij{" "}
-          <code className="font-mono">@{DEV_MOCK_USER_USERNAME}</code> in
-          dev-modus. Beheer ze via de tab &quot;Mijn oefeningen&quot;.
-        </p>
-      )}
       {persistState.status === "success" && (
         <p className="rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-foreground">
           Opgeslagen. Vink topics aan om ze te oefenen via{" "}
@@ -360,10 +339,6 @@ export function ExerciseGenerator({ showDebug = false }: ExerciseGeneratorProps)
           onSave={handleSave}
         />
       )}
-
-      {showDebug && (
-        <DebugPanels messages={messages} persistState={persistState} />
-      )}
     </div>
   );
 }
@@ -412,129 +387,6 @@ function ToolPartHint({ state }: { state: string }) {
             : `→ proposeExercises [${state}]`;
   return (
     <p className="font-mono text-xs text-muted-foreground">{label}</p>
-  );
-}
-
-function DebugPanels({
-  messages,
-  persistState,
-}: {
-  messages: UIMessage[];
-  persistState: {
-    requestBody: unknown;
-    response: PersistResponse | null;
-  };
-}) {
-  // Wat de server in streamText() doorgeeft aan OpenAI: model, system, de
-  // huidige messages en de tool-descriptor. De Zod-schema wordt server-side
-  // omgezet naar JSON-Schema voor OpenAI; hier tonen we een handmatig
-  // synchroon-gehouden schets uit het config-bestand.
-  const openAiInput = {
-    model: EXERCISE_CHAT_MODEL,
-    system: EXERCISE_CHAT_SYSTEM_PROMPT,
-    messages,
-    tools: {
-      [EXERCISE_CHAT_TOOL_DESCRIPTOR.name]: {
-        description: EXERCISE_CHAT_TOOL_DESCRIPTOR.description,
-        inputSchema: EXERCISE_CHAT_TOOL_DESCRIPTOR.inputSchema,
-      },
-    },
-    stopWhen: `hasToolCall("${EXERCISE_CHAT_TOOL_DESCRIPTOR.name}")`,
-  };
-
-  const supabaseSent = persistState.requestBody;
-  const supabaseReceived = persistState.response;
-
-  const sectionRef = useRef<HTMLElement>(null);
-
-  // ⌘+/ toggelt alle 4 de panels tegelijk. Werkt op de actuele DOM-state
-  // (leest `details.open` per tick) zodat het de individuele klik-state
-  // van elk panel niet vasthoudt in React; zo blijft elk panel ook nog
-  // los te klappen via een gewone klik op het summary.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (!e.metaKey || e.key !== "/") return;
-      const sec = sectionRef.current;
-      if (!sec) return;
-      e.preventDefault();
-      const detailsList = sec.querySelectorAll("details");
-      const anyOpen = Array.from(detailsList).some((d) => d.open);
-      detailsList.forEach((d) => {
-        d.open = !anyOpen;
-      });
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  return (
-    <section ref={sectionRef} className="space-y-3">
-      <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-        Debug-panels
-        <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] font-normal text-muted-foreground/70">
-          ⌘ /
-        </kbd>
-      </h2>
-
-      <DetailsPanel title="1. Verzonden naar OpenAI (system + messages + tools)">
-        <JsonBlock data={openAiInput} />
-      </DetailsPanel>
-
-      <DetailsPanel title="2. Ontvangen van OpenAI (useChat messages-state)">
-        {messages.length > 0 ? (
-          <JsonBlock data={messages} />
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Nog geen messages. Verstuur eerst een vraag.
-          </p>
-        )}
-      </DetailsPanel>
-
-      <DetailsPanel title="3. Verzonden naar Supabase (POST body)">
-        {supabaseSent ? (
-          <JsonBlock data={supabaseSent} />
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Nog niets opgeslagen. Klik &quot;Opslaan in Supabase&quot;.
-          </p>
-        )}
-      </DetailsPanel>
-
-      <DetailsPanel title="4. Ontvangen van Supabase (response body)">
-        {supabaseReceived ? (
-          <JsonBlock data={supabaseReceived} />
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Nog geen Supabase-response.
-          </p>
-        )}
-      </DetailsPanel>
-    </section>
-  );
-}
-
-function DetailsPanel({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <details className="rounded-md border border-border bg-card text-card-foreground">
-      <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-muted-foreground">
-        {title}
-      </summary>
-      <div className="px-4 pb-4">{children}</div>
-    </details>
-  );
-}
-
-function JsonBlock({ data }: { data: unknown }) {
-  return (
-    <pre className="overflow-x-auto rounded bg-muted/40 p-3 font-mono text-xs">
-      {JSON.stringify(data, null, 2)}
-    </pre>
   );
 }
 

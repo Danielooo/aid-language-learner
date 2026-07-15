@@ -5,9 +5,9 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type {
   ChatMessage,
   Selection,
-} from "@/app/dev/tatoeba-audio-search/_components/types";
+} from "@/app/_components/features/tatoeba/types";
 
-// Cache voor de zoek-sessie op /dev/tatoeba-audio-search. Bevat de
+// Cache voor de zoek-sessie van Tatoeba-import. Bevat de
 // stack (undo-stack van Selection's), de chat-messages en de huidige
 // checkbox-selectie. Per `lang` apart opgeslagen — wisselen van taal
 // houdt eerdere sessies intact zodat terugschakelen ze restored.

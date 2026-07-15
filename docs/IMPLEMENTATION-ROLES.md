@@ -13,8 +13,8 @@ Volgorde is afhankelijkheidsgericht: data/model eerst, daarna enforcement, daarn
 
 1. Geen pending/snapshot-model voor global-aanbiedingen.
 2. Generator zet altijd `owner_id = userId`; geen approval-pad.
-3. Tatoeba-persist en veel `/dev`-routes gebruiken service role zonder `assertAdmin`.
-4. Geen productie admin-nav / capability helper in app-shell.
+3. ~~Tatoeba-persist en veel `/dev`-routes gebruiken service role zonder `assertAdmin`.~~ ✅ Opgelost: Tatoeba staat onder `/admin/tatoeba-import` + `/api/admin/tatoeba/*` met `assertAdmin`; `/dev` is verwijderd.
+4. ~~Geen productie admin-nav / capability helper in app-shell.~~ ✅
 5. Geen rate-limit of `ai_disabled` per user.
 6. Geen users-lijst / promote-demote / deactivate in de app.
 7. RLS kent de rol niet; admin-mutaties moeten via server APIs blijven.
@@ -66,7 +66,7 @@ Deactiveren blijft Auth-side (`ban_duration` / ban user), niet alleen een profil
 | `assertAdmin` uitbreiden | Alle routes die global schrijven of service role gebruiken |
 | Tatoeba persist-batch e.d. | Achter `assertAdmin` |
 | Capability helper | bv. `getRoleCapabilities(user)` → `{ isAdmin, canGenerateAi, canDeleteAccount, ... }` |
-| `/dev` gating | Productie: `/dev` alleen admin, of tools migreren naar `/(app)/admin/*` |
+| `/dev` gating | ✅ Verwijderd; Tatoeba-import → `/(app)/admin/tatoeba-import` |
 | Proxy | Optioneel: admin-only prefixes in [`proxy.ts`](../proxy.ts) |
 
 Admin-writes blijven **server-only**; RLS voor users ongewijzigd (eigen + global read).
@@ -121,7 +121,7 @@ Blijft verboden: admin eigen account via profiel-UI verwijderen (bestaand gedrag
 
 ## Fase 6 — Admin content (bestáánd opschonen)
 
-Al deels aanwezig onder `/api/dev/exercises-admin` + Tatoeba-tools:
+Al deels aanwezig onder `/api/admin/exercises` + Tatoeba-tools:
 
 1. Alle global write-paden achter `assertAdmin`.
 2. Admin mag **alleen** global bewerken/verwijderen — geen peep/edit in andermans persoonlijke rijen (huidige admin list die álles toont: inperken of filteren op `owner_id IS NULL` + submissions).

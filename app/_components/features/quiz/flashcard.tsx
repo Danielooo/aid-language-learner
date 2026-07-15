@@ -13,7 +13,7 @@ import { ExerciseAudioAttribution } from "./exercise-audio-attribution";
 import { ExerciseAudioControls } from "./exercise-audio-controls";
 import { FlashcardActionButton } from "./flashcard-action-button";
 
-import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
+import type { ExerciseQuizItem } from "@/types/quiz";
 
 gsap.registerPlugin(useGSAP);
 

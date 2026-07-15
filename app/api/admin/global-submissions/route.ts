@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { assertAdmin } from "@/lib/dev/assert-admin";
+import { assertAdmin } from "@/lib/auth/assert-admin";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 import type {

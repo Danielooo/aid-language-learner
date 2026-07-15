@@ -3,16 +3,21 @@ import { redirect } from "next/navigation";
 
 import { SiteHeaderServer } from "@/app/_components/site-header-server";
 import { Container } from "@/app/_components/ui/container";
-import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { getHomeRoute } from "@/lib/auth/home-route";
 import { APP_ROUTES } from "@/lib/routes";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 // Publieke landingspagina. Ingelogde gebruikers gaan direct door naar
-// de app (/oefenen) — de landing is alleen voor bezoekers.
+// hun startroute (admins → Beheer, overige users → Oefenen) — de
+// landing is alleen voor bezoekers.
 export default async function Home() {
-  const { isAuthenticated } = await getAuthContext();
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (isAuthenticated) {
-    redirect(APP_ROUTES.oefenen);
+  if (user) {
+    redirect(getHomeRoute(user));
   }
 
   return (

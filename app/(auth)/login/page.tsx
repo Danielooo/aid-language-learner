@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AuthForm } from "@/app/(auth)/_components/auth-form";
 import { signIn } from "@/app/(auth)/actions";
-import { APP_ROUTES } from "@/lib/routes";
+import { getHomeRoute } from "@/lib/auth/home-route";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 import type { Metadata } from "next";
@@ -22,7 +22,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect(APP_ROUTES.oefenen);
+  if (user) redirect(getHomeRoute(user));
 
   return (
     <AuthForm

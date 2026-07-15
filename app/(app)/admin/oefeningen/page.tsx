@@ -24,10 +24,10 @@ export default function AdminOefeningenPage() {
         }
       >
         <ExercisesListPage
-          apiBase="/api/dev/exercises-admin"
+          apiBase="/api/admin/exercises"
           pagePath={APP_ROUTES.adminOefeningen}
           tableScope="admin-globals"
-          topicsUrl="/api/dev/tatoeba-audio/existing-topics"
+          topicsUrl="/api/admin/tatoeba/existing-topics"
           emptyMessage="Nog geen globale oefeningen in het corpus."
         />
       </Suspense>

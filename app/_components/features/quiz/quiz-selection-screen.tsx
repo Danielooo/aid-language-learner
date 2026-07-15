@@ -13,7 +13,7 @@ import {
 import { SrsExplainer } from "./srs-explainer";
 
 import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
-import type { ProgressStatsResponse } from "@/app/api/dev/exercise-progress/route";
+import type { ProgressStatsResponse } from "@/types/progress";
 
 type QuizSelectionScreenProps = {
   selectedMode: QuizSelectionMode;
@@ -31,7 +31,7 @@ export function QuizSelectionScreen({
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/dev/exercise-progress", { cache: "no-store" });
+        const res = await fetch("/api/exercise-progress", { cache: "no-store" });
         if (!res.ok) throw new Error(`Status ${res.status}`);
         const data = (await res.json()) as ProgressStatsResponse;
         if (!cancelled) setStats(data);

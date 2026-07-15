@@ -51,7 +51,7 @@ export function useQuizStorage() {
     const controller = new AbortController();
     (async () => {
       try {
-        const res = await fetch("/api/dev/quiz-attempts", {
+        const res = await fetch("/api/quiz-attempts", {
           cache: "no-store",
           signal: controller.signal,
         });
@@ -78,7 +78,7 @@ export function useQuizStorage() {
 
     void (async () => {
       try {
-        const res = await fetch("/api/dev/quiz-attempts", {
+        const res = await fetch("/api/quiz-attempts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(toQuizAttemptPostBody(attempt)),
@@ -106,7 +106,7 @@ export function useQuizStorage() {
     setAttempts([]);
     void (async () => {
       try {
-        const res = await fetch("/api/dev/quiz-attempts", {
+        const res = await fetch("/api/quiz-attempts", {
           method: "DELETE",
         });
         if (!res.ok) throw new Error(`Status ${res.status}`);

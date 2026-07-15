@@ -1,4 +1,4 @@
-import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
+import type { ExerciseQuizItem } from "@/types/quiz";
 import {
   EXERCISE_QUIZ_SELECT,
   toExerciseQuizItem,

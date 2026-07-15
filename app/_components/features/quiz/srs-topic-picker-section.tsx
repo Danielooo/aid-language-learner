@@ -8,8 +8,8 @@ import { SrsCompleteState } from "./srs-complete-state";
 import { SrsExplainer } from "./srs-explainer";
 import { TopicPickerGrid } from "./topic-picker-grid";
 
-import type { TopicStat } from "@/app/api/dev/exercise-generator-quiz/topics/route";
-import type { ProgressStatsResponse } from "@/app/api/dev/exercise-progress/route";
+import type { TopicStat } from "@/types/quiz";
+import type { ProgressStatsResponse } from "@/types/progress";
 
 type SrsTopicPickerSectionProps = {
   topicStats: TopicStat[];
@@ -34,7 +34,7 @@ export function SrsTopicPickerSection({
     (async () => {
       try {
         const res = await fetch(
-          "/api/dev/exercise-progress?breakdown=topics",
+          "/api/exercise-progress?breakdown=topics",
           { cache: "no-store" },
         );
         if (!res.ok) throw new Error(`Status ${res.status}`);

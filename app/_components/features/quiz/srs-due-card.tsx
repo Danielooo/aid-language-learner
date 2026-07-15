@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import { APP_ROUTES } from "@/lib/routes";
 
-import type { ProgressStatsResponse } from "@/app/api/dev/exercise-progress/route";
+import type { ProgressStatsResponse } from "@/types/progress";
 
 type LoadState =
   | { status: "loading" }
@@ -20,7 +20,7 @@ export function SrsDueCard() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/dev/exercise-progress", { cache: "no-store" });
+        const res = await fetch("/api/exercise-progress", { cache: "no-store" });
         if (!res.ok) throw new Error(`Status ${res.status}`);
         const data = (await res.json()) as ProgressStatsResponse;
         if (!cancelled) setState({ status: "loaded", dueCount: data.dueCount });

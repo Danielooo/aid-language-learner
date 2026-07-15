@@ -1,6 +1,4 @@
-// Centrale route-constanten voor de productie-app. Gedeelde feature-
-// components linken hiernaartoe zodat /dev-lab en productie dezelfde
-// componenten kunnen gebruiken zonder hard-coded paden.
+// Centrale route-constanten voor de productie-app.
 export const APP_ROUTES = {
   landing: "/",
   oefenen: "/oefenen",
@@ -16,6 +14,7 @@ export const APP_ROUTES = {
   adminOefeningen: "/admin/oefeningen",
   adminReview: "/admin/review",
   adminGebruikers: "/admin/gebruikers",
+  adminTatoebaImport: "/admin/tatoeba-import",
   login: "/login",
   register: "/register",
 } as const;

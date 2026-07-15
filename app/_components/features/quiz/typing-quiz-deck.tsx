@@ -54,7 +54,7 @@ import type { TypingFeedback } from "./typing-exercise";
 import type {
   TopicStat,
   TopicsResponse,
-} from "@/app/api/dev/exercise-generator-quiz/topics/route";
+} from "@/types/quiz";
 import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
 import type {
   TranslationDirection,
@@ -178,7 +178,7 @@ export function TypingQuizDeck() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/dev/exercise-generator-quiz/topics", {
+        const res = await fetch("/api/quiz/topics", {
           cache: "no-store",
         });
         if (!res.ok) throw new Error(`Status ${res.status}`);

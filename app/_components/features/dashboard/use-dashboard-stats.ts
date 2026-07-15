@@ -13,7 +13,7 @@ export function useDashboardStats() {
   // en `refresh` zet 'm expliciet, zodat het effect geen cascade triggert.
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/dev/dashboard-stats", { cache: "no-store" });
+      const res = await fetch("/api/dashboard-stats", { cache: "no-store" });
       if (!res.ok) throw new Error(`Status ${res.status}`);
       const data = (await res.json()) as DashboardStatsResponse;
       setStats(data);

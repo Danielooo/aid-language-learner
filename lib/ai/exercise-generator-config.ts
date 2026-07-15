@@ -1,8 +1,6 @@
-// Gedeelde constants voor de /dev/exercise-generator playground.
-// Zowel de chat-route (server) als de page (client) importeren MODEL en
-// SYSTEM_PROMPT zodat het debug-panel "verzonden naar OpenAI" gegarandeerd
-// laat zien wat de server ook daadwerkelijk meestuurt. SYSTEM_PROMPT is
-// geen secret en mag in de client-bundle.
+// Gedeelde constants voor de oefeningen-generator.
+// MODEL en SYSTEM_PROMPT worden door de chat-route (server) gebruikt.
+// SYSTEM_PROMPT is geen secret en mag in de client-bundle.
 
 export const EXERCISE_CHAT_MODEL = "gpt-4o-mini";
 

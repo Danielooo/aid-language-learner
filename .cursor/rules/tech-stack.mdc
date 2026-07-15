@@ -14,6 +14,9 @@ Je werkt aan een Next.js project voor taalonderwijs.
 - **Tailwind CSS v4** (via `@tailwindcss/postcss`)
 - **ESLint 9** met `eslint-config-next`
 - Path-alias `@/*` is geconfigureerd vanuit project-root
+- **React Query (TanStack Query)** om de data gestructureerd op te halen, aan te passen en op te slaan.
+- **Supabase** voor de backend met RLS
+
 
 ## KRITIEK — Next.js versie
 

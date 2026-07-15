@@ -2,7 +2,7 @@ import { getPromptAndAnswer } from "@/lib/quiz/typing-config";
 import { shuffleUntilDifferent } from "@/lib/quiz/shuffle";
 import { tokenizeSentence } from "@/lib/quiz/tokenize";
 
-import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
+import type { ExerciseQuizItem } from "@/types/quiz";
 import type { TranslationDirection } from "@/lib/quiz/typing-config";
 
 export const MIN_SORT_WORDS = 4;

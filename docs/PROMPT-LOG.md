@@ -56,7 +56,7 @@ Eerste system prompt voor de `/dev/wiktionary-chat`-experimentchatbot. Doel: val
 
 ## 2026-05-30 23:05 — System prompt: ExerciseGenerator v1
 
-**Files:** app/api/dev/exercise-chat/route.ts, lib/ai/exercise-generator-config.ts
+**Files:** app/api/exercises/chat/route.ts, lib/ai/exercise-generator-config.ts
 **Iteration:** 1 of 1
 **Replaces:** —
 **Tags:** agent, system-prompt, tool-calling, dev-only

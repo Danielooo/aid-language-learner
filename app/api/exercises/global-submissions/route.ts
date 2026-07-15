@@ -6,7 +6,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
   EXERCISE_SELECT_COLUMNS,
   type ExerciseDbRow,
-} from "@/app/api/dev/exercises-admin/types";
+} from "@/lib/exercises/types";
 
 import type { ExerciseGlobalSubmissionRow } from "@/types/exercise-global-submission";
 

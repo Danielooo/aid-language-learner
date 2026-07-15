@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getHomeRoute } from "@/lib/auth/home-route";
 import { getPasswordSchema } from "@/lib/auth/password-policy";
 import { usernameToEmail } from "@/lib/auth/username";
 import { APP_ROUTES } from "@/lib/routes";
@@ -38,10 +39,13 @@ const credentialsSchema = z.object({
   password: getPasswordSchema(),
 });
 
-function sanitizeNextPath(value: FormDataEntryValue | string | null): string {
-  if (typeof value !== "string") return APP_ROUTES.oefenen;
+function sanitizeNextPath(
+  value: FormDataEntryValue | string | null,
+  fallback: string = APP_ROUTES.oefenen,
+): string {
+  if (typeof value !== "string") return fallback;
   if (!value.startsWith("/") || value.startsWith("//")) {
-    return APP_ROUTES.oefenen;
+    return fallback;
   }
   return value;
 }
@@ -122,7 +126,7 @@ export async function signIn(
   const email = usernameToEmail(username);
   const supabase = await getSupabaseServerClient();
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
@@ -135,7 +139,7 @@ export async function signIn(
   }
 
   revalidatePath("/", "layout");
-  redirect(sanitizeNextPath(formData.get("next")));
+  redirect(sanitizeNextPath(formData.get("next"), getHomeRoute(data.user)));
 }
 
 const oauthProviderSchema = z.enum(["google", "github"]);

@@ -42,7 +42,7 @@ export function buildAttemptPayload(
   };
 }
 
-/** Body voor POST /api/dev/quiz-attempts (metadata optioneel voor backward compat). */
+/** Body voor POST /api/quiz-attempts (metadata optioneel voor backward compat). */
 export function toQuizAttemptPostBody(payload: QuizAttemptPayload) {
   const body: Record<string, unknown> = {
     exerciseId: payload.exerciseId,
