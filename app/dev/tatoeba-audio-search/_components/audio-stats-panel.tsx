@@ -62,6 +62,8 @@ export function AudioStatsPanel({ refreshKey = 0 }: AudioStatsPanelProps) {
   // elke refreshKey-bump (typisch na een succesvolle persist-call).
   useEffect(() => {
     if (!open) return;
+    // fetchStats zet synchroon loading-state; acceptabel voor dev-tool.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStats();
   }, [open, fetchStats, refreshKey]);
 

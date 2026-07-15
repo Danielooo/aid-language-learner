@@ -21,6 +21,9 @@
   --color-ring: var(--ring);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-chart-correct: var(--chart-correct);
+  --color-chart-incorrect: var(--chart-incorrect);
+  --color-chart-neutral: var(--chart-neutral);
   --color-chat-bubble-assistant: var(--chat-bubble-assistant);
   --color-chat-bubble-assistant-foreground: var(--chat-bubble-assistant-foreground);
   --color-chat-bubble-user: var(--chat-bubble-user);
@@ -59,6 +62,10 @@
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
 
+  --chart-correct: oklch(0.627 0.194 145.764);
+  --chart-incorrect: oklch(0.577 0.245 27.325);
+  --chart-neutral: oklch(0.795 0.184 86.047);
+
   --chat-bubble-assistant: oklch(0.94 0 0);
   --chat-bubble-assistant-foreground: var(--foreground);
   --chat-bubble-user: var(--accent);
@@ -87,6 +94,10 @@
 
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
+
+  --chart-correct: oklch(0.723 0.219 142.5);
+  --chart-incorrect: oklch(0.704 0.191 22.216);
+  --chart-neutral: oklch(0.828 0.189 84.429);
 
   --chat-bubble-assistant: oklch(0.36 0 0);
   --chat-bubble-assistant-foreground: var(--foreground);

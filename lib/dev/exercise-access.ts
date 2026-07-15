@@ -1,3 +1,4 @@
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { DEV_MOCK_USER_ID } from "@/lib/dev/dev-identities";
 import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -20,15 +21,13 @@ export type ExerciseUserAccess =
  * Echte login wint; anders dev-modus met vaste DEV_MOCK_USER_ID.
  */
 export async function getExerciseUserAccess(): Promise<ExerciseUserAccess> {
+  const { supabaseUserId } = await getAuthContext();
   const serverSupabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await serverSupabase.auth.getUser();
 
-  if (user) {
+  if (supabaseUserId) {
     return {
       ok: true,
-      userId: user.id,
+      userId: supabaseUserId,
       supabase: serverSupabase,
       isDevMockUser: false,
     };

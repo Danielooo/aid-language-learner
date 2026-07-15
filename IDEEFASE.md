@@ -19,6 +19,7 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 - doorzoekbaar maken, toolcalling op los kunnen laten
 
 
+
 #### **Belangrijkste functionaliteiten**
 
 1. **Registreren en inloggen**
@@ -38,6 +39,8 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 
 ---
 
+
+
 ## TODO
 
 **Vooraf ophalen en verrijken audio oefeningen**
@@ -54,31 +57,42 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 - ~~Zelf kunnen aanpassen~~
 
 **Taaloefeningen kunnen maken**
+
 - ~~Flashcards~~ 
 - ~~Typen~~
 - ~~Sorteren~~
 - ~~Als er audio bij zit dan een icon die de audio afspeelt~~
+- ~~Kunnen aanvinken uitvinken welke oefeningen ik actief oefen in spaced repetition~~
 
 **Oefeningen herhalen met eerder zwak resultaat**
+
 - ~~Spaced repetition (regels voor goede en foute antwoorden)~~
 
+**Fix**
+
+- ~~SRS, direct na toevoegen oefeningen in leerplan > verschijnen in SRS~~
+
 **Voortgangsdashboard**
-- Dashboard met metrics en visuals
+
+- ~~Dashboard met metrics en visuals~~
+  - ~~Hoeveel oefeningen heb ik gehaald per interval?~~
+  - ~~Hoeveel oefeningen doe ik per dag, week, maand?~~
 
 
 
-===============================================================================
+**Registreren en inloggen**
 
+- ~~Supabase Auth (geimplementeerd > nog testen)~~
+- Creer profiel
+- Mogelijkheid tot profiel aanpassen
 
-
-
-
-**Aan het eind**
-- Auth implementeren (User en Admin)
+========================================================
 
 **Global**
+
 - loading state maken
 - skeleton loader maken
+
 
 
 ## Nice to haves
@@ -88,6 +102,5 @@ Kernfunctionaliteiten uitbouwen (Must haves)
  (Login knop met Google, of Github). 
  (Kan ook EU: Zitadel of LogTo)
 - Eigen api key toevoegen
-
-
+- Hoeveel oefeningen moet ik per komende periode maken (spaced repetition)
 

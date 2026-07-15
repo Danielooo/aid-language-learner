@@ -1,13 +1,10 @@
-import { ALL_TOPICS } from "@/app/dev/_components/quiz/constants";
-import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
-
-// Distinct topic-lijst uit `exercises` voor de topic-dropdown in
-// de generator-quiz. PostgREST kent geen DISTINCT; we halen alle
-// `topic`-kolommen op en deduppen JS-side. RLS zorgt dat we alleen
-// publieke seed-rijen + eigen rijen zien — dus de dropdown bevat
-// nooit topics van andere users.
+import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
+import { getExerciseUserAccess } from "@/lib/dev/exercise-access";
+import {
+  activeTopicsToArray,
+  getActiveTopicsForUser,
+  isTopicActive,
+} from "@/lib/topics/active-topics";
 
 export const dynamic = "force-dynamic";
 
@@ -22,37 +19,26 @@ export type TopicsResponse = {
 };
 
 export async function GET() {
-  const serverSupabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await serverSupabase.auth.getUser();
-  if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user) {
-    return Response.json({ error: "Niet ingelogd." }, { status: 401 });
+  const access = await getExerciseUserAccess();
+  if (!access.ok) return access.response;
+
+  const activeTopics = await getActiveTopicsForUser(access.supabase, access.userId);
+  const activeList = activeTopicsToArray(activeTopics);
+
+  if (!activeList) {
+    const payload: TopicsResponse = {
+      topics: [],
+      stats: [{ topic: ALL_TOPICS, count: 0 }],
+    };
+    return Response.json(payload);
   }
 
-  const supabase =
-    !DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user
-      ? getSupabaseAdmin()
-      : serverSupabase;
-  const seedOnly = !DEV_EXERCISE_TOOLS_REQUIRE_AUTH && !user;
-
-  let countQuery = supabase
-    .from("exercises")
-    .select("id", { count: "exact", head: true });
-  if (seedOnly) countQuery = countQuery.is("owner_id", null);
-
-  let topicsQuery = supabase
+  const { data, error } = await access.supabase
     .from("exercises")
     .select("topic")
-    .not("topic", "is", null);
-  if (seedOnly) topicsQuery = topicsQuery.is("owner_id", null);
+    .not("topic", "is", null)
+    .in("topic", activeList);
 
-  const [{ count: totalCount, error: countError }, { data, error }] =
-    await Promise.all([countQuery, topicsQuery]);
-
-  if (countError) {
-    return Response.json({ error: countError.message }, { status: 500 });
-  }
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
@@ -61,15 +47,20 @@ export async function GET() {
   for (const row of data ?? []) {
     if (typeof row.topic !== "string" || row.topic.trim().length === 0) continue;
     const key = row.topic.trim();
+    if (!isTopicActive(activeTopics, key)) continue;
     countByTopic.set(key, (countByTopic.get(key) ?? 0) + 1);
   }
 
   const topics = Array.from(countByTopic.keys()).sort((a, b) =>
     a.localeCompare(b, "nl"),
   );
+  const totalCount = topics.reduce(
+    (sum, topic) => sum + (countByTopic.get(topic) ?? 0),
+    0,
+  );
 
   const stats: TopicStat[] = [
-    { topic: ALL_TOPICS, count: totalCount ?? 0 },
+    { topic: ALL_TOPICS, count: totalCount },
     ...topics.map((topic) => ({
       topic,
       count: countByTopic.get(topic) ?? 0,

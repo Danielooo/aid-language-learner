@@ -22,8 +22,7 @@ export type AudioResultTableSelection = {
 
 
 // Gedeelde "rich" resultaat-tabel voor audio-rijen — gebruikt door
-// zowel /dev/tatoeba-audio (de playground) als
-// /dev/tatoeba-audio-search (de semantische zoekmachine).
+// /dev/tatoeba-audio-search en productie-oefeningenlijsten.
 //
 // Het component bezit zelf alle UI-state die intrinsiek aan de tabel-
 // weergave hangt (sort, license-filter, mp3 url-toggle, FilterBar-
@@ -258,6 +257,8 @@ export function AudioResultTable({
     }
     const restored = readHiddenCols(key);
     if (restored !== null) {
+      // SSR-hydratie: localStorage-voorkeur kan pas na mount gelezen worden.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHiddenColumns(restored);
     }
     hydratedRef.current = true;

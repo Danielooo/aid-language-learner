@@ -1,4 +1,4 @@
-// Gedeelde constants/utilities voor de /dev/exercise-generator-quiz chat.
+// Gedeelde constants/utilities voor quiz-oefening chat.
 // Zowel de chat-route (server) als de exercise-chat component (client)
 // importeren MODEL en `buildQuizChatSystemPrompt` zodat het debug-panel
 // "verzonden naar OpenAI" gegarandeerd toont wat de server ook

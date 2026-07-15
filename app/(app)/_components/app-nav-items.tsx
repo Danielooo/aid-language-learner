@@ -1,0 +1,67 @@
+import { APP_ROUTES } from "@/lib/routes";
+
+import type { ReactNode } from "react";
+
+export type AppNavItem = {
+  href: string;
+  label: string;
+  icon: ReactNode;
+};
+
+// Gedeelde iconenset voor top-nav (desktop) en tab-bar (mobiel).
+// Inline SVG's — het project gebruikt bewust geen icon-library.
+function CardsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
+      <rect x="3" y="6" width="14" height="12" rx="2" />
+      <path d="M7 6V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1" />
+    </svg>
+  );
+}
+
+function BookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  );
+}
+
+function CompassIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
+      <circle cx="12" cy="12" r="10" />
+      <path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z" />
+    </svg>
+  );
+}
+
+function ChartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
+      <path d="M3 3v18h18" />
+      <path d="M7 15v3m4-7v7m4-11v11m4-5v5" />
+    </svg>
+  );
+}
+
+function SparklesIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
+      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+      <path d="M20 3v4" />
+      <path d="M22 5h-4" />
+      <path d="M4 17v2" />
+      <path d="M5 18H3" />
+    </svg>
+  );
+}
+
+export const APP_NAV_ITEMS: AppNavItem[] = [
+  { href: APP_ROUTES.oefenen, label: "Oefenen", icon: <CardsIcon /> },
+  { href: APP_ROUTES.oefeningen, label: "Oefeningen", icon: <BookIcon /> },
+  { href: APP_ROUTES.generator, label: "Generator", icon: <SparklesIcon /> },
+  { href: APP_ROUTES.leerplan, label: "Leerplan", icon: <CompassIcon /> },
+  { href: APP_ROUTES.voortgang, label: "Voortgang", icon: <ChartIcon /> },
+];

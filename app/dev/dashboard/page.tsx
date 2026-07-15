@@ -1,6 +1,6 @@
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
 
-import { Dashboard } from "./_components/dashboard";
+import { DashboardWithStats } from "@/app/_components/features/dashboard/dashboard";
 
 // Server Component wrapper: header + intro hier, zodat alleen de
 // daadwerkelijk-interactieve <Dashboard /> in de client-bundle landt.
@@ -10,19 +10,8 @@ import { Dashboard } from "./_components/dashboard";
 export default async function DashboardPage() {
   // TIJDELIJK: proxy vereist geen sessie zolang DEV_EXERCISE_TOOLS_REQUIRE_AUTH
   // false is; fallback "gast" als er geen profile is.
-  const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: profile } = user
-    ? await supabase
-        .from("profiles")
-        .select("username")
-        .eq("id", user.id)
-        .maybeSingle()
-    : { data: null as { username: string } | null };
-
-  const username = profile?.username ?? (user ? "jij" : "gast");
+  const { isAuthenticated, username: profileUsername } = await getAuthContext();
+  const username = profileUsername ?? (isAuthenticated ? "jij" : "gast");
 
   return (
     <div className="space-y-6">
@@ -31,18 +20,13 @@ export default async function DashboardPage() {
           Dashboard — @{username}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Overzicht van je oefen-historie uit{" "}
-          <code className="font-mono text-xs">quiz_attempts</code> in
-          Supabase. Trends en zwakke plekken worden berekend over de
-          laatste 500 pogingen (default-limiet van{" "}
-          <code className="font-mono text-xs">
-            GET /api/dev/quiz-attempts
-          </code>
-          ).
+          Overzicht van je SRS-voortgang: op welke stap van het herhaalschema je
+          oefeningen staan. Data uit{" "}
+          <code className="font-mono text-xs">exercise_progress</code> in Supabase.
         </p>
       </header>
 
-      <Dashboard />
+      <DashboardWithStats />
     </div>
   );
 }

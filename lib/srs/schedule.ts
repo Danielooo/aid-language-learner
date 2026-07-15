@@ -16,9 +16,6 @@ export const SRS_DEFAULT_EASE = 2.5;
 export const SRS_TIMEZONE = "Europe/Amsterdam";
 export const SRS_EVENING_HOUR = 20;
 
-/** Pauze na fout voordat de oefening opnieuw due is (midden van 1–5 min). */
-export const SRS_RELEARNING_MINUTES = 2;
-
 export type SrsGuideGroup = "first-day" | "later" | "relearning";
 
 export type SrsGuideEntry = {
@@ -87,9 +84,39 @@ export const SRS_INTERVAL_GUIDE: readonly SrsGuideEntry[] = [
     group: "relearning",
     label: "Fout",
     description:
-      "bekijk het juiste antwoord; dezelfde oefening komt over ~2 minuten terug. Pas bij een goed antwoord ga je door naar het volgende interval",
+      "bekijk het juiste antwoord; dezelfde oefening komt meteen weer terug. Pas bij een goed antwoord ga je door naar het volgende interval",
   },
 ];
+
+/** Hoofdladder-stappen (zonder relearning-groep). */
+export const SRS_MAIN_LADDER_STEPS = SRS_INTERVAL_GUIDE.filter(
+  (entry) => entry.group !== "relearning",
+);
+
+const MAX_SRS_STEP_INDEX = SRS_MAIN_LADDER_STEPS.length - 1;
+
+/** Zet repetition_count om naar een stapindex (0–10). */
+export function getSrsStepIndex(repetitionCount: number): number {
+  if (repetitionCount <= 0) return 0;
+  if (repetitionCount >= MAX_SRS_STEP_INDEX) return MAX_SRS_STEP_INDEX;
+  return repetitionCount;
+}
+
+/** Label en beschrijving voor een stapindex op de hoofdladder. */
+export function getSrsStepInfo(stepIndex: number): Pick<SrsGuideEntry, "label" | "description"> {
+  const clamped = Math.min(Math.max(0, stepIndex), MAX_SRS_STEP_INDEX);
+  return SRS_MAIN_LADDER_STEPS[clamped];
+}
+
+/** Of een kaart in herkansing staat na een fout antwoord (na minstens één goed). */
+export function isInRelearning(
+  input: Pick<SrsCardState, "repetitionCount" | "intervalDays" | "lastReviewedAt" | "nextReviewAt">,
+): boolean {
+  if (input.repetitionCount <= 0 || input.intervalDays !== 0 || !input.lastReviewedAt) {
+    return false;
+  }
+  return input.nextReviewAt.getTime() <= input.lastReviewedAt.getTime();
+}
 
 export function createNewSrsCard(): SrsCardState {
   return {
@@ -192,7 +219,7 @@ function deriveIntervalDays(from: Date, nextReviewAt: Date): number {
 
 /**
  * Werkt de kaartstatus bij na een review.
- * Fout → relearning (+2 min, stap blijft). Goed → stap +1 en hoofdinterval.
+ * Fout → meteen weer due (stap blijft). Goed → stap +1 en hoofdinterval.
  */
 export function reviewSrsCard(
   state: SrsCardState,
@@ -201,11 +228,10 @@ export function reviewSrsCard(
   const now = new Date();
 
   if (!isCorrect) {
-    const nextReviewAt = addMinutes(now, SRS_RELEARNING_MINUTES);
     return {
       ...state,
       intervalDays: 0,
-      nextReviewAt,
+      nextReviewAt: now,
       lastReviewedAt: now,
     };
   }

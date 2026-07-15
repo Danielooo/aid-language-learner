@@ -1,9 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getPasswordSchema } from "@/lib/auth/password-policy";
+import { usernameToEmail } from "@/lib/auth/username";
+import { APP_ROUTES } from "@/lib/routes";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -14,42 +18,32 @@ import type { AuthActionState } from "@/app/(auth)/_lib/state";
 // met Zod en geven typeerbare fouten terug aan `useActionState`.
 //
 // Synthetisch e-mailadres `<username>@aid.local` zorgt dat we met een
-// pure username-UX kunnen werken zonder echte e-mail. De domeinkeus
-// `aid.local` is bewust een privé/non-routable TLD; geen mailserver.
+// pure username-UX kunnen werken zonder echte e-mail.
 //
 // Bij signUp gebruiken we `auth.admin.createUser({ email_confirm: true })`
 // in plaats van het reguliere `auth.signUp` — synthetische e-mailadressen
-// kunnen geen confirmation-mail ontvangen, dus zonder dit zou de user
-// nooit ingelogd kunnen raken (afhankelijk van de project-config).
-// Daarna loggen we in met de SSR-client zodat de session-cookie wordt
-// gezet. Username gaat mee als `user_metadata.username` → komt via de
-// `handle_new_user`-trigger in `public.profiles.username`.
+// kunnen geen confirmation-mail ontvangen. Username gaat mee als
+// `user_metadata.username` → komt via de `handle_new_user`-trigger in
+// `public.profiles.username`.
 
 const usernameSchema = z
   .string()
   .trim()
   .min(2, "Minimaal 2 tekens")
   .max(32, "Maximaal 32 tekens")
-  .regex(
-    /^[a-zA-Z0-9_-]+$/,
-    "Alleen letters, cijfers, _ en - toegestaan",
-  );
-
-const passwordSchema = z
-  .string()
-  .min(6, "Minimaal 6 tekens");
+  .regex(/^[a-zA-Z0-9_-]+$/, "Alleen letters, cijfers, _ en - toegestaan");
 
 const credentialsSchema = z.object({
   username: usernameSchema,
-  password: passwordSchema,
+  password: getPasswordSchema(),
 });
 
-// `aid.local` is een non-routable privé-domein zodat synthetic emails
-// nooit per ongeluk een echte mailserver raken. Lowercase houden voor
-// consistente lookup; Supabase Auth normaliseert e-mail anders zelf
-// ook al, maar expliciet is hier veiliger.
-function usernameToEmail(username: string): string {
-  return `${username.toLowerCase()}@aid.local`;
+function sanitizeNextPath(value: FormDataEntryValue | string | null): string {
+  if (typeof value !== "string") return APP_ROUTES.oefenen;
+  if (!value.startsWith("/") || value.startsWith("//")) {
+    return APP_ROUTES.oefenen;
+  }
+  return value;
 }
 
 export async function signUp(
@@ -94,8 +88,6 @@ export async function signUp(
     };
   }
 
-  // Direct inloggen na succesvolle registratie zodat de cookie meteen
-  // gezet wordt. Faalt alleen bij een echt rare race / config-issue.
   const supabase = await getSupabaseServerClient();
   const { error: signInError } = await supabase.auth.signInWithPassword({
     email,
@@ -110,7 +102,7 @@ export async function signUp(
   }
 
   revalidatePath("/", "layout");
-  redirect("/dev/dashboard");
+  redirect(sanitizeNextPath(formData.get("next")));
 }
 
 export async function signIn(
@@ -127,10 +119,11 @@ export async function signIn(
   }
 
   const { username, password } = parsed.data;
+  const email = usernameToEmail(username);
   const supabase = await getSupabaseServerClient();
 
   const { error } = await supabase.auth.signInWithPassword({
-    email: usernameToEmail(username),
+    email,
     password,
   });
 
@@ -142,7 +135,44 @@ export async function signIn(
   }
 
   revalidatePath("/", "layout");
-  redirect("/dev/dashboard");
+  redirect(sanitizeNextPath(formData.get("next")));
+}
+
+const oauthProviderSchema = z.enum(["google", "github"]);
+
+export type OAuthProvider = z.infer<typeof oauthProviderSchema>;
+
+/**
+ * Start de OAuth-flow (PKCE) via Supabase. De SSR-client zet de
+ * code-verifier-cookie; de provider stuurt de gebruiker terug naar
+ * /auth/callback waar de code voor een sessie wordt ingewisseld.
+ */
+export async function signInWithOAuthProvider(
+  formData: FormData,
+): Promise<void> {
+  const parsed = oauthProviderSchema.safeParse(formData.get("provider"));
+  if (!parsed.success) redirect(APP_ROUTES.login);
+
+  const next = sanitizeNextPath(formData.get("next"));
+
+  const headerStore = await headers();
+  const origin =
+    headerStore.get("origin") ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    "http://localhost:3000";
+
+  const supabase = await getSupabaseServerClient();
+  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: parsed.data,
+    options: { redirectTo },
+  });
+
+  if (error || !data.url) {
+    redirect(`${APP_ROUTES.login}?fout=oauth`);
+  }
+
+  redirect(data.url);
 }
 
 export async function signOut(): Promise<void> {

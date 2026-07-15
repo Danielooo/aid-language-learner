@@ -1,6 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
 
-import { SiteHeaderServer } from "@/app/_components/site-header-server";
 import { ThemeProvider } from "@/app/_components/theme-provider";
 
 import type { Metadata, Viewport } from "next";
@@ -31,6 +30,8 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: light)", color: "white" },
     { media: "(prefers-color-scheme: dark)", color: "black" },
   ],
+  // Nodig voor env(safe-area-inset-*) op iOS (mobiele tab-bar).
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -45,10 +46,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
-        <ThemeProvider>
-          <SiteHeaderServer />
-          {children}
-        </ThemeProvider>
+        {/* Header per route-group: publiek/auth/dev renderen SiteHeaderServer
+            zelf; de (app)-groep heeft een eigen app-shell met tab-navigatie. */}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

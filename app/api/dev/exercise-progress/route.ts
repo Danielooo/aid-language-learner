@@ -5,6 +5,12 @@ import {
   createNewSrsCard,
   reviewSrsCard,
 } from "@/lib/srs/schedule";
+import { countSrsDue } from "@/lib/srs/due-exercises";
+import {
+  activeTopicsToArray,
+  getActiveTopicsForUser,
+  isTopicActive,
+} from "@/lib/topics/active-topics";
 
 // CRUD voor `exercise_progress` (spaced repetition). De quiz-decks
 // roepen POST aan na elke poging in SRS-modus; GET levert due-counts
@@ -77,19 +83,39 @@ export async function GET(req: Request) {
       : null;
 
   const now = new Date().toISOString();
+  const activeTopics = await getActiveTopicsForUser(access.supabase, access.userId);
+  const activeList = activeTopicsToArray(activeTopics);
 
-  let dueQuery = access.supabase
-    .from("exercise_progress")
-    .select("exercise_id, exercises!inner(topic)", { count: "exact", head: true })
-    .eq("user_id", access.userId)
-    .eq("is_suspended", false)
-    .lte("next_review_at", now);
-
-  if (topic) {
-    dueQuery = dueQuery.eq("exercises.topic", topic);
+  if (topic && !isTopicActive(activeTopics, topic)) {
+    const payload: ProgressStatsResponse = {
+      dueCount: 0,
+      trackedCount: 0,
+      suspendedCount: 0,
+      ...(breakdown === "topics" ? { dueByTopic: {} } : {}),
+    };
+    return Response.json(payload);
   }
 
-  const { count: dueCount, error: dueError } = await dueQuery;
+  let dueCount = 0;
+  let dueError: { message: string } | null = null;
+  let dueByTopic: Record<string, number> | undefined;
+
+  if (activeList) {
+    try {
+      const dueCounts = await countSrsDue(access.supabase, access.userId, activeList, {
+        topic,
+        now: new Date(now),
+      });
+      dueCount = dueCounts.total;
+      if (breakdown === "topics") {
+        dueByTopic = dueCounts.byTopic;
+      }
+    } catch (error) {
+      dueError = {
+        message: error instanceof Error ? error.message : "Onbekende fout",
+      };
+    }
+  }
 
   if (dueError) {
     return Response.json({ error: dueError.message }, { status: 500 });
@@ -112,32 +138,6 @@ export async function GET(req: Request) {
 
   if (suspendedError) {
     return Response.json({ error: suspendedError.message }, { status: 500 });
-  }
-
-  let dueByTopic: Record<string, number> | undefined;
-  if (breakdown === "topics") {
-    let rowsQuery = access.supabase
-      .from("exercise_progress")
-      .select("exercise_id, exercises!inner(topic)")
-      .eq("user_id", access.userId)
-      .eq("is_suspended", false)
-      .lte("next_review_at", now);
-
-    const { data: dueRows, error: rowsError } = await rowsQuery;
-    if (rowsError) {
-      return Response.json({ error: rowsError.message }, { status: 500 });
-    }
-
-    dueByTopic = {};
-    for (const row of dueRows ?? []) {
-      const exercise = row.exercises as unknown as { topic: string | null } | null;
-      const key =
-        typeof exercise?.topic === "string" && exercise.topic.trim().length > 0
-          ? exercise.topic.trim()
-          : null;
-      if (!key) continue;
-      dueByTopic[key] = (dueByTopic[key] ?? 0) + 1;
-    }
   }
 
   const payload: ProgressStatsResponse = {

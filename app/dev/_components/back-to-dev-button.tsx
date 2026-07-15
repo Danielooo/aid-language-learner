@@ -1,15 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
-// Toont een "terug naar /dev"-knop op alle /dev/* subpagina's, maar niet
-// op /dev zelf om een no-op-link te voorkomen. Client-component vanwege
-// usePathname; verder ultradun.
+// Toont een "terug naar /dev"-knop op alle /dev/* subpagina's.
 export function BackToDevButton() {
-  // const pathname = usePathname();
-  // if (pathname === "/dev") return null;
-
   return (
     <Link
       href="/dev"
