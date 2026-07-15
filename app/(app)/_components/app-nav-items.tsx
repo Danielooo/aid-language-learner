@@ -58,10 +58,20 @@ function SparklesIcon() {
   );
 }
 
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
 export const APP_NAV_ITEMS: AppNavItem[] = [
   { href: APP_ROUTES.oefenen, label: "Oefenen", icon: <CardsIcon /> },
   { href: APP_ROUTES.oefeningen, label: "Oefeningen", icon: <BookIcon /> },
   { href: APP_ROUTES.generator, label: "Generator", icon: <SparklesIcon /> },
   { href: APP_ROUTES.leerplan, label: "Leerplan", icon: <CompassIcon /> },
   { href: APP_ROUTES.voortgang, label: "Voortgang", icon: <ChartIcon /> },
+  { href: APP_ROUTES.profiel, label: "Profiel", icon: <UserIcon /> },
 ];

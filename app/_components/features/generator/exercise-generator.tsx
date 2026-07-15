@@ -68,7 +68,7 @@ type ExerciseGeneratorProps = {
 };
 
 export function ExerciseGenerator({ showDebug = false }: ExerciseGeneratorProps) {
-  const { username } = useAppProfile();
+  const { displayLabel } = useAppProfile();
   const { stats: exerciseStats, loading: summaryLoading } = useMyExercisesSummary();
   const [input, setInput] = useState("");
   const [batches, setBatches] = useState<ProposalBatch[]>([]);
@@ -226,7 +226,7 @@ export function ExerciseGenerator({ showDebug = false }: ExerciseGeneratorProps)
       <AppPageHeader
         eyebrow="Mijn materiaal"
         title="Generator"
-        username={username}
+        accountLabel={displayLabel}
         description='Vraag de chatbot om Spaans→Nederlands vertaaloefeningen voor een onderwerp, bijvoorbeeld "10 zinnen voor in een restaurant". Je reviewt het voorstel en klikt "Opslaan" om ze aan je eigen oefeningen toe te voegen.'
         stats={exerciseStats.map((stat) => ({
           ...stat,

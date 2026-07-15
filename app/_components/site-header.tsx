@@ -23,13 +23,13 @@ const ghostButtonClasses =
   "inline-flex min-h-9 cursor-pointer items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted";
 
 type SiteHeaderProps = {
-  username: string | null;
+  accountLabel: string | null;
 };
 
 // Client component houdt alleen het mobile-menu open/dicht. Auth-state
 // komt als prop binnen via [site-header-server.tsx](./site-header-server.tsx)
-// — ServerComponent leest sessie uit cookies en geeft username door.
-export function SiteHeader({ username }: SiteHeaderProps) {
+// — ServerComponent leest sessie en geeft zichtbare Naam door.
+export function SiteHeader({ accountLabel }: SiteHeaderProps) {
   const [open, setOpen] = useState(false);
 
   const closeMenu = () => setOpen(false);
@@ -57,7 +57,7 @@ export function SiteHeader({ username }: SiteHeaderProps) {
               </Link>
             ))}
             <ThemeToggle />
-            <AuthControls username={username} onAfterClick={closeMenu} />
+            <AuthControls accountLabel={accountLabel} onAfterClick={closeMenu} />
           </nav>
 
           <button
@@ -98,7 +98,7 @@ export function SiteHeader({ username }: SiteHeaderProps) {
               ))}
               <div className="mt-2 flex flex-col gap-3 border-t border-border pt-4">
                 <ThemeToggle />
-                <AuthControls username={username} onAfterClick={closeMenu} />
+                <AuthControls accountLabel={accountLabel} onAfterClick={closeMenu} />
               </div>
             </nav>
           </Container>
@@ -109,18 +109,16 @@ export function SiteHeader({ username }: SiteHeaderProps) {
 }
 
 function AuthControls({
-  username,
+  accountLabel,
   onAfterClick,
 }: {
-  username: string | null;
+  accountLabel: string | null;
   onAfterClick?: () => void;
 }) {
-  if (username) {
+  if (accountLabel) {
     return (
       <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-foreground">
-          @{username}
-        </span>
+        <span className="text-sm font-medium text-foreground">{accountLabel}</span>
         <form action={signOut}>
           <button
             type="submit"

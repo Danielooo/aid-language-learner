@@ -62,7 +62,7 @@ function topicDisplayLabel(topic: string): string {
 
 export function FlashcardDeck() {
   const router = useRouter();
-  const { username } = useAppProfile();
+  const { displayLabel } = useAppProfile();
   const { stats, loading: statsLoading } = useExerciseSummaryStats();
   const containerRef = useRef<HTMLDivElement>(null);
   const cardContainerRef = useRef<HTMLDivElement>(null);
@@ -411,7 +411,7 @@ export function FlashcardDeck() {
       <AppPageHeader
         eyebrow="Oefenen"
         title="Flashcards"
-        username={username}
+        accountLabel={displayLabel}
         meta={<QuizSubPageMeta escHint={escHint} />}
         description={
           screen === "playing"

@@ -83,8 +83,11 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 **Registreren en inloggen**
 
 - ~~Supabase Auth (geimplementeerd > nog testen)~~
-- Creer profiel
-- Mogelijkheid tot profiel aanpassen
+- ~~Creer profiel~~
+- ~~Mogelijkheid tot profiel aanpassen~~
+
+
+
 
 ========================================================
 

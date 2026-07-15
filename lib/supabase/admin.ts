@@ -4,14 +4,14 @@ import { createClient } from "@supabase/supabase-js";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Service-role client. Omzeilt RLS — gebruik UITSLUITEND voor
-// admin-achtige operaties: seed-scripts en de signUp-action waar we
-// `auth.admin.createUser({ email_confirm: true })` aanroepen om de
-// e-mailbevestiging te skippen voor synthetische `*.aid.local`-emails.
+// Service-role client. Omzeilt RLS — gebruik UITSLUITEND voor Auth Admin
+// API (signUp confirm, deleteUser, e-mail sync), Storage-writes zonder
+// authenticated policies, en seed/MCP-tools. Admin-DB-toegang op user-data
+// loopt via de sessie-client + RLS (`public.is_admin()`).
 // NOOIT importeren vanuit een client component. `import "server-only"`
 // gooit anders een build-error i.p.v. een gelekte secret.
 //
-// Voor user-data (exercises, quiz_attempts) gebruiken we
+// Voor user-data (exercises, quiz_attempts, …) gebruiken we
 // [getSupabaseServerClient](./server.ts) — die respecteert RLS via
 // de session-cookie van de ingelogde user.
 

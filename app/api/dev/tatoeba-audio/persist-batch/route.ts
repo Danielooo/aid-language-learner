@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 import { fetchAudioBinary } from "@/lib/api/tatoeba-audio";
+import { assertAdmin } from "@/lib/dev/assert-admin";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
+
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Persist-route voor /dev/tatoeba-audio-search. Verzorgt twee modes
 // in één endpoint:
@@ -21,10 +25,9 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 // de hele apply-call laten falen. Duplicate-detect blijft daardoor
 // hier in de application-code.
 //
-// We gebruiken `getSupabaseAdmin()` (service-role) voor zowel de bucket-
-// upload (RLS bypass) als de exercises-insert: owner_id = NULL kan niet
-// via een normale authenticated client omdat de RLS-policy
-// `with check (owner_id = auth.uid())` dat blokkeert.
+// DB-ops lopen via de sessie-client (RLS + is_admin()). Storage-writes
+// blijven service_role omdat de tatoeba-audio bucket geen authenticated
+// write-policies heeft.
 
 export const dynamic = "force-dynamic";
 // Persist-flow doet per item een netwerk-call naar Tatoeba + een upload
@@ -146,6 +149,8 @@ export type PersistResponse = PreflightSuccess | ApplySuccess | PersistFailure;
 // ── Handler ──────────────────────────────────────────────────────────
 
 export async function POST(req: Request): Promise<Response> {
+  await assertAdmin();
+
   let parsedBody: unknown;
   try {
     parsedBody = await req.json();
@@ -168,18 +173,24 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  const supabase = getSupabaseAdmin();
+  const supabase = await getSupabaseServerClient();
+  const storage = getSupabaseAdmin();
 
   if (parsed.data.mode === "preflight") {
     return handlePreflight(parsed.data.items, supabase);
   }
-  return handleApply(parsed.data.items, parsed.data.resolutions, supabase);
+  return handleApply(
+    parsed.data.items,
+    parsed.data.resolutions,
+    supabase,
+    storage,
+  );
 }
 
 // Preflight: één gerichte query op de bestaande exercises-rijen.
 async function handlePreflight(
   items: PersistItem[],
-  supabase: ReturnType<typeof getSupabaseAdmin>,
+  supabase: SupabaseClient,
 ): Promise<Response> {
   const audioIds = items.map((i) => i.audio_id);
   const sentenceIds = items.map((i) => i.sentence_id);
@@ -225,7 +236,8 @@ async function handlePreflight(
 async function handleApply(
   items: PersistItem[],
   resolutions: Record<string, PersistResolution>,
-  supabase: ReturnType<typeof getSupabaseAdmin>,
+  supabase: SupabaseClient,
+  storage: SupabaseClient,
 ): Promise<Response> {
   // Eén keer alle conflict-rijen ophalen (zelfde query als preflight)
   // zodat we sequentieel niet voor elke item een ronde maken.
@@ -307,7 +319,7 @@ async function handleApply(
       // Best-effort: storage-fout laten we niet de hele apply-call killen,
       // de oude rijen zijn al weg en de nieuwe upload upserten op pad.
       if (oldPaths.length > 0) {
-        await supabase.storage.from("tatoeba-audio").remove(oldPaths);
+        await storage.storage.from("tatoeba-audio").remove(oldPaths);
       }
       replacedIds = oldIds;
     }
@@ -337,7 +349,7 @@ async function handleApply(
     const path = `${item.source_lang}/${item.sentence_id}/${item.audio_id}.mp3`;
     const byteSize = binary.bytes.byteLength;
 
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await storage.storage
       .from("tatoeba-audio")
       .upload(path, binary.bytes, {
         contentType: binary.contentType,

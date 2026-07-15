@@ -19,6 +19,7 @@ const APP_PAGE_PREFIXES = [
   "/oefeningen",
   "/generator",
   "/voortgang",
+  "/profiel",
 ] as const;
 
 const DEV_PAGE_PREFIXES = DEV_EXERCISE_TOOLS_REQUIRE_AUTH

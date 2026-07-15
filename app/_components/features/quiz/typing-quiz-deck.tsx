@@ -82,7 +82,7 @@ function directionDisplayLabel(direction: TranslationDirection): string {
 
 export function TypingQuizDeck() {
   const router = useRouter();
-  const { username } = useAppProfile();
+  const { displayLabel } = useAppProfile();
   const { stats, loading: statsLoading } = useExerciseSummaryStats();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -464,7 +464,7 @@ export function TypingQuizDeck() {
       <AppPageHeader
         eyebrow="Oefenen"
         title="Typen"
-        username={username}
+        accountLabel={displayLabel}
         meta={<QuizSubPageMeta escHint={escHint} />}
         description={
           screen === "playing"

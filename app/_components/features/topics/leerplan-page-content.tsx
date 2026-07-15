@@ -18,7 +18,7 @@ async function fetchLearningTopicsSummary(): Promise<LearningTopicsResponse> {
 }
 
 export function LeerplanPageContent() {
-  const { username } = useAppProfile();
+  const { displayLabel } = useAppProfile();
   const [activeCount, setActiveCount] = useState<number | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [ownCount, setOwnCount] = useState<number | null>(null);
@@ -58,7 +58,7 @@ export function LeerplanPageContent() {
       <AppPageHeader
         eyebrow="Leren"
         title="Leerplan"
-        username={username}
+        accountLabel={displayLabel}
         description="Kies welke topics je actief aan het leren bent. Alleen aangevinkte topics komen in oefenen en spaced repetition."
         stats={[
           { label: "Actief", value: formatCount(activeCount), loading },
