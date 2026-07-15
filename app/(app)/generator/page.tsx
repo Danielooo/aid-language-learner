@@ -2,7 +2,7 @@ import { ExerciseGenerator } from "@/app/_components/features/generator/exercise
 
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Oefeningen-generator" };
+export const metadata: Metadata = { title: "Generator" };
 
 export default function GeneratorPage() {
   return <ExerciseGenerator />;

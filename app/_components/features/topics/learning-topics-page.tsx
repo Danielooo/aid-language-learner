@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { APP_ROUTES } from "@/lib/routes";
+
 import { GlobalTopicsToggle } from "./global-topics-toggle";
 import { LearningTopicCard } from "./learning-topic-card";
 
@@ -114,7 +116,7 @@ export function LearningTopicsPage() {
         </span>
         {activeCount === 0 && !loading && (
           <Link
-            href="/oefeningen/generator"
+            href={APP_ROUTES.generator}
             className="font-medium text-accent underline-offset-2 hover:underline"
           >
             Oefeningen genereren
@@ -135,7 +137,7 @@ export function LearningTopicsPage() {
         <p className="text-sm text-muted-foreground">
           Nog geen eigen topics.{" "}
           <Link
-            href="/oefeningen/generator"
+            href={APP_ROUTES.generator}
             className="font-medium text-accent underline-offset-2 hover:underline"
           >
             Genereer oefeningen

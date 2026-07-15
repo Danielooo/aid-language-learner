@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { APP_ROUTES } from "@/lib/routes";
+
 type ExerciseErrorStateProps = {
   message: string;
   status: number | null;
@@ -18,10 +20,10 @@ export function ExerciseErrorState({
       <div className="space-y-3 text-sm">
         <p className="font-medium text-foreground">{message}</p>
         <Link
-          href="/oefeningen/generator"
+          href={APP_ROUTES.generator}
           className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
         >
-          Naar de oefeningen-generator
+          Naar de generator
         </Link>
       </div>
     );

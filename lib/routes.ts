@@ -9,7 +9,7 @@ export const APP_ROUTES = {
   sorteren: "/oefenen/sorteren",
   leerplan: "/leerplan",
   oefeningen: "/oefeningen",
-  generator: "/oefeningen/generator",
+  generator: "/generator",
   voortgang: "/voortgang",
   login: "/login",
   register: "/register",
