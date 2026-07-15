@@ -30,8 +30,7 @@ export default function DevCredentialsPage() {
         </h1>
         <p className="text-sm text-muted-foreground">
           <code className="font-mono text-xs">CRED.md</code> niet gevonden. Voer{" "}
-          <code className="font-mono text-xs">npm run seed:auth0-users</code> uit
-          nadat Auth0 is geconfigureerd.
+          <code className="font-mono text-xs">npm run seed:users</code> uit.
         </p>
       </div>
     );

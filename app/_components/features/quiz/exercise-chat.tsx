@@ -15,7 +15,7 @@ import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/rou
 import type { QuizChatMode } from "@/lib/ai/exercise-quiz-chat-config";
 import type { UIMessage } from "ai";
 
-// Chat-paneel onder een actieve oefening in /dev/exercise-generator-quiz.
+// Chat-paneel onder een actieve oefening tijdens quiz-sessies.
 // Twee modes:
 //   - before: nog niet ingediend → AI mag GEEN volledige vertaling geven.
 //   - after:  ingediend → AI heeft target/userAnswer/isCorrect en mag uitleggen.

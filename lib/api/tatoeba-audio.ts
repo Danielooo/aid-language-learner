@@ -1,16 +1,5 @@
-// Typed wrappers voor de drie audio-gerelateerde endpoints van Tatoeba:
-//
-//   A. GET /unstable/audios            (audio-first listing, met parent sentence)
-//   B. GET /v1/sentences?has_audio=yes (sentence-first, includes audios + transcriptions)
-//   C. GET /v1/audios/{id}/file        (de mp3 binary; 403 als licentie hergebruik verbiedt)
-//
+// Typed wrappers voor Tatoeba audio-endpoints (listing, sentence lookup, mp3).
 // Documentatie: https://api.tatoeba.org/openapi
-//
-// Bewust gescheiden van [lib/api/tatoeba.ts](./tatoeba.ts): dat bestand
-// modelleert de "platte" sentences-search die geen audio nodig heeft. De
-// types overlappen wat, maar dubbelhouden levert hier scherpere typing op
-// (audios/transcriptions zijn optioneel in beide endpoints, maar verplicht
-// aanwezig zodra we ze opvragen).
 
 const TATOEBA_AUDIOS_URL = "https://api.tatoeba.org/unstable/audios";
 const TATOEBA_SENTENCES_URL = "https://api.tatoeba.org/v1/sentences";

@@ -7,15 +7,9 @@ import type {
   TatoebaError,
 } from "@/lib/api/tatoeba-audio";
 
-// Lijst-route voor de tabelweergave op /dev/tatoeba-audio: haalt
-// server-side audios op uit /unstable/audios en pagineert door
-// `paging.next` totdat de gevraagde limit is bereikt of er geen
-// volgende pagina meer is. Server-side om CORS-onzekerheid van
-// api.tatoeba.org te vermijden, identiek aan probe/download/upload-
-// routes hiernaast.
-//
-// Filteren gebeurt client-side in de tabel (zie audio-table.tsx);
-// deze route doet alleen ophalen + pagineren.
+// Lijst-route: haalt server-side audios op uit /unstable/audios en pagineert
+// door `paging.next` totdat de gevraagde limit is bereikt. Server-side om
+// CORS-onzekerheid van api.tatoeba.org te vermijden.
 
 export const dynamic = "force-dynamic";
 // Hogere ceiling zodat grote limit-waarden (bv. 5000+ rijen via

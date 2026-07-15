@@ -11,7 +11,7 @@ import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-au
 
 import type { UIMessage } from "ai";
 
-// Chat-route voor /dev/exercise-generator-quiz. De LLM krijgt geen tools —
+// Chat-route voor uitleg tijdens quiz-oefeningen. De LLM krijgt geen tools —
 // dit is een uitleg-chat zonder structured output. Het system-prompt verschilt
 // per `mode`:
 //   - "before": gebruiker heeft nog niet ingediend → target_text wordt door
