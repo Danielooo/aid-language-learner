@@ -1,8 +1,7 @@
 import "server-only";
 
+import { isAdminUser } from "@/lib/auth/is-admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-
-const ADMIN_ROLE = "admin";
 
 /**
  * Controleert of de ingelogde gebruiker `app_metadata.role === "admin"` heeft.
@@ -20,8 +19,7 @@ export async function assertAdmin(): Promise<void> {
     });
   }
 
-  const role = user.app_metadata?.role;
-  if (role !== ADMIN_ROLE) {
+  if (!isAdminUser(user)) {
     throw new Response(JSON.stringify({ error: "Geen toegang (admin vereist)." }), {
       status: 403,
       headers: { "Content-Type": "application/json" },

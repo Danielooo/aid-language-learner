@@ -11,6 +11,7 @@ export const APP_ROUTES = {
   oefeningen: "/oefeningen",
   generator: "/generator",
   voortgang: "/voortgang",
+  profiel: "/profiel",
   login: "/login",
   register: "/register",
 } as const;

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { assertAdmin } from "@/lib/dev/assert-admin";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 import {
   EXERCISE_SELECT_COLUMNS,
@@ -91,7 +92,8 @@ export async function GET(req: Request): Promise<Response> {
 
   const { page, pageSize, sortDir, lang, topic, q } = parse.data;
   const offset = (page - 1) * pageSize;
-  const supabase = getSupabaseAdmin();
+  // Sessie-client: RLS + is_admin() dwingt admin-toegang af.
+  const supabase = await getSupabaseServerClient();
 
   let query = supabase
     .from("exercises")
@@ -163,7 +165,8 @@ export async function DELETE(req: Request): Promise<Response> {
   }
 
   const { exercise_ids, delete_audio } = parse.data;
-  const supabase = getSupabaseAdmin();
+  const supabase = await getSupabaseServerClient();
+  const storage = getSupabaseAdmin();
   const errors: string[] = [];
   let audioRemoved = 0;
 
@@ -188,7 +191,8 @@ export async function DELETE(req: Request): Promise<Response> {
       .filter((p): p is string => typeof p === "string" && p.length > 0);
 
     if (paths.length > 0) {
-      const { error: removeError } = await supabase.storage
+      // Storage-writes blijven service_role (geen authenticated write-policies).
+      const { error: removeError } = await storage.storage
         .from(BUCKET)
         .remove(paths);
       if (removeError) {

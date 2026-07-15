@@ -31,7 +31,7 @@ const QUIZ_MODES = [
 ] as const;
 
 export function ExercisesQuizPage() {
-  const { username } = useAppProfile();
+  const { displayLabel } = useAppProfile();
   const { stats, loading } = useExerciseSummaryStats();
 
   return (
@@ -39,7 +39,7 @@ export function ExercisesQuizPage() {
       <AppPageHeader
         eyebrow="Oefenen"
         title="Oefenen"
-        username={username}
+        accountLabel={displayLabel}
         description="Kies een quiz-vorm en hoe je wilt oefenen: willekeurig, spaced repetition of een eigen selectie."
         stats={stats.map((stat) => ({ ...stat, loading }))}
       />

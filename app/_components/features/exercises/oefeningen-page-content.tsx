@@ -12,7 +12,7 @@ import { APP_ROUTES } from "@/lib/routes";
 import { ExercisesListPage } from "./exercises-list-page";
 
 export function OefeningenPageContent() {
-  const { username } = useAppProfile();
+  const { displayLabel } = useAppProfile();
   const { stats: exerciseStats, loading: exerciseLoading } =
     useMyExercisesSummary();
   const { stats: srsStats, loading: srsLoading } = useExerciseSummaryStats();
@@ -32,7 +32,7 @@ export function OefeningenPageContent() {
       <AppPageHeader
         eyebrow="Mijn materiaal"
         title="Oefeningen"
-        username={username}
+        accountLabel={displayLabel}
         description="Je eigen opgeslagen oefeningen: bekijk, bewerk of verwijder ze."
         actions={
           <Link

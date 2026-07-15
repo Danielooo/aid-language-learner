@@ -12,7 +12,8 @@ export type AppPageHeaderStat = {
 type AppPageHeaderProps = {
   eyebrow: string;
   title: string;
-  username?: string;
+  /** Zichtbare accountnaam (Naam), zonder @-prefix. */
+  accountLabel?: string;
   description?: ReactNode;
   meta?: ReactNode;
   actions?: ReactNode;
@@ -53,7 +54,7 @@ function StatItem({
 export function AppPageHeader({
   eyebrow,
   title,
-  username,
+  accountLabel,
   description,
   meta,
   actions,
@@ -74,8 +75,8 @@ export function AppPageHeader({
         </h1>
         <div className="flex flex-wrap items-center gap-3">
           {actions}
-          {username && (
-            <p className="text-sm text-muted-foreground">@{username}</p>
+          {accountLabel && (
+            <p className="text-sm text-muted-foreground">{accountLabel}</p>
           )}
         </div>
       </div>

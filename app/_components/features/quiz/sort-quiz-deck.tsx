@@ -75,7 +75,7 @@ function directionDisplayLabel(direction: TranslationDirection): string {
 
 export function SortQuizDeck() {
   const router = useRouter();
-  const { username } = useAppProfile();
+  const { displayLabel } = useAppProfile();
   const { stats, loading: statsLoading } = useExerciseSummaryStats();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -472,7 +472,7 @@ export function SortQuizDeck() {
       <AppPageHeader
         eyebrow="Oefenen"
         title="Sorteren"
-        username={username}
+        accountLabel={displayLabel}
         meta={<QuizSubPageMeta escHint={escHint} />}
         description={
           screen === "playing"

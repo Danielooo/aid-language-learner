@@ -1,14 +1,16 @@
 import { SiteHeader } from "@/app/_components/site-header";
+import { getDisplayLabel } from "@/lib/auth/display-label";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 
-// Server-side wrapper rond [SiteHeader](./site-header.tsx). Leest de
-// Server Component: leest de Supabase-sessie en haalt de username uit `public.profiles`.
+// Server Component: leest sessie + profiel en geeft zichtbare Naam door.
 export async function SiteHeaderServer() {
-  const { isAuthenticated, username } = await getAuthContext();
+  const { isAuthenticated, username, displayName } = await getAuthContext();
 
-  if (!isAuthenticated) {
-    return <SiteHeader username={null} />;
+  if (!isAuthenticated || !username) {
+    return <SiteHeader accountLabel={null} />;
   }
 
-  return <SiteHeader username={username} />;
+  return (
+    <SiteHeader accountLabel={getDisplayLabel(displayName, username)} />
+  );
 }

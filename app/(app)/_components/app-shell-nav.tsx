@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils";
 import { APP_NAV_ITEMS } from "./app-nav-items";
 
 type AppShellNavProps = {
-  username: string | null;
+  /** Zichtbare accountnaam (Naam of username-fallback), geen @. */
+  accountLabel: string | null;
 };
 
 // Actief = exacte match of sub-route (bijv. /oefenen/typen hoort bij /oefenen).
@@ -21,7 +22,7 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 /** Desktop top-navigatie: logo, nav-links, theme + account. */
-export function AppTopNav({ username }: AppShellNavProps) {
+export function AppTopNav({ accountLabel }: AppShellNavProps) {
   const pathname = usePathname();
 
   return (
@@ -58,10 +59,20 @@ export function AppTopNav({ username }: AppShellNavProps) {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            {username && (
-              <span className="hidden text-sm font-medium text-foreground sm:inline">
-                @{username}
-              </span>
+            {accountLabel && (
+              <Link
+                href={APP_ROUTES.profiel}
+                aria-label={`Profiel van ${accountLabel}`}
+                aria-current={pathname === APP_ROUTES.profiel ? "page" : undefined}
+                className={cn(
+                  "inline-flex h-10 max-w-48 items-center truncate rounded-md border border-border px-3.5 text-sm font-medium transition-colors sm:max-w-64",
+                  pathname === APP_ROUTES.profiel
+                    ? "border-accent/30 bg-accent/10 text-accent"
+                    : "bg-background text-foreground hover:bg-muted",
+                )}
+              >
+                Hi, {accountLabel}
+              </Link>
             )}
             <form action={signOut}>
               <button
@@ -90,7 +101,7 @@ export function AppTabBar() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="grid grid-cols-5">
+      <ul className="grid grid-cols-6">
         {APP_NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href);
           return (
