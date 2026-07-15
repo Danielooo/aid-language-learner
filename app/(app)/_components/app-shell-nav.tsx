@@ -9,21 +9,20 @@ import { ThemeToggle } from "@/app/_components/ui/theme-toggle";
 import { APP_ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
-import { APP_NAV_ITEMS } from "./app-nav-items";
+import { getAppNavItems } from "./app-nav-items";
 
 type AppShellNavProps = {
-  /** Zichtbare accountnaam (Naam of username-fallback), geen @. */
   accountLabel: string | null;
+  isAdmin?: boolean;
 };
 
-// Actief = exacte match of sub-route (bijv. /oefenen/typen hoort bij /oefenen).
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Desktop top-navigatie: logo, nav-links, theme + account. */
-export function AppTopNav({ accountLabel }: AppShellNavProps) {
+export function AppTopNav({ accountLabel, isAdmin = false }: AppShellNavProps) {
   const pathname = usePathname();
+  const navItems = getAppNavItems(isAdmin);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -37,12 +36,17 @@ export function AppTopNav({ accountLabel }: AppShellNavProps) {
             >
               LL
             </Link>
-            <nav aria-label="Hoofdnavigatie" className="hidden items-center gap-1 md:flex">
-              {APP_NAV_ITEMS.map((item) => (
+            <nav
+              aria-label="Hoofdnavigatie"
+              className="hidden items-center gap-1 md:flex"
+            >
+              {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  aria-current={isActive(pathname, item.href) ? "page" : undefined}
+                  aria-current={
+                    isActive(pathname, item.href) ? "page" : undefined
+                  }
                   className={cn(
                     "inline-flex min-h-9 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors",
                     isActive(pathname, item.href)
@@ -63,7 +67,9 @@ export function AppTopNav({ accountLabel }: AppShellNavProps) {
               <Link
                 href={APP_ROUTES.profiel}
                 aria-label={`Profiel van ${accountLabel}`}
-                aria-current={pathname === APP_ROUTES.profiel ? "page" : undefined}
+                aria-current={
+                  pathname === APP_ROUTES.profiel ? "page" : undefined
+                }
                 className={cn(
                   "inline-flex h-10 max-w-48 items-center truncate rounded-md border border-border px-3.5 text-sm font-medium transition-colors sm:max-w-64",
                   pathname === APP_ROUTES.profiel
@@ -91,9 +97,10 @@ export function AppTopNav({ accountLabel }: AppShellNavProps) {
   );
 }
 
-/** Mobiele bottom tab-bar met safe-area padding (thuisbalk iOS). */
-export function AppTabBar() {
+export function AppTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
+  const navItems = getAppNavItems(isAdmin);
+  const cols = navItems.length;
 
   return (
     <nav
@@ -101,8 +108,11 @@ export function AppTabBar() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="grid grid-cols-6">
-        {APP_NAV_ITEMS.map((item) => {
+      <ul
+        className="grid"
+        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+      >
+        {navItems.map((item) => {
           const active = isActive(pathname, item.href);
           return (
             <li key={item.href}>

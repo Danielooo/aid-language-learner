@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { assertAdmin } from "@/lib/dev/assert-admin";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 import {
   EXERCISE_SELECT_COLUMNS,
@@ -92,12 +91,14 @@ export async function GET(req: Request): Promise<Response> {
 
   const { page, pageSize, sortDir, lang, topic, q } = parse.data;
   const offset = (page - 1) * pageSize;
-  // Sessie-client: RLS + is_admin() dwingt admin-toegang af.
-  const supabase = await getSupabaseServerClient();
+  // Service role na assertAdmin: RLS kent geen admin-peep meer;
+  // we filteren expliciet op global corpus (owner_id IS NULL).
+  const supabase = getSupabaseAdmin();
 
   let query = supabase
     .from("exercises")
     .select(EXERCISE_SELECT_COLUMNS, { count: "exact" })
+    .is("owner_id", null)
     .order("created_at", { ascending: sortDir === "asc" });
 
   if (lang) {
@@ -165,8 +166,7 @@ export async function DELETE(req: Request): Promise<Response> {
   }
 
   const { exercise_ids, delete_audio } = parse.data;
-  const supabase = await getSupabaseServerClient();
-  const storage = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin();
   const errors: string[] = [];
   let audioRemoved = 0;
 
@@ -174,6 +174,7 @@ export async function DELETE(req: Request): Promise<Response> {
     const { data: rows, error: fetchError } = await supabase
       .from("exercises")
       .select("id, audio_path")
+      .is("owner_id", null)
       .in("id", exercise_ids);
 
     if (fetchError) {
@@ -191,8 +192,7 @@ export async function DELETE(req: Request): Promise<Response> {
       .filter((p): p is string => typeof p === "string" && p.length > 0);
 
     if (paths.length > 0) {
-      // Storage-writes blijven service_role (geen authenticated write-policies).
-      const { error: removeError } = await storage.storage
+      const { error: removeError } = await supabase.storage
         .from(BUCKET)
         .remove(paths);
       if (removeError) {
@@ -206,6 +206,7 @@ export async function DELETE(req: Request): Promise<Response> {
   const { error: deleteError, count } = await supabase
     .from("exercises")
     .delete({ count: "exact" })
+    .is("owner_id", null)
     .in("id", exercise_ids);
 
   if (deleteError) {

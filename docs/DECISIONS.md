@@ -240,6 +240,27 @@ wanneer dat technisch niet vereist is. Effect: één consistente
 UI-behandeling, geen per-fragment-conditional, en geen risico op
 ongedekte attributie als Tatoeba's metadata onvolledig is.
 
+### 2026-07-15 21:24 — Admin/user rechten bevroren in REQUIREMENTS-ROLES <a id="requirements-roles"></a>
+
+**Files:** `docs/REQUIREMENTS-ROLES.md`, `docs/IMPLEMENTATION-ROLES.md`, `docs/INDEX.md`
+**Tags:** auth, rbac, admin, moderation, requirements
+
+Productrechten voor admin vs user vastgelegd als source of truth (copy-on-approve moderatie, 10 AI-requests/dag voor users, admin onbeperkt AI, Auth-ban bij deactivate, laatste-admin niet degraderen). Bouwvolgorde staat in `IMPLEMENTATION-ROLES.md`; dit is bewust nog geen code — eerst bevroren matrix, daarna gefaseerde PRs.
+
+### 2026-07-15 21:30 — Global submissions-schema + RLS zonder admin-peep <a id="exercise-global-submissions"></a>
+
+**Files:** `supabase/migrations/0017_exercise_global_submissions.sql`, `types/exercise-global-submission.ts`, `lib/auth/role-capabilities.ts`, `lib/exercises/build-exercise-global-snapshot.ts`
+**Tags:** supabase, rls, admin, moderation, rbac
+
+`exercise_global_submissions` + profile-flags (`ai_disabled`, daglimiet-counters) toegevoegd voor copy-on-approve. De brede `is_admin()` read/write op personal exercises/progress uit `0016_admin_rls` is teruggedraaid zodat RLS weer own-row is; admin global-writes blijven via service-role APIs na `assertAdmin`, conform `REQUIREMENTS-ROLES.md`.
+
+### 2026-07-15 21:45 — Rollen PR B–F: admin product-surface + quota <a id="roles-pr-b-f"></a>
+
+**Files:** `app/(app)/admin/**`, `app/api/admin/**`, `app/api/exercises/global-submissions/**`, `lib/auth/assert-ai-quota.ts`, `proxy.ts`, `app/dev/layout.tsx`
+**Tags:** auth, rbac, admin, moderation, rate-limit
+
+Productie-admin onder `/admin` (globals, review-queue, gebruikers), user-aanbiedingen via snapshot/pending, AI-limiet 10/dag UTC + `ai_disabled`, en `/dev` alleen nog voor admins. Global corpus-mutaties lopen via service role na `assertAdmin`, gefilterd op `owner_id IS NULL`.
+
 <!-- INSERT-NEW-ENTRY-ABOVE -->
 
 ## Template — kopieer & vul in

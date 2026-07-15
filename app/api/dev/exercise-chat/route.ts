@@ -6,8 +6,10 @@ import {
   EXERCISE_CHAT_MODEL,
   EXERCISE_CHAT_SYSTEM_PROMPT,
 } from "@/lib/ai/exercise-generator-config";
-import { getAuthContext } from "@/lib/auth/get-auth-context";
-import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
+import {
+  assertAndConsumeAiQuota,
+  getSessionUser,
+} from "@/lib/auth/assert-ai-quota";
 
 import type { UIMessage } from "ai";
 
@@ -99,15 +101,14 @@ function buildSystemPrompt(draftSummary?: ChatRequestBody["draftSummary"]): stri
 }
 
 export async function POST(req: Request) {
-  // Auth-check: de generator is een ingelogde feature (oefeningen
-  // worden eigenaarschap-gewijs aan de user gekoppeld). De UI redirect
-  // al via `proxy.ts`, maar de route zelf moet ook 401-en bij directe
-  // aanroepen — anders zou een onauth'd client tokens kunnen verbranden.
-  if (DEV_EXERCISE_TOOLS_REQUIRE_AUTH) {
-    const { isAuthenticated } = await getAuthContext();
-    if (!isAuthenticated) {
-      return Response.json({ error: "Niet ingelogd." }, { status: 401 });
-    }
+  const user = await getSessionUser();
+  if (!user) {
+    return Response.json({ error: "Niet ingelogd." }, { status: 401 });
+  }
+
+  const quota = await assertAndConsumeAiQuota(user);
+  if (!quota.ok) {
+    return Response.json({ error: quota.error }, { status: quota.status });
   }
 
   const { messages, draftSummary } = (await req.json()) as ChatRequestBody;

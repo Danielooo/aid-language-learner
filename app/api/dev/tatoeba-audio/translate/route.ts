@@ -7,6 +7,7 @@ import {
   TATOEBA_ENRICH_SYSTEM_PROMPT,
   buildEnrichUserMessage,
 } from "@/lib/ai/tatoeba-translate-config";
+import { assertAdmin } from "@/lib/dev/assert-admin";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 // Enrich-route voor de tabel op /dev/tatoeba-audio-search. Krijgt een
@@ -113,6 +114,8 @@ export type EnrichResponse = EnrichSuccess | EnrichFailure;
 export type TranslateResponse = EnrichResponse;
 
 export async function POST(req: Request): Promise<Response> {
+  await assertAdmin();
+
   let parsedBody: unknown;
   try {
     parsedBody = await req.json();

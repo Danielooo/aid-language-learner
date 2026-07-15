@@ -8,8 +8,6 @@ export type AppNavItem = {
   icon: ReactNode;
 };
 
-// Gedeelde iconenset voor top-nav (desktop) en tab-bar (mobiel).
-// Inline SVG's — het project gebruikt bewust geen icon-library.
 function CardsIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
@@ -67,7 +65,15 @@ function UserIcon() {
   );
 }
 
-export const APP_NAV_ITEMS: AppNavItem[] = [
+function ShieldIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+    </svg>
+  );
+}
+
+const BASE_NAV_ITEMS: AppNavItem[] = [
   { href: APP_ROUTES.oefenen, label: "Oefenen", icon: <CardsIcon /> },
   { href: APP_ROUTES.oefeningen, label: "Oefeningen", icon: <BookIcon /> },
   { href: APP_ROUTES.generator, label: "Generator", icon: <SparklesIcon /> },
@@ -75,3 +81,16 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
   { href: APP_ROUTES.voortgang, label: "Voortgang", icon: <ChartIcon /> },
   { href: APP_ROUTES.profiel, label: "Profiel", icon: <UserIcon /> },
 ];
+
+/** Navigatie-items; Beheer alleen voor admins (desktop + mobiel). */
+export function getAppNavItems(isAdmin: boolean): AppNavItem[] {
+  if (!isAdmin) return BASE_NAV_ITEMS;
+  return [
+    ...BASE_NAV_ITEMS.slice(0, 5),
+    { href: APP_ROUTES.admin, label: "Beheer", icon: <ShieldIcon /> },
+    BASE_NAV_ITEMS[5]!,
+  ];
+}
+
+/** @deprecated gebruik getAppNavItems — blijft voor dev-importers. */
+export const APP_NAV_ITEMS = BASE_NAV_ITEMS;

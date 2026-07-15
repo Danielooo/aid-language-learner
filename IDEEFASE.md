@@ -85,6 +85,9 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 - ~~Supabase Auth (geimplementeerd > nog testen)~~
 - ~~Creer profiel~~
 - ~~Mogelijkheid tot profiel aanpassen~~
+- Rechten user / admin implementeren
+
+
 
 
 

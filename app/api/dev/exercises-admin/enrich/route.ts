@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { enrichExercises } from "@/lib/dev/exercises-enrich";
 import { assertAdmin } from "@/lib/dev/assert-admin";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -50,10 +50,11 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  const supabase = await getSupabaseServerClient();
+  const supabase = getSupabaseAdmin();
   const result = await enrichExercises({
     supabase,
     exerciseIds: parse.data.exercise_ids,
+    globalsOnly: true,
   });
 
   if (!result.ok) {

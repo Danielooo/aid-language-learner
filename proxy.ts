@@ -1,8 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-import { DEV_EXERCISE_TOOLS_REQUIRE_AUTH } from "@/lib/dev/exercise-generator-auth";
-
 // Next.js 16 hernoemt `middleware.ts` → `proxy.ts` (zelfde semantiek,
 // nieuwe naam — zie docs/01-app/03-api-reference/03-file-conventions/proxy.md).
 //
@@ -20,16 +18,12 @@ const APP_PAGE_PREFIXES = [
   "/generator",
   "/voortgang",
   "/profiel",
+  "/admin",
 ] as const;
 
-const DEV_PAGE_PREFIXES = DEV_EXERCISE_TOOLS_REQUIRE_AUTH
-  ? ([
-      "/dev/exercise-generator",
-      "/dev/my-exercises",
-      "/dev/exercises-quiz",
-      "/dev/dashboard",
-    ] as const)
-  : ([] as const);
+const DEV_PAGE_PREFIXES = [
+  "/dev",
+] as const;
 
 const PROTECTED_PAGE_PREFIXES = [...APP_PAGE_PREFIXES, ...DEV_PAGE_PREFIXES];
 

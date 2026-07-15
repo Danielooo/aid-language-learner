@@ -1,12 +1,28 @@
+import { redirect } from "next/navigation";
+
 import { SiteHeaderServer } from "@/app/_components/site-header-server";
 import { Container } from "@/app/_components/ui/container";
 import { BackToDevButton } from "@/app/dev/_components/back-to-dev-button";
+import { isAdminUser } from "@/lib/auth/is-admin";
+import { APP_ROUTES } from "@/lib/routes";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 import type { ReactNode } from "react";
 
-// Layout voor alle /dev/* pagina's. Admin- en workflow-tools; de
-// productie-app leeft onder app/(app)/.
-export default function DevLayout({ children }: { children: ReactNode }) {
+// /dev is lab/admin-tooling: alleen voor admins.
+export default async function DevLayout({ children }: { children: ReactNode }) {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect(`${APP_ROUTES.login}?next=/dev`);
+  }
+  if (!isAdminUser(user)) {
+    redirect(APP_ROUTES.oefenen);
+  }
+
   return (
     <>
       <SiteHeaderServer />
@@ -14,10 +30,8 @@ export default function DevLayout({ children }: { children: ReactNode }) {
         <BackToDevButton />
         <div className="rounded-md border border-dashed border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
           <strong className="font-semibold text-foreground">/dev</strong> —
-          admin- en workflow-tools. De productie-app leeft op{" "}
-          <code className="font-mono">/oefenen</code>,{" "}
-          <code className="font-mono">/leerplan</code> en{" "}
-          <code className="font-mono">/voortgang</code>.
+          admin-labtools. Productiebeheer:{" "}
+          <code className="font-mono">{APP_ROUTES.admin}</code>.
         </div>
         {children}
       </Container>

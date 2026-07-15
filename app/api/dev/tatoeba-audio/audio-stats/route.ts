@@ -1,13 +1,9 @@
+import { assertAdmin } from "@/lib/dev/assert-admin";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 // Stats-route voor het uitklapbare dashboard onderaan
-// /dev/tatoeba-audio-search. Telt per `source_lang` hoeveel exercises-
-// rijen een `audio_path` hebben — d.w.z. via Tatoeba binnengehaald én
-// in de bucket opgeslagen.
-//
-// We gebruiken de admin-client om RLS te bypassen: het dashboard moet
-// werken voor zowel ingelogde als anonieme dev-bezoekers, en de tellers
-// gaan over publieke (owner_id IS NULL) seed-content.
+// /dev/tatoeba-audio-search. Telt per `source_lang` hoeveel global
+// exercises-rijen een `audio_path` hebben.
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
@@ -28,6 +24,7 @@ export type AudioStatsFailure = {
 export type AudioStatsResponse = AudioStatsSuccess | AudioStatsFailure;
 
 export async function GET(): Promise<Response> {
+  await assertAdmin();
   const supabase = getSupabaseAdmin();
 
   // Supabase-js heeft geen group-by helper; we halen alleen de
@@ -37,6 +34,7 @@ export async function GET(): Promise<Response> {
   const { data, error } = await supabase
     .from("exercises")
     .select("source_lang")
+    .is("owner_id", null)
     .not("audio_path", "is", null);
 
   if (error) {

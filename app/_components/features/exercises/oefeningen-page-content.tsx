@@ -55,6 +55,7 @@ export function OefeningenPageContent() {
           pagePath="/oefeningen"
           tableScope="my-exercises"
           topicsUrl="/api/dev/my-exercises/topics"
+          enableGlobalOffer
           emptyMessage={
             <>
               Nog geen oefeningen opgeslagen.{" "}
