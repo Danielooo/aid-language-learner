@@ -78,15 +78,15 @@ Kernfunctionaliteiten uitbouwen (Must haves)
   - ~~Hoeveel oefeningen heb ik gehaald per interval?~~
   - ~~Hoeveel oefeningen doe ik per dag, week, maand?~~
 
+
+
 **Registreren en inloggen**
 
-- Implementeer Auth0 (HIER GEBLEVEN, REG/INLOG WERKT NIET)
+- ~~Supabase Auth (geimplementeerd > nog testen)~~
 - Creer profiel
 - Mogelijkheid tot profiel aanpassen
 
 ========================================================
-
-
 
 **Global**
 
