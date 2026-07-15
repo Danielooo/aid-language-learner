@@ -1,4 +1,4 @@
-import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
+import type { ExerciseQuizItem } from "@/types/quiz";
 
 export type TypingMode = "full" | "blank";
 export type TranslationDirection = "es-to-nl" | "nl-to-es";

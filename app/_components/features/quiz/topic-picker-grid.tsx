@@ -6,7 +6,7 @@ import { useRef } from "react";
 
 import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
 
-import type { TopicStat } from "@/app/api/dev/exercise-generator-quiz/topics/route";
+import type { TopicStat } from "@/types/quiz";
 
 gsap.registerPlugin(useGSAP);
 

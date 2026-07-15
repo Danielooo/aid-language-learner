@@ -5,8 +5,8 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   AudioResultTable,
   type ColumnKey,
-} from "@/app/dev/_components/audio-result-table";
-import type { AudioRow } from "@/app/api/dev/tatoeba-audio/list/route";
+} from "@/app/_components/features/exercises/audio-result-table";
+import type { AudioRow } from "@/types/tatoeba";
 import { useTranslationCache } from "@/lib/hooks/use-translation-cache";
 
 import {

@@ -49,12 +49,12 @@ import { useQuizSession } from "./hooks/use-quiz-session";
 import { useItemResponseTime } from "./hooks/use-item-response-time";
 
 import type { SortFeedback } from "./sort-exercise";
-import type { ExercisePickerItem } from "@/app/api/dev/exercise-generator-quiz/list/route";
-import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
+import type { ExercisePickerItem } from "@/types/quiz";
+import type { ExerciseQuizItem } from "@/types/quiz";
 import type {
   TopicStat,
   TopicsResponse,
-} from "@/app/api/dev/exercise-generator-quiz/topics/route";
+} from "@/types/quiz";
 import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
 import type { TranslationDirection } from "@/lib/quiz/typing-config";
 
@@ -207,7 +207,7 @@ export function SortQuizDeck() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/dev/exercise-generator-quiz/topics", {
+        const res = await fetch("/api/quiz/topics", {
           cache: "no-store",
         });
         if (!res.ok) throw new Error(`Status ${res.status}`);

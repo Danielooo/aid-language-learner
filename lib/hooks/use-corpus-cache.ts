@@ -2,9 +2,9 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 
-import type { AudioRow } from "@/app/api/dev/tatoeba-audio/list/route";
+import type { AudioRow } from "@/types/tatoeba";
 
-// Cache voor de Tatoeba-corpus + embeddings op /dev/tatoeba-audio-search.
+// Cache voor de Tatoeba-corpus + embeddings op Tatoeba-import.
 // Per `lang` apart opgeslagen zodat een taal-wissel een eerdere cache
 // niet overschrijft. Bewust localStorage en niet IndexedDB:
 //

@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
 
-import type { TopicStat } from "@/app/api/dev/exercise-generator-quiz/topics/route";
+import type { TopicStat } from "@/types/quiz";
 
 type ActiveTopicsEmptyBannerProps = {
   topicStats: TopicStat[];

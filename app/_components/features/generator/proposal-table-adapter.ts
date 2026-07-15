@@ -1,4 +1,4 @@
-import type { AudioRow } from "@/app/api/dev/tatoeba-audio/list/route";
+import type { AudioRow } from "@/types/tatoeba";
 import type { UseTranslationCache } from "@/lib/hooks/use-translation-cache";
 
 // Map LLM-voorstellen naar pseudo-AudioRow's zodat AudioResultTable

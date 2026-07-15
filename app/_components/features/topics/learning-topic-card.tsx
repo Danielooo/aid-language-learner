@@ -1,6 +1,6 @@
 "use client";
 
-import type { LearningTopicItem } from "@/app/api/dev/learning-topics/route";
+import type { LearningTopicItem } from "@/types/learning-topics";
 
 type LearningTopicCardProps = {
   item: LearningTopicItem;

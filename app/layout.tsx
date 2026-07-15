@@ -46,7 +46,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
-        {/* Header per route-group: publiek/auth/dev renderen SiteHeaderServer
+        {/* Header per route-group: publiek/auth renderen SiteHeaderServer
             zelf; de (app)-groep heeft een eigen app-shell met tab-navigatie. */}
         <ThemeProvider>{children}</ThemeProvider>
       </body>

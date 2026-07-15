@@ -7,10 +7,10 @@ import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 
 import { LearningTopicsPage } from "./learning-topics-page";
 
-import type { LearningTopicsResponse } from "@/app/api/dev/learning-topics/route";
+import type { LearningTopicsResponse } from "@/types/learning-topics";
 
 async function fetchLearningTopicsSummary(): Promise<LearningTopicsResponse> {
-  const res = await fetch("/api/dev/learning-topics", { cache: "no-store" });
+  const res = await fetch("/api/learning-topics", { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`Status ${res.status}`);
   }

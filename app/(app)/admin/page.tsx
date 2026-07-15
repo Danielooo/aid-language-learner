@@ -26,9 +26,9 @@ const CARDS = [
     body: "Rollen, AI aan/uit, accounts deactiveren.",
   },
   {
-    href: "/dev/tatoeba-audio-search",
+    href: APP_ROUTES.adminTatoebaImport,
     title: "Tatoeba-import",
-    body: "Audio ophalen en als global corpus opslaan (dev-tool).",
+    body: "Audio ophalen en als global corpus opslaan.",
   },
 ] as const;
 

@@ -1,6 +1,6 @@
 import type {
   ExerciseDbRow,
-} from "@/app/api/dev/exercises-admin/types";
+} from "@/lib/exercises/types";
 import type { ExerciseGlobalSnapshot } from "@/types/exercise-global-submission";
 
 /**

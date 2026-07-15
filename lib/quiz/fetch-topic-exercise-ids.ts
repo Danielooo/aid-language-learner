@@ -1,6 +1,6 @@
 import { fisherYatesShuffle } from "@/lib/quiz/shuffle";
 
-import type { ExercisePickerItem } from "@/app/api/dev/exercise-generator-quiz/list/route";
+import type { ExercisePickerItem } from "@/types/quiz";
 
 const PAGE_SIZE = 200;
 
@@ -31,7 +31,7 @@ export async function fetchTopicExerciseIds(
     params.set("pageSize", String(PAGE_SIZE));
 
     const res = await fetch(
-      `/api/dev/exercise-generator-quiz/list?${params.toString()}`,
+      `/api/quiz/list?${params.toString()}`,
       { cache: "no-store" },
     );
     if (!res.ok) {

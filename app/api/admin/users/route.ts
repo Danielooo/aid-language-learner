@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { ADMIN_ROLE, isAdminUser } from "@/lib/auth/is-admin";
-import { assertAdmin } from "@/lib/dev/assert-admin";
+import { assertAdmin } from "@/lib/auth/assert-admin";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";

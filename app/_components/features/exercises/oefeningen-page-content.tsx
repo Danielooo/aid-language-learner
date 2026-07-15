@@ -51,10 +51,10 @@ export function OefeningenPageContent() {
         }
       >
         <ExercisesListPage
-          apiBase="/api/dev/my-exercises"
+          apiBase="/api/exercises/mine"
           pagePath="/oefeningen"
           tableScope="my-exercises"
-          topicsUrl="/api/dev/my-exercises/topics"
+          topicsUrl="/api/exercises/mine/topics"
           enableGlobalOffer
           emptyMessage={
             <>

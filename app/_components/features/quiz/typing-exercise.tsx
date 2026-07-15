@@ -13,7 +13,7 @@ import { pickBlankWord } from "@/lib/quiz/blank-word";
 import { isAnswerCorrect, normalizeForCompare } from "@/lib/quiz/compare";
 import { getPromptAndAnswer } from "@/lib/quiz/typing-config";
 
-import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
+import type { ExerciseQuizItem } from "@/types/quiz";
 import type {
   TranslationDirection,
   TypingMode,

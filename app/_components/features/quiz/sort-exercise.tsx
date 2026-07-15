@@ -38,7 +38,7 @@ import {
 } from "@/lib/quiz/sort-validate";
 
 import type { SortExerciseState, SortPoolItem } from "@/lib/quiz/sort-config";
-import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
+import type { ExerciseQuizItem } from "@/types/quiz";
 import type { TranslationDirection } from "@/lib/quiz/typing-config";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 

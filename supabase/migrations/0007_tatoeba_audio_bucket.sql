@@ -26,7 +26,7 @@ on conflict (id) do nothing;
 -- /storage/v1/object/public/tatoeba-audio/... lezen. We voegen géén INSERT/
 -- UPDATE/DELETE-policies toe voor `anon`/`authenticated`: schrijven kan
 -- daardoor alléén met de service_role-key, die RLS bypasst. De API-route
--- in /api/dev/tatoeba-audio/upload gebruikt `getSupabaseAdmin()` en is dus
+-- in /api/admin/tatoeba/upload gebruikt `getSupabaseAdmin()` en is dus
 -- de enige weg waarlangs er content in de bucket terechtkomt.
 --
 -- (Geen expliciete SELECT-policy nodig: de Supabase Storage-laag honoreert

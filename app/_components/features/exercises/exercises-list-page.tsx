@@ -8,18 +8,18 @@ import {
   type SortDir,
   type SortKey,
   type TranslateRowState,
-} from "@/app/dev/_components/audio-result-table";
+} from "@/app/_components/features/exercises/audio-result-table";
 import { TopicCombobox } from "@/app/_components/features/exercises/topic-combobox";
 import { GlobalOfferPanel } from "@/app/_components/features/exercises/global-offer-panel";
-import { AdminActionBar } from "@/app/dev/exercises-admin/_components/admin-action-bar";
-import { DeleteConfirmDialog } from "@/app/dev/exercises-admin/_components/delete-confirm-dialog";
-import { PaginationBar } from "@/app/dev/exercises-admin/_components/pagination-bar";
+import { AdminActionBar } from "@/app/_components/features/exercises/admin-action-bar";
+import { DeleteConfirmDialog } from "@/app/_components/features/exercises/delete-confirm-dialog";
+import { PaginationBar } from "@/app/_components/features/exercises/pagination-bar";
 
-import type { AudioRow } from "@/app/api/dev/tatoeba-audio/list/route";
+import type { AudioRow } from "@/types/tatoeba";
 import type {
   AdminExerciseRow,
   ExercisePatchFields,
-} from "@/app/api/dev/exercises-admin/types";
+} from "@/lib/exercises/types";
 import type {
   TranslationCacheEntry,
   TranslationCacheMap,

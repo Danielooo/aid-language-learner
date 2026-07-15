@@ -30,8 +30,8 @@ export function AppTopNav({ accountLabel, isAdmin = false }: AppShellNavProps) {
         <div className="flex min-h-14 items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <Link
-              href={APP_ROUTES.oefenen}
-              aria-label="AID Language Learner — oefenen"
+              href={isAdmin ? APP_ROUTES.admin : APP_ROUTES.oefenen}
+              aria-label="AID Language Learner — home"
               className="text-2xl font-bold tracking-tighter text-foreground"
             >
               LL

@@ -1,6 +1,6 @@
-import { getPublicAudioUrl } from "@/app/api/dev/exercises-admin/types";
+import { getPublicAudioUrl } from "@/lib/exercises/public-audio-url";
 
-import type { ExerciseQuizItem } from "@/app/api/dev/exercise-generator-quiz/route";
+import type { ExerciseQuizItem } from "@/types/quiz";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type ExerciseRow = {

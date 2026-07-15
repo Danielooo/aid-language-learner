@@ -11,14 +11,14 @@ import { LearningTopicCard } from "./learning-topic-card";
 import type {
   LearningTopicItem,
   LearningTopicsResponse,
-} from "@/app/api/dev/learning-topics/route";
+} from "@/types/learning-topics";
 
 async function fetchLearningTopics(
   includeGlobal: boolean,
 ): Promise<LearningTopicsResponse> {
   const params = new URLSearchParams();
   if (includeGlobal) params.set("includeGlobal", "true");
-  const res = await fetch(`/api/dev/learning-topics?${params.toString()}`, {
+  const res = await fetch(`/api/learning-topics?${params.toString()}`, {
     cache: "no-store",
   });
   if (!res.ok) {
@@ -75,7 +75,7 @@ export function LearningTopicsPage() {
     setActiveCount((count) => count + (isActive ? 1 : -1));
 
     try {
-      const res = await fetch("/api/dev/learning-topics", {
+      const res = await fetch("/api/learning-topics", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic, isActive }),

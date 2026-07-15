@@ -1,17 +1,205 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type { AdminUserRow } from "@/app/api/admin/users/route";
+import type { ReactNode } from "react";
 
 type ListResponse =
   | { ok: true; rows: AdminUserRow[] }
   | { ok: false; error: string };
 
+type RoleFilter = "all" | "admin" | "user";
+type StatusFilter = "all" | "active" | "banned";
+type AiFilter = "all" | "on" | "off";
+type OpenFilter = "role" | "ai" | "status" | null;
+
+const filterControlClass =
+  "rounded-md border border-input bg-background px-2 py-1.5 text-xs";
+
+const actionBtnClass =
+  "inline-flex h-7 w-[6.75rem] shrink-0 items-center justify-center rounded-md border border-border bg-background px-2 text-xs font-medium hover:bg-muted disabled:opacity-50";
+
+const actionDangerClass =
+  "inline-flex h-7 w-[6.75rem] shrink-0 items-center justify-center rounded-md border border-destructive/40 bg-background px-2 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50";
+
+function FilterIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      className={`size-3.5 shrink-0 ${active ? "text-accent" : "text-muted-foreground"}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2 3.5h12L9.5 9v3.5L6.5 14V9L2 3.5Z" />
+    </svg>
+  );
+}
+
+function StatusBadge({
+  children,
+  tone = "muted",
+}: {
+  children: ReactNode;
+  tone?: "muted" | "accent" | "danger" | "ok";
+}) {
+  const toneClass =
+    tone === "accent"
+      ? "bg-accent/15 text-accent"
+      : tone === "danger"
+        ? "bg-destructive/10 text-destructive"
+        : tone === "ok"
+          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+          : "bg-muted text-muted-foreground";
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${toneClass}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+type FilterOption<T extends string> = { value: T; label: string };
+
+function ColumnFilterHeader<T extends string>({
+  label,
+  value,
+  options,
+  open,
+  onToggle,
+  onSelect,
+}: {
+  label: string;
+  value: T;
+  options: FilterOption<T>[];
+  open: boolean;
+  onToggle: () => void;
+  onSelect: (next: T) => void;
+}) {
+  const active = value !== "all";
+  const activeLabel = options.find((o) => o.value === value)?.label;
+
+  return (
+    <th className="relative px-3 py-2 font-medium">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className={`inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-left hover:bg-muted/80 ${
+          active ? "text-accent" : "text-muted-foreground"
+        }`}
+      >
+        <span>
+          {label}
+          {active && activeLabel ? (
+            <span className="font-normal text-muted-foreground">
+              {" "}
+              · {activeLabel}
+            </span>
+          ) : null}
+        </span>
+        <FilterIcon active={active} />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute left-3 top-full z-10 mt-1 min-w-[9rem] rounded-md border border-border bg-background py-1 shadow-md"
+        >
+          {options.map((opt) => {
+            const selected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                className={`flex w-full px-3 py-1.5 text-left text-xs hover:bg-muted ${
+                  selected ? "font-medium text-accent" : "text-foreground"
+                }`}
+                onClick={() => onSelect(opt.value)}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </th>
+  );
+}
+
+const ROLE_OPTIONS: FilterOption<RoleFilter>[] = [
+  { value: "all", label: "Alles" },
+  { value: "admin", label: "Admin" },
+  { value: "user", label: "User" },
+];
+
+const AI_OPTIONS: FilterOption<AiFilter>[] = [
+  { value: "all", label: "Alles" },
+  { value: "on", label: "Aan" },
+  { value: "off", label: "Uit" },
+];
+
+const STATUS_OPTIONS: FilterOption<StatusFilter>[] = [
+  { value: "all", label: "Alles" },
+  { value: "active", label: "Actief" },
+  { value: "banned", label: "Gedeactiveerd" },
+];
+
 export function AdminUsersTable() {
   const [rows, setRows] = useState<AdminUserRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [aiFilter, setAiFilter] = useState<AiFilter>("all");
+  const [openFilter, setOpenFilter] = useState<OpenFilter>(null);
+
+  const tableHeadRef = useRef<HTMLTableSectionElement>(null);
+
+  const closeFilter = useEffectEvent(() => {
+    setOpenFilter(null);
+  });
+
+  useEffect(() => {
+    if (!openFilter) return;
+
+    function onPointerDown(e: PointerEvent) {
+      const el = tableHeadRef.current;
+      if (el && !el.contains(e.target as Node)) {
+        closeFilter();
+      }
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") closeFilter();
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [openFilter]);
 
   const reload = useCallback(async () => {
     setError(null);
@@ -25,8 +213,30 @@ export function AdminUsersTable() {
   }, []);
 
   useEffect(() => {
-    void reload();
+    void (async () => {
+      setLoading(true);
+      try {
+        await reload();
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [reload]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((row) => {
+      if (roleFilter !== "all" && row.role !== roleFilter) return false;
+      if (statusFilter === "active" && row.banned) return false;
+      if (statusFilter === "banned" && !row.banned) return false;
+      if (aiFilter === "on" && row.ai_disabled) return false;
+      if (aiFilter === "off" && !row.ai_disabled) return false;
+      if (!q) return true;
+      const username = (row.username ?? "").toLowerCase();
+      const displayName = (row.display_name ?? "").toLowerCase();
+      return username.includes(q) || displayName.includes(q);
+    });
+  }, [rows, search, roleFilter, statusFilter, aiFilter]);
 
   async function patch(body: Record<string, unknown>, userId: string) {
     setBusyId(userId);
@@ -50,6 +260,19 @@ export function AdminUsersTable() {
     }
   }
 
+  function confirmBan(row: AdminUserRow) {
+    const label = row.display_name || row.username || row.id.slice(0, 8);
+    const ok = window.confirm(
+      `Weet je zeker dat je “${label}” wilt deactiveren? Die gebruiker kan dan niet meer inloggen.`,
+    );
+    if (!ok) return;
+    void patch({ action: "ban", user_id: row.id }, row.id);
+  }
+
+  function toggleFilter(key: Exclude<OpenFilter, null>) {
+    setOpenFilter((prev) => (prev === key ? null : key));
+  }
+
   return (
     <div className="space-y-3">
       {error && (
@@ -57,96 +280,215 @@ export function AdminUsersTable() {
           {error}
         </p>
       )}
+
+      <div className="rounded-md border border-border bg-muted/20 p-3">
+        <label className="flex min-w-[200px] flex-col gap-1">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Zoeken
+          </span>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Weergavenaam of gebruikersnaam…"
+            className={filterControlClass}
+          />
+        </label>
+      </div>
+
+      {!loading && (
+        <p className="text-[11px] text-muted-foreground">
+          {filtered.length === rows.length
+            ? `${rows.length} gebruiker${rows.length === 1 ? "" : "s"}`
+            : `${filtered.length} van ${rows.length} gebruikers`}
+        </p>
+      )}
+
       <div className="overflow-x-auto rounded-md border border-border">
-        <table className="w-full min-w-[48rem] text-left text-sm">
-          <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
+        <table className="w-full min-w-[56rem] text-left text-sm">
+          <thead
+            ref={tableHeadRef}
+            className="border-b border-border bg-muted/40 text-xs text-muted-foreground"
+          >
             <tr>
-              <th className="px-3 py-2">User</th>
-              <th className="px-3 py-2">Rol</th>
-              <th className="px-3 py-2">AI</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Acties</th>
+              <th className="px-3 py-2 font-medium">Gebruikersnaam</th>
+              <th className="px-3 py-2 font-medium">Weergavenaam</th>
+              <ColumnFilterHeader
+                label="Rol"
+                value={roleFilter}
+                options={ROLE_OPTIONS}
+                open={openFilter === "role"}
+                onToggle={() => toggleFilter("role")}
+                onSelect={(next) => {
+                  setRoleFilter(next);
+                  setOpenFilter(null);
+                }}
+              />
+              <ColumnFilterHeader
+                label="AI"
+                value={aiFilter}
+                options={AI_OPTIONS}
+                open={openFilter === "ai"}
+                onToggle={() => toggleFilter("ai")}
+                onSelect={(next) => {
+                  setAiFilter(next);
+                  setOpenFilter(null);
+                }}
+              />
+              <ColumnFilterHeader
+                label="Status"
+                value={statusFilter}
+                options={STATUS_OPTIONS}
+                open={openFilter === "status"}
+                onToggle={() => toggleFilter("status")}
+                onSelect={(next) => {
+                  setStatusFilter(next);
+                  setOpenFilter(null);
+                }}
+              />
+              <th className="px-3 py-2 font-medium">Acties</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
-              const busy = busyId === row.id;
-              return (
-                <tr key={row.id} className="border-b border-border/60">
-                  <td className="px-3 py-2">
-                    <div className="font-medium">
-                      {row.display_name || row.username || row.id.slice(0, 8)}
-                    </div>
-                    {row.username && (
-                      <div className="text-xs text-muted-foreground">
-                        @{row.username}
+            {loading && (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-3 py-8 text-center text-xs text-muted-foreground"
+                >
+                  Gebruikers laden…
+                </td>
+              </tr>
+            )}
+
+            {!loading && rows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-3 py-8 text-center text-xs text-muted-foreground"
+                >
+                  Geen gebruikers gevonden.
+                </td>
+              </tr>
+            )}
+
+            {!loading && rows.length > 0 && filtered.length === 0 && (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-3 py-8 text-center text-xs text-muted-foreground"
+                >
+                  Geen gebruikers met deze filters.
+                </td>
+              </tr>
+            )}
+
+            {!loading &&
+              filtered.map((row) => {
+                const busy = busyId === row.id;
+                return (
+                  <tr
+                    key={row.id}
+                    className="border-b border-border/60 last:border-b-0"
+                  >
+                    <td className="px-3 py-2 font-medium">
+                      {row.username ? (
+                        <span>@{row.username}</span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          {row.id.slice(0, 8)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {row.display_name ? (
+                        row.display_name
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <StatusBadge
+                        tone={row.role === "admin" ? "accent" : "muted"}
+                      >
+                        {row.role === "admin" ? "Admin" : "User"}
+                      </StatusBadge>
+                    </td>
+                    <td className="px-3 py-2">
+                      <StatusBadge tone={row.ai_disabled ? "danger" : "ok"}>
+                        {row.ai_disabled ? "Uit" : "Aan"}
+                      </StatusBadge>
+                    </td>
+                    <td className="px-3 py-2">
+                      <StatusBadge tone={row.banned ? "danger" : "ok"}>
+                        {row.banned ? "Gedeactiveerd" : "Actief"}
+                      </StatusBadge>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-nowrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          className={actionBtnClass}
+                          onClick={() =>
+                            void patch(
+                              {
+                                action: "set_role",
+                                user_id: row.id,
+                                role: row.role === "admin" ? "user" : "admin",
+                              },
+                              row.id,
+                            )
+                          }
+                        >
+                          {row.role === "admin" ? "Maak user" : "Maak admin"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          className={actionBtnClass}
+                          onClick={() =>
+                            void patch(
+                              {
+                                action: "set_ai_disabled",
+                                user_id: row.id,
+                                ai_disabled: !row.ai_disabled,
+                              },
+                              row.id,
+                            )
+                          }
+                        >
+                          {row.ai_disabled ? "AI aan" : "AI uit"}
+                        </button>
+                        {row.banned ? (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            className={actionBtnClass}
+                            onClick={() =>
+                              void patch(
+                                { action: "unban", user_id: row.id },
+                                row.id,
+                              )
+                            }
+                          >
+                            Reactiveer
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            className={actionDangerClass}
+                            onClick={() => confirmBan(row)}
+                          >
+                            Deactiveer
+                          </button>
+                        )}
                       </div>
-                    )}
-                  </td>
-                  <td className="px-3 py-2">{row.role}</td>
-                  <td className="px-3 py-2">
-                    {row.ai_disabled ? "uit" : "aan"}
-                  </td>
-                  <td className="px-3 py-2">
-                    {row.banned ? "gedeactiveerd" : "actief"}
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={busy}
-                        className="text-xs underline-offset-2 hover:underline disabled:opacity-50"
-                        onClick={() =>
-                          void patch(
-                            {
-                              action: "set_role",
-                              user_id: row.id,
-                              role: row.role === "admin" ? "user" : "admin",
-                            },
-                            row.id,
-                          )
-                        }
-                      >
-                        {row.role === "admin" ? "Maak user" : "Maak admin"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        className="text-xs underline-offset-2 hover:underline disabled:opacity-50"
-                        onClick={() =>
-                          void patch(
-                            {
-                              action: "set_ai_disabled",
-                              user_id: row.id,
-                              ai_disabled: !row.ai_disabled,
-                            },
-                            row.id,
-                          )
-                        }
-                      >
-                        {row.ai_disabled ? "AI aan" : "AI uit"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        className="text-xs underline-offset-2 hover:underline disabled:opacity-50"
-                        onClick={() =>
-                          void patch(
-                            {
-                              action: row.banned ? "unban" : "ban",
-                              user_id: row.id,
-                            },
-                            row.id,
-                          )
-                        }
-                      >
-                        {row.banned ? "Reactiveer" : "Deactiveer"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+                    </td>
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       </div>

@@ -82,15 +82,14 @@ const BASE_NAV_ITEMS: AppNavItem[] = [
   { href: APP_ROUTES.profiel, label: "Profiel", icon: <UserIcon /> },
 ];
 
-/** Navigatie-items; Beheer alleen voor admins (desktop + mobiel). */
-export function getAppNavItems(isAdmin: boolean): AppNavItem[] {
-  if (!isAdmin) return BASE_NAV_ITEMS;
-  return [
-    ...BASE_NAV_ITEMS.slice(0, 5),
-    { href: APP_ROUTES.admin, label: "Beheer", icon: <ShieldIcon /> },
-    BASE_NAV_ITEMS[5]!,
-  ];
-}
+// Admin is beheer-only: geen leer-tabs (Oefenen/Oefeningen/Generator/
+// Leerplan/Voortgang), alleen Beheer + Profiel.
+const ADMIN_NAV_ITEMS: AppNavItem[] = [
+  { href: APP_ROUTES.admin, label: "Beheer", icon: <ShieldIcon /> },
+  { href: APP_ROUTES.profiel, label: "Profiel", icon: <UserIcon /> },
+];
 
-/** @deprecated gebruik getAppNavItems — blijft voor dev-importers. */
-export const APP_NAV_ITEMS = BASE_NAV_ITEMS;
+/** Navigatie-items per rol (desktop + mobiel). */
+export function getAppNavItems(isAdmin: boolean): AppNavItem[] {
+  return isAdmin ? ADMIN_NAV_ITEMS : BASE_NAV_ITEMS;
+}

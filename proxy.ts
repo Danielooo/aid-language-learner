@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { ADMIN_ROLE } from "@/lib/auth/is-admin";
+import { APP_ROUTES } from "@/lib/routes";
+
 // Next.js 16 hernoemt `middleware.ts` → `proxy.ts` (zelfde semantiek,
 // nieuwe naam — zie docs/01-app/03-api-reference/03-file-conventions/proxy.md).
 //
@@ -21,14 +24,23 @@ const APP_PAGE_PREFIXES = [
   "/admin",
 ] as const;
 
-const DEV_PAGE_PREFIXES = [
-  "/dev",
-] as const;
+const PROTECTED_PAGE_PREFIXES = [...APP_PAGE_PREFIXES];
 
-const PROTECTED_PAGE_PREFIXES = [...APP_PAGE_PREFIXES, ...DEV_PAGE_PREFIXES];
+// Admin is beheer-only: deze leer-routes zijn niet toegankelijk voor admins.
+const LEARNER_ONLY_PREFIXES = [
+  "/oefenen",
+  "/oefeningen",
+  "/generator",
+  "/leerplan",
+  "/voortgang",
+] as const;
 
 function isProtectedPagePath(pathname: string): boolean {
   return PROTECTED_PAGE_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function isLearnerOnlyPath(pathname: string): boolean {
+  return LEARNER_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
 export async function proxy(request: NextRequest) {
@@ -65,6 +77,14 @@ export async function proxy(request: NextRequest) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  const isAdmin = claims?.app_metadata?.role === ADMIN_ROLE;
+  if (isAdmin && isLearnerOnlyPath(pathname)) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = APP_ROUTES.admin;
+    redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }
 
