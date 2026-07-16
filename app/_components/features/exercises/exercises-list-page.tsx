@@ -10,7 +10,6 @@ import {
   type TranslateRowState,
 } from "@/app/_components/features/exercises/audio-result-table";
 import { TopicCombobox } from "@/app/_components/features/exercises/topic-combobox";
-import { GlobalOfferPanel } from "@/app/_components/features/exercises/global-offer-panel";
 import { AdminActionBar } from "@/app/_components/features/exercises/admin-action-bar";
 import { DeleteConfirmDialog } from "@/app/_components/features/exercises/delete-confirm-dialog";
 import { PaginationBar } from "@/app/_components/features/exercises/pagination-bar";
@@ -90,8 +89,6 @@ export type ExercisesListPageProps = {
   topicsUrl: string;
   emptyMessage: React.ReactNode;
   emptyFilteredMessage?: string;
-  /** Toont paneel om geselecteerde oefeningen als global aan te bieden. */
-  enableGlobalOffer?: boolean;
 };
 
 function buildTranslationLookup(
@@ -189,7 +186,6 @@ export function ExercisesListPage({
   topicsUrl,
   emptyMessage,
   emptyFilteredMessage = "Geen oefeningen gevonden voor deze filters.",
-  enableGlobalOffer = false,
 }: ExercisesListPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -641,15 +637,6 @@ export function ExercisesListPage({
           {new Date(load.fetchedAt).toLocaleTimeString("nl-NL")} · inline
           bewerkingen slaan direct op in de database
         </p>
-      )}
-
-      {enableGlobalOffer && (
-        <GlobalOfferPanel
-          selectedExerciseIds={rows
-            .filter((r) => selectedIds.has(r.audio_id))
-            .map((r) => r.exercise_id)}
-          onDone={() => setSelectedIds(new Set())}
-        />
       )}
 
       <AdminActionBar

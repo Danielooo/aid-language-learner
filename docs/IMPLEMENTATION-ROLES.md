@@ -1,15 +1,29 @@
 # Implementation plan — Admin & User rollen
 
 **Bron van requirements:** [`REQUIREMENTS-ROLES.md`](./REQUIREMENTS-ROLES.md)  
-**Status:** PR A–F geïmplementeerd (schema, enforcement, moderatie, rate limit, users, admin-nav)  
-**Datum:** 2026-07-15
+**Status:** PR A–F geïmplementeerd; **2026-07-16** oefeningengroepen + review-queue + leerplan community-kopie + Community-aanbiedingen ([ADR](./DECISIONS.md#community-offer))  
+**Datum:** 2026-07-15 (bijgewerkt 2026-07-16)
 
 Dit document vertaalt de bevroren requirements naar concrete bouwstappen.
 Volgorde is afhankelijkheidsgericht: data/model eerst, daarna enforcement, daarna UI.
 
 ---
 
-## Huidige gaps (kort)
+## Update 2026-07-16 — oefeningengroepen + review-queue UX
+
+- `exercise_groups` + `exercises.group_id` + `exercise_group_submissions` (migratie `0018`).
+- Optionele `reject_reason` (migratie `0019`: constraint dropped).
+- Per-oefening `exercise_global_submissions` + user offer-UI verwijderd.
+- Admin `/admin/review`: tabs **Pending | Goedgekeurd | Afgekeurd**; bulk + detailmodal; status heen-en-weer.
+- APIs: `GET/POST /api/admin/group-submissions`, `…/reject` (optionele reden), `…/reopen`.
+- Geen soft-hide: afkeuren/reopen vanaf approved **verwijdert** de global groep.
+- Seed: 2 pending, 2 approved community, 2 rejected groep-aanbiedingen.
+- Leerplan: tabs personal / community-oefeningengroepen; kopie community → personal + topic actief.
+- Community `/community`: Huidige oefeningengroepen aanbieden; Pending/Goedgekeurd/Afgekeurd op snapshots; geen withdraw.
+
+---
+
+## Huidige gaps (kort) — historisch (pre PR A–F)
 
 1. Geen pending/snapshot-model voor global-aanbiedingen.
 2. Generator zet altijd `owner_id = userId`; geen approval-pad.
@@ -36,7 +50,7 @@ Voorgestelde kolommen (indicatief):
 | `submitted_by` | `auth.uid()` van aanbieder |
 | `snapshot` | JSONB met inhoud op submit-moment |
 | `status` | `pending` \| `approved` \| `rejected` \| `withdrawn` |
-| `reject_reason` | tekst (verplicht bij reject) |
+| `reject_reason` | tekst (optioneel bij reject) |
 | `reviewed_by` / `reviewed_at` | admin audit |
 | `resulting_exercise_id` | FK naar nieuwe global rij na approve (nullable) |
 | `created_at` / `updated_at` | timestamps |
@@ -80,14 +94,15 @@ Admin-writes blijven **server-only**; RLS voor users ongewijzigd (eigen + global
 | `POST .../submit-global` | user | Snapshot + `pending`; fout als al approved voor `source_exercise_id` |
 | `POST .../withdraw` | user | Alleen eigen `pending` → `withdrawn` |
 | `GET .../my-submissions` | user | Status + reject reason in UI |
-| `GET .../review-queue` | admin | Lijst `pending` |
-| `POST .../approve` | admin | Insert global `exercises` (`owner_id null`) + link `resulting_exercise_id` |
-| `POST .../reject` | admin | `rejected` + verplichte reden |
-| Bulk approve/reject | admin | Zelfde regels, batched |
+| `GET /api/admin/group-submissions?status=` | admin | Lijst `pending` \| `approved` \| `rejected` (+ snapshot) |
+| `POST /api/admin/group-submissions` | admin | Approve (pending of rejected) → copy-on-approve |
+| `POST /api/admin/group-submissions/reject` | admin | `rejected` + optionele reden; bij approved: hard delete global |
+| `POST /api/admin/group-submissions/reopen` | admin | Terug naar `pending`; bij approved: hard delete global |
+| Bulk approve/reject/reopen | admin | Zelfde regels, batched |
 
 UI:
-- User: knop “Aanbieden als global” bij eigen oefening + statusbadge.
-- Admin: review-queue pagina (bulk selecteren toegestaan).
+- User: knop “Aanbieden als global” bij eigen oefening + statusbadge (later).
+- Admin: review-queue (bulk + groep-detailmodal).
 
 ---
 
@@ -143,10 +158,10 @@ Al deels aanwezig onder `/api/admin/exercises` + Tatoeba-tools:
 
 ## Acceptatiecriteria (samenvatting)
 
-- User kan personal CRUD + beperkt AI; kan global aanbieden; ziet status; kan withdraw/resubmit na reject.
-- Approve maakt **nieuwe** global; origineel blijft persoonlijk.
-- Al-approved source kan niet opnieuw pending worden.
-- Admin: review-queue, global CRUD, Tatoeba/enrich, bulk; **geen** edit van andermans personal.
+- User kan personal CRUD + beperkt AI; kan **oefeningengroep** via `/community` aanbieden; ziet snapshot-status (Pending/Goedgekeurd/Afgekeurd); opnieuw na reject; geen withdraw.
+- Approve maakt **nieuwe** global groep + leden; origineel blijft persoonlijk.
+- Al-approved source-groep kan niet opnieuw pending worden.
+- Admin: review-queue (pending + goedgekeurde globals beheren); **geen** corpus-create/edit of edit van andermans personal.
 - Admin: users list, promote/demote (niet laatste admin), deactivate (ban + sessions).
 - User ziet nooit andermans personal of progress.
 - Alle admin-mutaties server-side + role check.

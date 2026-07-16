@@ -261,6 +261,41 @@ Productrechten voor admin vs user vastgelegd als source of truth (copy-on-approv
 
 Productie-admin onder `/admin` (globals, review-queue, gebruikers), user-aanbiedingen via snapshot/pending, AI-limiet 10/dag UTC + `ai_disabled`, en `/dev` alleen nog voor admins. Global corpus-mutaties lopen via service role na `assertAdmin`, gefilterd op `owner_id IS NULL`.
 
+### 2026-07-16 — Admin content alleen via review-queue <a id="admin-review-only"></a>
+
+**Files:** `app/(app)/admin/**`, `docs/REQUIREMENTS-ROLES.md`, `IDEEFASE.md`
+**Tags:** admin, moderation, product, rbac
+
+Admin publiceert geen globals meer via corpus-CRUD of Tatoeba-UI; oefeningen komen van users, admin keurt alleen goed/af in de review-queue. Oude routes `/admin/oefeningen` en `/admin/tatoeba-import` redirecten naar `/admin/review`; bijbehorende API’s blijven voorlopig als dood pad.
+
+### 2026-07-16 — Oefeningengroepen + group review / global-beheer <a id="exercise-groups-review"></a>
+
+**Files:** `supabase/migrations/0018_exercise_groups.sql`, `types/exercise-group-submission.ts`, `app/api/admin/group-submissions/**`, `app/api/admin/global-groups/**`, `app/_components/features/admin/admin-review-queue.tsx`, `supabase/seed.ts`, `docs/REQUIREMENTS-ROLES.md`
+**Tags:** admin, moderation, exercises, groups, supabase
+
+First-class `exercise_groups` + `exercise_group_submissions` (snapshot per hele groep, copy-on-approve). Per-oefening global-aanbiedingen verwijderd. Admin review-queue heeft tabs Pending / Goedgekeurd / Afgekeurd. Geen corpus-create/edit. Community→personal kopie zit in het leerplan ([ADR](#leerplan-global-copy)); user-aanbiedingen via `/community` ([ADR](#community-offer)).
+
+### 2026-07-16 — Review-queue status-undo, geen soft-hide <a id="review-queue-status-undo"></a>
+
+**Files:** `supabase/migrations/0019_optional_reject_reason.sql`, `app/api/admin/group-submissions/**`, `app/_components/features/admin/admin-review-queue.tsx`, `app/_components/features/admin/admin-review-group-modal.tsx`, `docs/REQUIREMENTS-ROLES.md`
+**Tags:** admin, moderation, exercises, groups, ux
+
+Review-queue vereenvoudigd: drie tabs, bulk + detailmodal, optionele `reject_reason`. Deactiveren/reactiveren verwijderd; afkeuren of terugzetten vanaf Goedgekeurd verwijdert de global groep hard. Admin kan status heen-en-weer zetten (Pending ↔ Goedgekeurd ↔ Afgekeurd) om fouten te corrigeren.
+
+### 2026-07-16 — Leerplan group-first + global→personal kopie <a id="leerplan-global-copy"></a>
+
+**Files:** `app/api/exercise-groups/**`, `lib/exercises/copy-global-group-to-personal.ts`, `app/_components/features/topics/leerplan-*.tsx`, `types/exercise-groups.ts`, `docs/REQUIREMENTS-ROLES.md`
+**Tags:** leerplan, exercises, groups, product
+
+`/leerplan` toont tabs **Persoonlijke oefeningengroepen** | **Community oefeningengroepen** (groepkaarten i.p.v. topic-lijst + includeGlobal-toggle). Community-groep openen → modal met leden → knop kopieert de **hele** groep naar personal (`owner_id = user`) en activeert het topic. Idempotent op groepsnaam (409 / “Al in leerplan”). Oefenen/SRS blijft via `user_topic_preferences`; personal tab behoudt actief-checkbox. Community-materiaal wordt niet meer in place geoefend zonder kopie. User-facing naming: **Community** i.p.v. Globaal.
+
+### 2026-07-16 — Community-pagina: aanbieden + snapshot-status <a id="community-offer"></a>
+
+**Files:** `app/(app)/community/**`, `app/_components/features/community/**`, `app/api/exercise-groups/mine/**/submit`, `app/api/exercise-groups/mine/submissions/**`, `proxy.ts`, `lib/routes.ts`, `docs/REQUIREMENTS-ROLES.md`
+**Tags:** community, moderation, exercises, groups, product
+
+Navbar **Community** (`/community`) met tabs Huidige oefeningengroepen | Pending | Goedgekeurd | Afgekeurd. Aanbieden vanaf Huidige (tabel + modal) maakt een **losgekoppelde snapshot**; status-tabs tonen alleen die snapshot (geen live link naar leerplan). Geen intrekken. Opnieuw aanbieden na reject mag (verse snapshot). Admin blijft op `/admin/review`.
+
 <!-- INSERT-NEW-ENTRY-ABOVE -->
 
 ## Template — kopieer & vul in

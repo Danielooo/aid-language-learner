@@ -73,17 +73,29 @@ function ShieldIcon() {
   );
 }
 
+function UsersIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
 const BASE_NAV_ITEMS: AppNavItem[] = [
   { href: APP_ROUTES.oefenen, label: "Oefenen", icon: <CardsIcon /> },
   { href: APP_ROUTES.oefeningen, label: "Oefeningen", icon: <BookIcon /> },
   { href: APP_ROUTES.generator, label: "Generator", icon: <SparklesIcon /> },
   { href: APP_ROUTES.leerplan, label: "Leerplan", icon: <CompassIcon /> },
+  { href: APP_ROUTES.community, label: "Community", icon: <UsersIcon /> },
   { href: APP_ROUTES.voortgang, label: "Voortgang", icon: <ChartIcon /> },
   { href: APP_ROUTES.profiel, label: "Profiel", icon: <UserIcon /> },
 ];
 
 // Admin is beheer-only: geen leer-tabs (Oefenen/Oefeningen/Generator/
-// Leerplan/Voortgang), alleen Beheer + Profiel.
+// Leerplan/Community/Voortgang), alleen Beheer + Profiel.
 const ADMIN_NAV_ITEMS: AppNavItem[] = [
   { href: APP_ROUTES.admin, label: "Beheer", icon: <ShieldIcon /> },
   { href: APP_ROUTES.profiel, label: "Profiel", icon: <UserIcon /> },

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { getExerciseUserAccess } from "@/lib/exercises/exercise-access";
+import { ensurePersonalExerciseGroup } from "@/lib/exercises/ensure-personal-exercise-group";
 
 // Persist-route voor de oefeningen-generator. Accepteert een batch
 // vertaaloefeningen die de user (na review van de chat-output) wil
@@ -76,6 +77,19 @@ export async function POST(req: Request) {
 
   const { topic, exercises } = parseResult.data;
   const requestBody = parseResult.data;
+  const supabase = access.supabase;
+
+  const groupResult = await ensurePersonalExerciseGroup(
+    supabase,
+    access.userId,
+    topic,
+  );
+  if (!groupResult.ok) {
+    return Response.json(
+      { ok: false, error: groupResult.error, requestBody },
+      { status: 500 },
+    );
+  }
 
   const rowsToInsert = exercises.map((ex) => ({
     source_text: ex.source_text,
@@ -84,14 +98,15 @@ export async function POST(req: Request) {
     tags: ex.tags,
     alternative_translations: ex.alternative_translations ?? [],
     owner_id: access.userId,
+    group_id: groupResult.groupId,
   }));
-
-  const supabase = access.supabase;
 
   const { data, error, status, statusText, count } = await supabase
     .from("exercises")
     .insert(rowsToInsert)
-    .select("id, source_text, target_text, topic, owner_id, created_at");
+    .select(
+      "id, source_text, target_text, topic, owner_id, group_id, created_at",
+    );
 
   // Volledige Supabase-response retourneren zodat de UI het debug-panel kan vullen.
   const supabaseResponse = { data, error, status, statusText, count };

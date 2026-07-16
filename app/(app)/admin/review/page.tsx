@@ -13,7 +13,7 @@ export default function AdminReviewPage() {
       <AppPageHeader
         eyebrow="Admin"
         title="Review-queue"
-        description="Pending aanbiedingen van users. Goedkeuren maakt een aparte global-kopie."
+        description="Groep-aanbiedingen beoordelen: Pending, Goedgekeurd en Afgekeurd. Status kun je heen-en-weer zetten."
       />
       <AdminReviewQueue />
     </div>

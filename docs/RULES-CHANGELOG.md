@@ -169,4 +169,13 @@ toevoegen onderaan. Correcties lopen altijd via een nieuwe entry die de
 oude eventueel markeert met `_Superseded by …._`. Uitzondering: expliciet
 verzoek van de gebruiker.
 
+## 2026-07-16 — `protect-ideefase.mdc` aangemaakt
+
+**Files:** `.cursor/rules/protect-ideefase.mdc`, `IDEEFASE.md`
+**Tags:** rules, read-only, ideefase, safety, always-apply
+
+`alwaysApply`-rule die `IDEEFASE.md` blokkeert voor lezen (guidance) én
+edits. Frontmatter in het bestand zelf is een signaal; de rule dwingt het
+af — zonder rule zou “niet lezen” een kip-ei zijn.
+
 <!-- INSERT-NEW-ENTRY-ABOVE -->

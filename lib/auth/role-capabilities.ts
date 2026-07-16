@@ -1,5 +1,5 @@
 import { isAdminUser } from "@/lib/auth/is-admin";
-import { USER_AI_REQUESTS_PER_DAY } from "@/types/exercise-global-submission";
+import { USER_AI_REQUESTS_PER_DAY } from "@/types/exercise-group-submission";
 
 import type { User } from "@supabase/supabase-js";
 
@@ -36,9 +36,8 @@ export function getRoleCapabilities(
     canGenerateAiByRole: Boolean(user),
     hasUnlimitedAi: isAdmin,
     userAiRequestsPerDay: USER_AI_REQUESTS_PER_DAY,
+    // Community-aanbieding van oefeningengroep (niet per losse oefening).
     canSubmitExerciseForGlobal: Boolean(user) && !isAdmin,
-    // Admin mag ook aanbieden? Requirements zeggen "n.v.t. (admin maakt zelf globals)".
-    // canSubmit for admin = false; zij publiceren direct.
     canReviewGlobalSubmissions: isAdmin,
     canCurateGlobalCorpus: isAdmin,
     canManageUsers: isAdmin,

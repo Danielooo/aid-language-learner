@@ -16,6 +16,7 @@ export type ExerciseDbRow = {
   target_text_manually_edited: boolean;
   alternative_translations: string[];
   owner_id: string | null;
+  group_id: string;
   created_at: string;
 };
 
@@ -115,4 +116,4 @@ export function mapDbRowToAdminRow(
 }
 
 export const EXERCISE_SELECT_COLUMNS =
-  "id, source_text, target_text, topic, tags, source_lang, audio_path, tatoeba_audio_id, tatoeba_sentence_id, tatoeba_author, tatoeba_license, tatoeba_attribution_url, target_text_manually_edited, alternative_translations, owner_id, created_at";
+  "id, source_text, target_text, topic, tags, source_lang, audio_path, tatoeba_audio_id, tatoeba_sentence_id, tatoeba_author, tatoeba_license, tatoeba_attribution_url, target_text_manually_edited, alternative_translations, owner_id, group_id, created_at";

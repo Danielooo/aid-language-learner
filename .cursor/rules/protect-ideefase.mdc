@@ -1,0 +1,18 @@
+---
+description: Verbied lezen en wijzigen van IDEEFASE.md (privé scratchpad)
+alwaysApply: true
+---
+
+# Geen AI-toegang: `IDEEFASE.md`
+
+`IDEEFASE.md` in de project-root is een **privé scratchpad** van de
+student. Het is **geen** bron-van-waarheid voor productkeuzes of
+implementatieguidance.
+
+## Regels
+
+- **NOOIT** `IDEEFASE.md` openen of lezen voor guidance, context of
+  planning (ook niet “even snel” of via explore/subagents).
+- **NOOIT** edit, write, delete of move uitvoeren op `IDEEFASE.md`.
+- Gebruik in plaats daarvan `docs/REQUIREMENTS-ROLES.md`,
+  `docs/DECISIONS.md`, `docs/IMPLEMENTATION-ROLES.md` en de codebase.

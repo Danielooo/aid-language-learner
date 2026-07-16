@@ -11,24 +11,14 @@ export const dynamic = "force-dynamic";
 
 const CARDS = [
   {
-    href: APP_ROUTES.adminOefeningen,
-    title: "Global oefeningen",
-    body: "Bekijk, verrijk en verwijder het gedeelde corpus.",
-  },
-  {
     href: APP_ROUTES.adminReview,
     title: "Review-queue",
-    body: "Keur user-aanbiedingen goed of af (copy-on-approve).",
+    body: "Pending, goedgekeurde en afgekeurde groep-aanbiedingen beoordelen.",
   },
   {
     href: APP_ROUTES.adminGebruikers,
     title: "Gebruikers",
     body: "Rollen, AI aan/uit, accounts deactiveren.",
-  },
-  {
-    href: APP_ROUTES.adminTatoebaImport,
-    title: "Tatoeba-import",
-    body: "Audio ophalen en als global corpus opslaan.",
   },
 ] as const;
 
@@ -38,7 +28,7 @@ export default function AdminHomePage() {
       <AppPageHeader
         eyebrow="Admin"
         title="Beheer"
-        description="Content- en platformbeheer volgens de rollen-requirements."
+        description="Review-queue en platformbeheer volgens de rollen-requirements."
       />
       <ul className="grid gap-3 sm:grid-cols-2">
         {CARDS.map((card) => (
