@@ -3,7 +3,7 @@ import "server-only";
 import { isAdminUser } from "@/lib/auth/is-admin";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { USER_AI_REQUESTS_PER_DAY } from "@/types/exercise-global-submission";
+import { USER_AI_REQUESTS_PER_DAY } from "@/types/exercise-group-submission";
 
 import type { User } from "@supabase/supabase-js";
 

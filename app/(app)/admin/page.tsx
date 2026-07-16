@@ -13,7 +13,7 @@ const CARDS = [
   {
     href: APP_ROUTES.adminReview,
     title: "Review-queue",
-    body: "Keur user-aanbiedingen goed of af (copy-on-approve).",
+    body: "Pending, goedgekeurde en afgekeurde groep-aanbiedingen beoordelen.",
   },
   {
     href: APP_ROUTES.adminGebruikers,

@@ -6,6 +6,7 @@ export const APP_ROUTES = {
   typen: "/oefenen/typen",
   sorteren: "/oefenen/sorteren",
   leerplan: "/leerplan",
+  community: "/community",
   oefeningen: "/oefeningen",
   generator: "/generator",
   voortgang: "/voortgang",

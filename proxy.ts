@@ -17,6 +17,7 @@ import { APP_ROUTES } from "@/lib/routes";
 const APP_PAGE_PREFIXES = [
   "/oefenen",
   "/leerplan",
+  "/community",
   "/oefeningen",
   "/generator",
   "/voortgang",
@@ -32,6 +33,7 @@ const LEARNER_ONLY_PREFIXES = [
   "/oefeningen",
   "/generator",
   "/leerplan",
+  "/community",
   "/voortgang",
 ] as const;
 

@@ -1,54 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { useAppProfile } from "@/app/(app)/_components/app-profile-provider";
 import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 
-import { LearningTopicsPage } from "./learning-topics-page";
-
-import type { LearningTopicsResponse } from "@/types/learning-topics";
-
-async function fetchLearningTopicsSummary(): Promise<LearningTopicsResponse> {
-  const res = await fetch("/api/learning-topics", { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Status ${res.status}`);
-  }
-  return (await res.json()) as LearningTopicsResponse;
-}
+import { LeerplanGroupsPage } from "./leerplan-groups-page";
 
 export function LeerplanPageContent() {
   const { displayLabel } = useAppProfile();
+  const [personalCount, setPersonalCount] = useState<number | null>(null);
   const [activeCount, setActiveCount] = useState<number | null>(null);
-  const [totalCount, setTotalCount] = useState<number | null>(null);
-  const [ownCount, setOwnCount] = useState<number | null>(null);
+  const [globalCount, setGlobalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const data = await fetchLearningTopicsSummary();
-        if (cancelled) return;
-        setActiveCount(data.activeCount);
-        setTotalCount(data.topics.length);
-        setOwnCount(data.topics.filter((item) => item.isOwn).length);
-      } catch {
-        if (!cancelled) {
-          setActiveCount(null);
-          setTotalCount(null);
-          setOwnCount(null);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const handleStatsChange = useCallback(
+    (stats: {
+      personalCount: number;
+      activeCount: number;
+      globalCount: number;
+    }) => {
+      setPersonalCount(stats.personalCount);
+      setActiveCount(stats.activeCount);
+      setGlobalCount(stats.globalCount);
+      setLoading(false);
+    },
+    [],
+  );
 
   const formatCount = (value: number | null) =>
     value != null ? value.toLocaleString("nl-NL") : "—";
@@ -59,15 +37,19 @@ export function LeerplanPageContent() {
         eyebrow="Leren"
         title="Leerplan"
         accountLabel={displayLabel}
-        description="Kies welke topics je actief aan het leren bent. Alleen aangevinkte topics komen in oefenen en spaced repetition."
+        description="Beheer je persoonlijke oefeningengroepen en haal community-oefeningengroepen binnen. Alleen actieve groepen komen in oefenen en spaced repetition."
         stats={[
+          {
+            label: "Persoonlijk",
+            value: formatCount(personalCount),
+            loading,
+          },
           { label: "Actief", value: formatCount(activeCount), loading },
-          { label: "Totaal", value: formatCount(totalCount), loading },
-          { label: "Eigen", value: formatCount(ownCount), loading },
+          { label: "Community", value: formatCount(globalCount), loading },
         ]}
       />
 
-      <LearningTopicsPage />
+      <LeerplanGroupsPage onStatsChange={handleStatsChange} />
     </div>
   );
 }
