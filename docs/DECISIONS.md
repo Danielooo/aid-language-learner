@@ -261,6 +261,13 @@ Productrechten voor admin vs user vastgelegd als source of truth (copy-on-approv
 
 Productie-admin onder `/admin` (globals, review-queue, gebruikers), user-aanbiedingen via snapshot/pending, AI-limiet 10/dag UTC + `ai_disabled`, en `/dev` alleen nog voor admins. Global corpus-mutaties lopen via service role na `assertAdmin`, gefilterd op `owner_id IS NULL`.
 
+### 2026-07-16 — Admin content alleen via review-queue <a id="admin-review-only"></a>
+
+**Files:** `app/(app)/admin/**`, `docs/REQUIREMENTS-ROLES.md`, `IDEEFASE.md`
+**Tags:** admin, moderation, product, rbac
+
+Admin publiceert geen globals meer via corpus-CRUD of Tatoeba-UI; oefeningen komen van users, admin keurt alleen goed/af in de review-queue. Oude routes `/admin/oefeningen` en `/admin/tatoeba-import` redirecten naar `/admin/review`; bijbehorende API’s blijven voorlopig als dood pad.
+
 <!-- INSERT-NEW-ENTRY-ABOVE -->
 
 ## Template — kopieer & vul in

@@ -1,7 +1,7 @@
 # Requirements — Admin & User rollen
 
 **Status:** bevroren (source of truth)  
-**Datum:** 2026-07-15  
+**Datum:** 2026-07-15 (bijgewerkt 2026-07-16: admin content alleen via review-queue)  
 **Scope:** productrechten en constraints; geen implementatiedetail (zie [`IMPLEMENTATION-ROLES.md`](./IMPLEMENTATION-ROLES.md)).
 
 Rolbron (tot nader order): Supabase Auth `app_metadata.role === "admin"`.
@@ -14,7 +14,7 @@ Geen derde rol. Afwezige/null role = **user**.
 | Rol | Betekenis |
 | --- | --- |
 | **User** | Leerling: oefenen, eigen materiaal beheren, AI-generatie (gelimiteerd), global *aanbieden* ter goedkeuring |
-| **Admin** | Content- én platformbeheerder: global corpus, moderatiequeue, gebruikerslijst, rollen, deactiveren, AI per user uitzetten |
+| **Admin** | Platformbeheerder + moderatie: review-queue (goed-/afkeuren), gebruikerslijst, rollen, deactiveren, AI per user uitzetten. Geen corpus-CRUD- of Tatoeba-UI. |
 
 ---
 
@@ -25,13 +25,13 @@ Geen derde rol. Afwezige/null role = **user**.
 | Global oefeningen oefenen / lezen | ja | ja |
 | Eigen (persoonlijke) oefeningen CRUD | ja | ja (eigen account) |
 | AI-generatie voor eigen oefeningen | ja, max **10 requests/dag** (tenzij admin AI heeft uitgezet) | ja, **onbeperkt** |
-| Oefening als global **aanbieden** | ja → snapshot/pending | n.v.t. (admin maakt zelf globals) |
-| Global publiceren zonder review | nee | ja (Tatoeba-import, handmatig, na goedkeuring copy) |
+| Oefening als global **aanbieden** | ja → snapshot/pending | n.v.t. (globals via user-aanbiedingen) |
+| Global publiceren zonder review | nee | nee (alleen via review-queue copy-on-approve) |
 | Pending review goed-/afkeuren | nee | ja (review-queue) |
-| Global oefeningen bewerken / verwijderen | nee | ja |
+| Global oefeningen bewerken / verwijderen | nee | nee (geen corpus-UI; API dood pad) |
 | Andermans **persoonlijke** oefeningen zien/bewerken | nee | **nee** |
-| Tatoeba-import + AI-verrijking global corpus | nee | ja |
-| Bulk ops (goedkeuren / verrijken / verwijderen globals) | nee | ja |
+| Tatoeba-import + AI-verrijking global corpus | nee | nee (geen Tatoeba-UI) |
+| Bulk ops (goedkeuren via review-queue) | nee | ja |
 
 ---
 
@@ -92,6 +92,7 @@ De **enige** overgebleven admin mag zichzelf **niet** degraderen naar user. Prom
 - Impersonatie
 - Admin inzage in andermans voortgang of persoonlijke oefeningen
 - User mag globals direct publiceren of bewerken
+- Admin corpus-CRUD-UI en Tatoeba-import-UI (globals alleen via review-queue)
 - Aparte notificatiekanalen (e-mail/push)
 
 ---
@@ -104,5 +105,6 @@ De **enige** overgebleven admin mag zichzelf **niet** degraderen naar user. Prom
 | 2 | Deactiveren | Auth ban + sessies weg |
 | 3 | Laatste admin degraderen | Nee |
 | 4 | Opnieuw aanbieden na approve | Geblokkeerd |
+| 5 | Admin corpus / Tatoeba-UI | Nee — alleen review-queue ([ADR](./DECISIONS.md#admin-review-only)) |
 
 Wijzigingen aan dit document = bewuste productkeuze; log een ADR in [`DECISIONS.md`](./DECISIONS.md).

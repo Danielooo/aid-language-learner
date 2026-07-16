@@ -3,8 +3,7 @@ description: Stage relevante files, stel een conventional-commit message voor, c
 ---
 
 Snelle, light-weight commit. Geen docs-scan, geen `Refs:`-update, geen
-status-footer. Journal-entries linken niet naar SHAs — zie
-[`docs/DECISIONS.md#drop-sha-refs`](../../docs/DECISIONS.md#drop-sha-refs).
+status-footer.
 
 ## Stappen
 
