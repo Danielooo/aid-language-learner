@@ -110,26 +110,29 @@ export function QuizSelectionScreen({
 /**
  * Leest opgeslagen selectiemodus uit localStorage (client-only).
  * Een `?modus=` query-param wint van localStorage, zodat bijvoorbeeld
- * de Oefenen-pagina direct naar SRS-herhaling kan deeplinken.
+ * de Oefenen-hub direct kan deeplinken. `fromQuery` is true wanneer de
+ * modus uit de URL kwam — decks kunnen dan de selectie-stap overslaan.
  */
 export function useQuizSelectionMode(defaultMode: QuizSelectionMode = "topic") {
   const [mode, setMode] = useState<QuizSelectionMode>(defaultMode);
   const [hydrated, setHydrated] = useState(false);
+  const [fromQuery, setFromQuery] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
-        const fromQuery = new URLSearchParams(window.location.search).get(
+        const queryValue = new URLSearchParams(window.location.search).get(
           "modus",
         );
-        const queryMode = fromQuery
-          ? normalizeQuizSelectionMode(fromQuery)
+        const queryMode = queryValue
+          ? normalizeQuizSelectionMode(queryValue)
           : null;
         if (queryMode) {
           // Query-param en localStorage zijn pas na mount leesbaar; deze
           // eenmalige sync setState is bewust (SSR-hydratie).
           // eslint-disable-next-line react-hooks/set-state-in-effect
           setMode(queryMode);
+          setFromQuery(true);
           window.localStorage.setItem(QUIZ_SELECTION_MODE_KEY, queryMode);
           setHydrated(true);
           return;
@@ -155,5 +158,5 @@ export function useQuizSelectionMode(defaultMode: QuizSelectionMode = "topic") {
     }
   }
 
-  return { mode, setMode: persistMode, hydrated };
+  return { mode, setMode: persistMode, hydrated, fromQuery };
 }

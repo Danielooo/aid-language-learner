@@ -80,6 +80,7 @@ export function FlashcardDeck() {
     mode: selectionMode,
     setMode: setSelectionMode,
     hydrated: selectionHydrated,
+    fromQuery: selectionFromQuery,
   } = useQuizSelectionMode();
 
   const {
@@ -152,6 +153,15 @@ export function FlashcardDeck() {
       containerRef.current?.focus();
     }
   }, [screen, loading, item]);
+
+  // Hub-deeplink (?modus=) → sla de selectiestap over.
+  useEffect(() => {
+    if (!selectionHydrated || !selectionFromQuery) return;
+    if (selectionMode === "custom") return;
+    setScreen((current) =>
+      current === "selection" ? "topic-picker" : current,
+    );
+  }, [selectionHydrated, selectionFromQuery, selectionMode]);
 
   function persistTopic(topic: string) {
     setSelectedTopic(topic);
@@ -405,7 +415,6 @@ export function FlashcardDeck() {
   return (
     <div ref={containerRef} tabIndex={-1} className="space-y-6 outline-none">
       <AppPageHeader
-        eyebrow="Oefenen"
         title="Flashcards"
         meta={<QuizSubPageMeta escHint={escHint} />}
         description={

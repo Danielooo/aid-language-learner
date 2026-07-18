@@ -95,6 +95,7 @@ export function SortQuizDeck() {
     mode: selectionMode,
     setMode: setSelectionMode,
     hydrated: selectionHydrated,
+    fromQuery: selectionFromQuery,
   } = useQuizSelectionMode();
 
   const {
@@ -276,6 +277,11 @@ export function SortQuizDeck() {
   }
 
   function handleSetupContinue() {
+    // Hub-deeplink (?modus=) → sla de selectiestap over.
+    if (selectionFromQuery && selectionMode !== "custom") {
+      setScreen("topic-picker");
+      return;
+    }
     setScreen("selection");
   }
 
@@ -466,7 +472,6 @@ export function SortQuizDeck() {
   return (
     <div ref={containerRef} tabIndex={-1} className="space-y-6 outline-none">
       <AppPageHeader
-        eyebrow="Oefenen"
         title="Sorteren"
         meta={<QuizSubPageMeta escHint={escHint} />}
         description={

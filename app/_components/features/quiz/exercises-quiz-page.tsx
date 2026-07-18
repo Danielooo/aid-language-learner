@@ -1,56 +1,125 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 
-import { QuizModeCard } from "./quiz-mode-card";
-import { SrsDueCard } from "./srs-due-card";
+import {
+  FlashcardsIcon,
+  QuizModeCard,
+  SorterenIcon,
+  TypenIcon,
+} from "./quiz-mode-card";
+
+import type { ProgressStatsResponse } from "@/types/progress";
+import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
+
+type HubSelection = Extract<QuizSelectionMode, "topic" | "srs">;
 
 const QUIZ_MODES = [
   {
     title: "Flashcards",
-    description:
-      "Oefen met kaartjes: bronzin en vertaling om en om bekijken en zelf beoordelen.",
+    description: "Bekijk en beoordeel.",
     href: "/oefenen/flashcards",
-    comingSoon: false,
+    icon: <FlashcardsIcon />,
   },
   {
     title: "Typen",
-    description:
-      "Typ de vertaling van een oefening — volledig of met ontbrekend woord.",
+    description: "Typ de vertaling.",
     href: "/oefenen/typen",
-    comingSoon: false,
+    icon: <TypenIcon />,
   },
   {
     title: "Sorteren",
-    description: "Zet woorden of letters in de juiste volgorde.",
+    description: "Zet in de juiste volgorde.",
     href: "/oefenen/sorteren",
-    comingSoon: false,
+    icon: <SorterenIcon />,
   },
 ] as const;
 
 export function ExercisesQuizPage() {
+  const [selection, setSelection] = useState<HubSelection | null>(null);
+  const [dueCount, setDueCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/exercise-progress", { cache: "no-store" });
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        const data = (await res.json()) as ProgressStatsResponse;
+        if (!cancelled) setDueCount(data.dueCount);
+      } catch {
+        if (!cancelled) setDueCount(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const dueBadge =
+    dueCount !== null && dueCount > 0
+      ? dueCount === 1
+        ? "1 klaar"
+        : `${dueCount} klaar`
+      : undefined;
+
   return (
     <div className="space-y-6">
       <AppPageHeader
-        eyebrow="Oefenen"
         title="Oefenen"
-        description="Kies een quiz-vorm en hoe je wilt oefenen: willekeurig, spaced repetition of een eigen selectie."
+        description="Kies wat je oefent, en daarna hoe."
       />
 
-      <SrsDueCard />
-
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {QUIZ_MODES.map((mode) => (
-          <li key={mode.title}>
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold text-foreground">
+          Wat wil je oefenen?
+        </h2>
+        <ul
+          className="grid w-full max-w-xl grid-cols-1 gap-3 sm:grid-cols-2"
+          role="radiogroup"
+          aria-label="Selectiewijze"
+        >
+          <li className="h-full">
             <QuizModeCard
-              title={mode.title}
-              description={mode.description}
-              href={"href" in mode ? mode.href : undefined}
-              comingSoon={mode.comingSoon}
+              title="Topic"
+              description="Kies een groep uit je leerplan."
+              selected={selection === "topic"}
+              onSelect={() => setSelection("topic")}
             />
           </li>
-        ))}
-      </ul>
+          <li className="h-full">
+            <QuizModeCard
+              title="Herhaalschema"
+              description="Alleen wat nu aan herhaling toe is."
+              badge={dueBadge}
+              selected={selection === "srs"}
+              onSelect={() => setSelection("srs")}
+            />
+          </li>
+        </ul>
+      </section>
+
+      {selection && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">
+            Hoe wil je oefenen?
+          </h2>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {QUIZ_MODES.map((mode) => (
+              <li key={mode.title} className="h-full">
+                <QuizModeCard
+                  title={mode.title}
+                  description={mode.description}
+                  href={`${mode.href}?modus=${selection}`}
+                  icon={mode.icon}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }
