@@ -99,15 +99,27 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 - ~~Rechten user / admin implementeren~~
 
 **Admin beheer**
-- Goedkeuren en afkeuren van voorgestelde global oefeningen (Review queue)
-- In seed script voorstellen voor global oefeningen toevoegen zodat reviewen getest kan worden in het adminpanel
-- Global oefeningen beheer (admin kan in later stadium alsnog deactiveren of afkeuren)
+- ~~Goedkeuren en afkeuren van voorgestelde global oefeningen (Review queue)~~
+- ~~In seed script voorstellen voor global oefeningen toevoegen zodat reviewen getest kan worden in het adminpanel~~
+- ~~Global oefeningen beheer (admin kan in later stadium alsnog deactiveren of afkeuren)~~
 
 
-**Global oefeningen**
-- User kan global oefeningengroep losgekoppelde kopie krijgen in eigen account
-- Users global aangeboden oefeningengroep afgewezen. In aparte tab (Aangeboden aan community) een status panel. (Ter beoordeling, afgekeurd, goedgekeurd)
+**Community oefeningen**
+- ~~User kan global oefeningengroep losgekoppelde kopie krijgen in eigen account~~
+- ~~Users global aangeboden oefeningengroep afgewezen. In aparte tab (Aangeboden aan community) een status panel. (Ter beoordeling, afgekeurd, goedgekeurd)~~
+- ~~User ziet in Huidige oefeningengroepen een timestamp wanneer deze voor het laatst is aangeboden aan de community~~
 
+**Community oefeningen binnenhalen**
+- ~~User kan zoeken in community oefeningengroepen~~
+- ~~User kan community groepen binnenhalen (kopie), deze is vervolgens te bewerken~~
+
+
+**Oefeningengroepen bewerken binnen Leerplan**
+- ~~Binnen Leerplan op groep klikken om groep te bewerken
+- ~~Oefening kan worden bewerkt door klikken > modal
+
+**Audio oefeningen toevoegen (Tatoeba API)**
+- ~~
 
 
 
@@ -119,6 +131,16 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 
 - loading state maken
 - skeleton loader maken
+- standaard verversknop component (met loading state)
+- Audio oefeningen moeten door de hele app een tag krijgen (Audio) of kolom Audio > Ja/Nee
+
+**Refactor**
+- Oefeningengroep, groep moet overal Topic heten
+- Enkele oefening > Oefening
+- 
+
+**Tech-Stack**
+- Zorg dat queries met Tanstack React Query worden uitgevoerd (opdracht vereiste)
 
 
 
