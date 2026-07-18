@@ -11,7 +11,6 @@ export default function AdminReviewPage() {
   return (
     <div className="space-y-6">
       <AppPageHeader
-        eyebrow="Admin"
         title="Review-queue"
         description="Groep-aanbiedingen beoordelen: Pending, Goedgekeurd en Afgekeurd. Status kun je heen-en-weer zetten."
       />

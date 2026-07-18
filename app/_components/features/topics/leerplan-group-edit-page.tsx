@@ -79,7 +79,6 @@ export function LeerplanGroupEditPage({ groupId }: LeerplanGroupEditPageProps) {
           ← Terug naar leerplan
         </Link>
         <AppPageHeader
-          eyebrow="Leerplan"
           title="Oefeningengroep bewerken"
           description={
             groupLoading

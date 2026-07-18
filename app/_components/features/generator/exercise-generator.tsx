@@ -410,7 +410,6 @@ export function ExerciseGenerator({ hideHeader = false }: ExerciseGeneratorProps
     <div className="space-y-6">
       {!hideHeader && (
         <AppPageHeader
-          eyebrow="Mijn materiaal"
           title="Generator"
           description='Vraag de chatbot om Spaans→Nederlands vertaaloefeningen voor een onderwerp, bijvoorbeeld "10 zinnen voor in een restaurant". Je reviewt het voorstel en klikt "Groep opslaan" om ze aan je eigen oefeningen toe te voegen.'
         />

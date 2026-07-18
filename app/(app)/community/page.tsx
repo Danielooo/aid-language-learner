@@ -11,7 +11,6 @@ export default function CommunityPage() {
   return (
     <div className="space-y-6">
       <AppPageHeader
-        eyebrow="Community"
         title="Community"
         description="Bied oefeningengroepen aan onder Bijdragen, of haal goedgekeurde community-groepen binnen onder Overnemen."
       />

@@ -1,0 +1,42 @@
+---
+description: Canonieke UI-benamingen — gebruik deze termen in alle user-facing copy
+alwaysApply: true
+---
+
+# UI-terminologie (single source of truth)
+
+Onderhoud hier de woordenlijst. Bij twijfel over een label: deze file, niet synoniemen verzinnen.
+
+## Harde regels
+
+1. User-facing copy is **Nederlands**, behalve vaste productnamen in de tabel.
+2. Gebruik **Canoniek**; schrijf nooit de termen onder **Vermijd** in UI-strings,
+   aria-labels, empty states, toasts of foutmeldingen.
+3. Code/DB/API-identifiers (`topic`, `global`, `quiz_attempts`, …) **niet** hernoemen
+   om UI-taal te matchen — alleen wat de gebruiker ziet.
+
+## Woordenlijst
+
+| Concept | Canoniek (UI) | Vermijd |
+| --- | --- | --- |
+| Collectie oefeningen | Topic | Set, Globaal |
+| Één oefenitem | Oefening | Kaart/kaartjes als entiteitsnaam |
+| Persoonlijk overzicht | Leerplan | Mijn leerplan (als nav/titel) |
+| Gedeeld corpus | Community | Globaal |
+| Community-acties | Bijdragen, Overnemen | — |
+| Review-status | Pending, Goedgekeurd, Afgekeurd | In behandeling (naast Pending) |
+| Oefengebied | Leren | Quiz (als gebiedsnaam) |
+| Oefenvormen | Flashcards, Typen, Sorteren | — |
+| Herhalingssysteem | Herhaalschema | Spaced repetition, SRS |
+| Score-metriek | Nauwkeurigheid | Accuraatheid |
+| Admin-gebied | Beheer | Admin (als paginatitel) |
+| Rollen (UI) | Gebruiker, Beheerder | User, Admin |
+| Login-veld | Gebruikersnaam | Username |
+| Sleutelwoorden van oefening | Tags | - |
+
+
+## Uitzonderingen
+
+- Flashcard-*interactie*: "draai de kaart om" mag (UX-metafoor); tellen/lege staten = oefening.
+- Eerste uitleg herhaalschema mag één keer "(spaced repetition)" tussen haakjes.
+- Productnamen Community, Generator, Flashcards, Pending blijven zo.

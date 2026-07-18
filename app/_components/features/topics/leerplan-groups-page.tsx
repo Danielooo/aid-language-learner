@@ -58,7 +58,6 @@ export function LeerplanGroupsPage() {
   const [togglingName, setTogglingName] = useState<string | null>(null);
 
   const [query, setQuery] = useState("");
-  const [includeTags, setIncludeTags] = useState(false);
   const [originFilter, setOriginFilter] = useState<OriginFilter>("all");
   const [editedFilter, setEditedFilter] = useState<EditedFilter>("all");
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
@@ -109,15 +108,12 @@ export function LeerplanGroupsPage() {
 
       if (!q) return true;
       if (g.name.toLowerCase().includes(q)) return true;
-      if (includeTags && (g.tagText ?? "").toLowerCase().includes(q)) {
-        return true;
-      }
+      if ((g.tagText ?? "").toLowerCase().includes(q)) return true;
       return false;
     });
   }, [
     personalGroups,
     query,
-    includeTags,
     originFilter,
     editedFilter,
     activeFilter,
@@ -185,18 +181,7 @@ export function LeerplanGroupsPage() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Klik op een groep om de oefeningen te bewerken. Community-sets overnemen
-        doe je via{" "}
-        <Link
-          href={APP_ROUTES.community}
-          className="font-medium text-accent underline-offset-2 hover:underline"
-        >
-          Community → Overnemen
-        </Link>
-        .
-      </p>
-
+      
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-sm">
           <span className="text-xs text-muted-foreground">Zoeken</span>
@@ -204,18 +189,9 @@ export function LeerplanGroupsPage() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Groepsnaam…"
+            placeholder="Topic of tags…"
             className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
           />
-        </label>
-        <label className="inline-flex items-center gap-2 pb-1 text-sm text-foreground">
-          <input
-            type="checkbox"
-            checked={includeTags}
-            onChange={(e) => setIncludeTags(e.target.checked)}
-            className="size-4 rounded border-border accent-accent"
-          />
-          Tags meenemen
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs text-muted-foreground">Herkomst</span>

@@ -11,7 +11,6 @@ export default function AdminGebruikersPage() {
   return (
     <div className="space-y-6">
       <AppPageHeader
-        eyebrow="Admin"
         title="Gebruikers"
         description="Rollen, AI-toegang en deactiveren. Laatste admin kan niet gedegradeerd/gedeactiveerd worden."
       />

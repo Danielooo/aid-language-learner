@@ -26,7 +26,6 @@ export default function AdminHomePage() {
   return (
     <div className="space-y-6">
       <AppPageHeader
-        eyebrow="Admin"
         title="Beheer"
         description="Review-queue en platformbeheer volgens de rollen-requirements."
       />

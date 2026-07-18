@@ -66,7 +66,6 @@ export function GeneratorPageContent() {
   return (
     <div className="space-y-6">
       <AppPageHeader
-        eyebrow="Mijn materiaal"
         title="Generator"
         description={
           tab === "text"

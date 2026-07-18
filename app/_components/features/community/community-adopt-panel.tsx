@@ -61,7 +61,6 @@ export function CommunityAdoptPanel() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
-  const [includeTags, setIncludeTags] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalGroupId, setModalGroupId] = useState<string | null>(null);
@@ -104,12 +103,10 @@ export function CommunityAdoptPanel() {
     if (!q) return groups;
     return groups.filter((g) => {
       if (g.name.toLowerCase().includes(q)) return true;
-      if (includeTags && (g.tagText ?? "").toLowerCase().includes(q)) {
-        return true;
-      }
+      if ((g.tagText ?? "").toLowerCase().includes(q)) return true;
       return false;
     });
-  }, [groups, query, includeTags]);
+  }, [groups, query]);
 
   const allSelected = useMemo(
     () => filtered.length > 0 && filtered.every((g) => selected.has(g.id)),
@@ -250,18 +247,9 @@ export function CommunityAdoptPanel() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Groepsnaam…"
+            placeholder="Topic of tags…"
             className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
           />
-        </label>
-        <label className="inline-flex items-center gap-2 pb-1 text-sm text-foreground">
-          <input
-            type="checkbox"
-            checked={includeTags}
-            onChange={(e) => setIncludeTags(e.target.checked)}
-            className="size-4 rounded border-border accent-accent"
-          />
-          Tags meenemen
         </label>
         <button
           type="button"

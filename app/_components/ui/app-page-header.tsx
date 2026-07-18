@@ -10,7 +10,6 @@ export type AppPageHeaderStat = {
 };
 
 type AppPageHeaderProps = {
-  eyebrow: string;
   title: string;
   /** Zichtbare accountnaam (Naam), zonder @-prefix. */
   accountLabel?: string;
@@ -52,7 +51,6 @@ function StatItem({
 }
 
 export function AppPageHeader({
-  eyebrow,
   title,
   accountLabel,
   description,
@@ -65,10 +63,6 @@ export function AppPageHeader({
 
   return (
     <header className="space-y-4">
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {eyebrow}
-      </p>
-
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           {title}
