@@ -2,6 +2,10 @@
 
 import { useEffect } from "react";
 
+import {
+  PauseIcon,
+  SpeakerIcon,
+} from "@/app/_components/ui/audio-icons";
 import { useExerciseAudio } from "@/app/_components/features/quiz/hooks/use-exercise-audio";
 import {
   QUIZ_SHORTCUTS,
@@ -16,32 +20,6 @@ type ExerciseAudioControlsProps = {
   className?: string;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 };
-
-function PlayIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      className={className ?? "size-3.5"}
-    >
-      <path d="M4 2.5v11l9-5.5-9-5.5z" />
-    </svg>
-  );
-}
-
-function PauseIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      className={className ?? "size-3.5"}
-    >
-      <path d="M3.5 2h2.5v12H3.5V2zm6.5 0H12.5v12H10V2z" />
-    </svg>
-  );
-}
 
 const variantClasses = {
   compact:
@@ -100,7 +78,7 @@ export function ExerciseAudioControls({
       {playing ? (
         <PauseIcon className={iconClassName} />
       ) : (
-        <PlayIcon className={iconClassName} />
+        <SpeakerIcon className={iconClassName} />
       )}
       {variant === "large" && (
         <span className="text-[10px] font-normal text-muted-foreground/70">

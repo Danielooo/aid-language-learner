@@ -18,7 +18,6 @@ const APP_PAGE_PREFIXES = [
   "/oefenen",
   "/leerplan",
   "/community",
-  "/oefeningen",
   "/generator",
   "/voortgang",
   "/profiel",
@@ -30,7 +29,6 @@ const PROTECTED_PAGE_PREFIXES = [...APP_PAGE_PREFIXES];
 // Admin is beheer-only: deze leer-routes zijn niet toegankelijk voor admins.
 const LEARNER_ONLY_PREFIXES = [
   "/oefenen",
-  "/oefeningen",
   "/generator",
   "/leerplan",
   "/community",

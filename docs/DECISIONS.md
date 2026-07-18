@@ -273,7 +273,7 @@ Admin publiceert geen globals meer via corpus-CRUD of Tatoeba-UI; oefeningen kom
 **Files:** `supabase/migrations/0018_exercise_groups.sql`, `types/exercise-group-submission.ts`, `app/api/admin/group-submissions/**`, `app/api/admin/global-groups/**`, `app/_components/features/admin/admin-review-queue.tsx`, `supabase/seed.ts`, `docs/REQUIREMENTS-ROLES.md`
 **Tags:** admin, moderation, exercises, groups, supabase
 
-First-class `exercise_groups` + `exercise_group_submissions` (snapshot per hele groep, copy-on-approve). Per-oefening global-aanbiedingen verwijderd. Admin review-queue heeft tabs Pending / Goedgekeurd / Afgekeurd. Geen corpus-create/edit. Community→personal kopie zit in het leerplan ([ADR](#leerplan-global-copy)); user-aanbiedingen via `/community` ([ADR](#community-offer)).
+First-class `exercise_groups` + `exercise_group_submissions` (snapshot per hele groep, copy-on-approve). Per-oefening global-aanbiedingen verwijderd. Admin review-queue heeft tabs Pending / Goedgekeurd / Afgekeurd. Geen corpus-create/edit. Community→personal kopie zit onder `/community` → Overnemen ([ADR](#community-adopt)); user-aanbiedingen via `/community` → Bijdragen ([ADR](#community-offer)).
 
 ### 2026-07-16 — Review-queue status-undo, geen soft-hide <a id="review-queue-status-undo"></a>
 
@@ -287,14 +287,49 @@ Review-queue vereenvoudigd: drie tabs, bulk + detailmodal, optionele `reject_rea
 **Files:** `app/api/exercise-groups/**`, `lib/exercises/copy-global-group-to-personal.ts`, `app/_components/features/topics/leerplan-*.tsx`, `types/exercise-groups.ts`, `docs/REQUIREMENTS-ROLES.md`
 **Tags:** leerplan, exercises, groups, product
 
-`/leerplan` toont tabs **Persoonlijke oefeningengroepen** | **Community oefeningengroepen** (groepkaarten i.p.v. topic-lijst + includeGlobal-toggle). Community-groep openen → modal met leden → knop kopieert de **hele** groep naar personal (`owner_id = user`) en activeert het topic. Idempotent op groepsnaam (409 / “Al in leerplan”). Oefenen/SRS blijft via `user_topic_preferences`; personal tab behoudt actief-checkbox. Community-materiaal wordt niet meer in place geoefend zonder kopie. User-facing naming: **Community** i.p.v. Globaal.
+`/leerplan` toont persoonlijke oefeningengroepen (overzichtstabel; zie [ADR](#leerplan-table)). Community→personal kopie is verplaatst naar `/community` → Overnemen ([ADR](#community-adopt)). Oefenen/SRS blijft via `user_topic_preferences`. User-facing naming: **Community** i.p.v. Globaal.
 
 ### 2026-07-16 — Community-pagina: aanbieden + snapshot-status <a id="community-offer"></a>
 
 **Files:** `app/(app)/community/**`, `app/_components/features/community/**`, `app/api/exercise-groups/mine/**/submit`, `app/api/exercise-groups/mine/submissions/**`, `proxy.ts`, `lib/routes.ts`, `docs/REQUIREMENTS-ROLES.md`
 **Tags:** community, moderation, exercises, groups, product
 
-Navbar **Community** (`/community`) met tabs Huidige oefeningengroepen | Pending | Goedgekeurd | Afgekeurd. Aanbieden vanaf Huidige (tabel + modal) maakt een **losgekoppelde snapshot**; status-tabs tonen alleen die snapshot (geen live link naar leerplan). Geen intrekken. Opnieuw aanbieden na reject mag (verse snapshot). Admin blijft op `/admin/review`.
+Navbar **Community** (`/community`) met top-level **Bijdragen** | **Overnemen**. Onder Bijdragen: tabs Huidige oefeningengroepen | Pending | Goedgekeurd | Afgekeurd. Aanbieden vanaf Huidige (tabel + modal) maakt een **losgekoppelde snapshot**; status-tabs tonen alleen die snapshot (geen live link naar leerplan). In **Huidige oefeningengroepen** toont de Community-statuskolom de **laatste** submission-status (`—` / Pending / Goedgekeurd / Afgekeurd) plus timestamp; geen historie in die tabel (nieuwe aanbieding overschrijft de weergave). Reject-reden alleen in tab Afgekeurd. Geen intrekken. Opnieuw aanbieden na reject mag (verse snapshot). Admin blijft op `/admin/review`.
+
+### 2026-07-16 — Community Overnemen + source_group_id <a id="community-adopt"></a>
+
+**Files:** `supabase/migrations/0020_exercise_groups_source_group_id.sql`, `lib/exercises/copy-global-group-to-personal.ts`, `app/api/exercise-groups/global/**`, `app/_components/features/community/community-adopt-panel.tsx`, `app/_components/features/topics/leerplan-*.tsx`, `types/exercise-groups.ts`, `docs/REQUIREMENTS-ROLES.md`
+**Tags:** community, leerplan, exercises, groups, product
+
+Community→personal verhuist van `/leerplan` naar `/community` → **Overnemen**: tabel met checkbox-bulk (Review-queue-patroon), zoekbalk (groepsnaam + optionele tags-toggle), kolom “In leerplan” + timestamp, detailmodal met single copy. Personal kopieën krijgen `source_group_id`; idempotent op bron-id (fallback: groepsnaam). Bulk via `POST /api/exercise-groups/global/copy`. `/leerplan` toont alleen personal + link naar Overnemen.
+
+### 2026-07-16 — Leerplan overzichtstabel <a id="leerplan-table"></a>
+
+**Files:** `app/api/exercise-groups/mine/**`, `app/api/exercises/mine/[id]/route.ts`, `app/_components/features/topics/leerplan-*.tsx`, `types/exercise-groups.ts`, `docs/REQUIREMENTS-ROLES.md`
+**Tags:** leerplan, exercises, groups, ux
+
+`/leerplan` toont persoonlijke groepen als tabel (niet kaarten): herkomst (`Persoonlijk` / `Community` via `source_group_id`), aparte kolom Bewerkt (`target_text_manually_edited` op leden), tags, actief-toggle, hard delete met bevestiging. Zoeken + filters (herkomst / bewerkt / actief). Tag/vertaling-edits markeren de oefening als bewerkt.
+
+### 2026-07-16 — Generator UX + tijdelijke AI-limiet 100 <a id="generator-ux-ai-quota-dev"></a>
+
+**Files:** `app/_components/features/generator/**`, `app/api/exercises/route.ts`, `app/api/exercises/ai-quota/route.ts`, `lib/auth/assert-ai-quota.ts`, `types/exercise-group-submission.ts`
+**Tags:** generator, ux, rate-limit, development
+
+Generator: bewerkbaar onderwerp, geselecteerde zinnen verwijderen, knop “Groep opslaan”, view-only bevestigingsmodal na opslaan, en zichtbare rest-AI-quota. `USER_AI_REQUESTS_PER_DAY` tijdelijk **100** voor development (productintentie in REQUIREMENTS blijft 10).
+
+### 2026-07-18 — Groep-eerst oefeningen bewerken <a id="group-first-exercise-edit"></a>
+
+**Files:** `app/api/exercises/mine/route.ts`, `app/_components/features/exercises/**`, `app/_components/features/topics/leerplan-groups-page.tsx`, `app/(app)/_components/app-nav-items.tsx`, `docs/REQUIREMENTS-ROLES.md`
+**Tags:** leerplan, oefeningen, ux, groups
+
+`/leerplan` is de start voor sets; klik op een groep opent `/oefeningen?group=<id>` als volle bewerkpagina. Zonder `group` redirect naar Leerplan. Nav-item “Oefeningen” verwijderd. Compacte tabel (Bron | Vertaling | Alternatieven | Topic); alternatieven/tags in popover zodat rijen één regel hoog blijven. `GET /api/exercises/mine` filtert op `groupId`.
+
+### 2026-07-18 — Leerplan group-edit URL + modal + header cleanup <a id="leerplan-group-edit-modal"></a>
+
+**Files:** `app/(app)/leerplan/[id]/page.tsx`, `app/_components/features/topics/leerplan-group-edit-page.tsx`, `app/_components/features/exercises/**`, `lib/routes.ts`, `proxy.ts`, `next.config.ts`, `docs/REQUIREMENTS-ROLES.md`
+**Tags:** leerplan, ux, routes, headers
+
+Bewerkpagina verplaatst naar `/leerplan/[id]` (titel “Oefeningengroep bewerken”); individuele oefening via modal. Route `/oefeningen` verwijderd (redirect naar `/leerplan`). `AppPageHeader` zonder username-duplicaat en zonder stats-strip op user-pagina’s.
 
 <!-- INSERT-NEW-ENTRY-ABOVE -->
 

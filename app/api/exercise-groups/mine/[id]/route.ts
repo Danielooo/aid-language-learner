@@ -1,11 +1,15 @@
 import { getExerciseUserAccess } from "@/lib/exercises/exercise-access";
+import {
+  resolveGroupOfferState,
+  type OfferSubmissionRow,
+} from "@/lib/exercises/resolve-group-offer-state";
 
 import type {
   ExerciseGroupDetail,
   ExerciseGroupDetailSuccess,
   ExerciseGroupMember,
+  ExerciseGroupsDeleteSuccess,
   ExerciseGroupsFailure,
-  GroupOfferState,
 } from "@/types/exercise-groups";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +53,7 @@ export async function GET(
 
   const groupName = (group.name as string).trim();
 
-  const [membersRes, blockRes] = await Promise.all([
+  const [membersRes, submissionsRes] = await Promise.all([
     access.supabase
       .from("exercises")
       .select("id, source_text, target_text, tags, topic")
@@ -58,9 +62,11 @@ export async function GET(
       .order("created_at", { ascending: true }),
     access.supabase
       .from("exercise_group_submissions")
-      .select("status")
+      .select("source_group_id, status, created_at, updated_at, reviewed_at")
       .eq("source_group_id", id)
-      .in("status", ["pending", "approved"])
+      .eq("submitted_by", access.userId)
+      .in("status", ["pending", "approved", "rejected"])
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
   ]);
@@ -74,11 +80,11 @@ export async function GET(
       { status: 500 },
     );
   }
-  if (blockRes.error) {
+  if (submissionsRes.error) {
     return Response.json(
       {
         ok: false,
-        error: blockRes.error.message,
+        error: submissionsRes.error.message,
       } satisfies ExerciseGroupsFailure,
       { status: 500 },
     );
@@ -92,10 +98,10 @@ export async function GET(
     topic: (row.topic as string | null) ?? null,
   }));
 
-  let offerState: GroupOfferState = "available";
-  if (members.length === 0) offerState = "empty";
-  else if (blockRes.data?.status === "pending") offerState = "pending";
-  else if (blockRes.data?.status === "approved") offerState = "approved";
+  const latest = submissionsRes.data
+    ? (submissionsRes.data as OfferSubmissionRow)
+    : undefined;
+  const { offerState } = resolveGroupOfferState(members.length, latest);
 
   const detail: ExerciseGroupDetail = {
     id: group.id as string,
@@ -110,4 +116,82 @@ export async function GET(
     ok: true,
     group: detail,
   } satisfies ExerciseGroupDetailSuccess);
+}
+
+/**
+ * Hard-delete: persoonlijke oefeningengroep + cascade op leden/progress,
+ * plus topic-voorkeur voor de groepsnaam.
+ */
+export async function DELETE(
+  _req: Request,
+  context: RouteContext,
+): Promise<Response> {
+  const access = await getExerciseUserAccess();
+  if (!access.ok) return access.response;
+
+  const { id } = await context.params;
+
+  const { data: group, error: groupError } = await access.supabase
+    .from("exercise_groups")
+    .select("id, name")
+    .eq("id", id)
+    .eq("owner_id", access.userId)
+    .maybeSingle();
+
+  if (groupError) {
+    return Response.json(
+      { ok: false, error: groupError.message } satisfies ExerciseGroupsFailure,
+      { status: 500 },
+    );
+  }
+  if (!group) {
+    return Response.json(
+      {
+        ok: false,
+        error: "Persoonlijke oefeningengroep niet gevonden.",
+      } satisfies ExerciseGroupsFailure,
+      { status: 404 },
+    );
+  }
+
+  const groupName = (group.name as string).trim();
+
+  const { error: deleteError } = await access.supabase
+    .from("exercise_groups")
+    .delete()
+    .eq("id", id)
+    .eq("owner_id", access.userId);
+
+  if (deleteError) {
+    return Response.json(
+      {
+        ok: false,
+        error: deleteError.message,
+      } satisfies ExerciseGroupsFailure,
+      { status: 500 },
+    );
+  }
+
+  // Actief-status hangt aan topic-naam (= groepsnaam), niet aan group-id.
+  if (groupName) {
+    const { error: prefError } = await access.supabase
+      .from("user_topic_preferences")
+      .delete()
+      .eq("user_id", access.userId)
+      .eq("topic", groupName);
+
+    if (prefError) {
+      return Response.json(
+        {
+          ok: false,
+          error: prefError.message,
+        } satisfies ExerciseGroupsFailure,
+        { status: 500 },
+      );
+    }
+  }
+
+  return Response.json({
+    ok: true,
+  } satisfies ExerciseGroupsDeleteSuccess);
 }

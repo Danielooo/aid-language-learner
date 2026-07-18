@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useAppProfile } from "@/app/(app)/_components/app-profile-provider";
 import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 
 import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
@@ -18,7 +17,6 @@ import {
 } from "@/lib/keyboard/quiz-shortcuts";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
 import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
-import { useExerciseSummaryStats } from "@/lib/dashboard/use-exercise-summary-stats";
 import {
   TYPING_DIRECTION_KEY,
   TYPING_MODE_KEY,
@@ -82,8 +80,6 @@ function directionDisplayLabel(direction: TranslationDirection): string {
 
 export function TypingQuizDeck() {
   const router = useRouter();
-  const { displayLabel } = useAppProfile();
-  const { stats, loading: statsLoading } = useExerciseSummaryStats();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [screen, setScreen] = useState<DeckScreen>("setup");
@@ -464,15 +460,12 @@ export function TypingQuizDeck() {
       <AppPageHeader
         eyebrow="Oefenen"
         title="Typen"
-        accountLabel={displayLabel}
         meta={<QuizSubPageMeta escHint={escHint} />}
         description={
           screen === "playing"
             ? "Typ de vertaling en controleer je antwoord."
             : "Kies modus, selectie en oefeningen voor je typ-quiz."
         }
-        stats={stats.map((stat) => ({ ...stat, loading: statsLoading }))}
-        hideStats={screen === "playing"}
       />
 
       {screen !== "playing" && (

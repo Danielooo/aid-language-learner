@@ -126,6 +126,8 @@ export async function POST(req: Request) {
   return Response.json({
     ok: true,
     inserted: data?.length ?? 0,
+    groupId: groupResult.groupId,
+    groupName: topic.trim(),
     rows: data,
     requestBody,
     supabaseResponse,

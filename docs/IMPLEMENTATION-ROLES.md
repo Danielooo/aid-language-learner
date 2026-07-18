@@ -1,7 +1,7 @@
 # Implementation plan — Admin & User rollen
 
 **Bron van requirements:** [`REQUIREMENTS-ROLES.md`](./REQUIREMENTS-ROLES.md)  
-**Status:** PR A–F geïmplementeerd; **2026-07-16** oefeningengroepen + review-queue + leerplan community-kopie + Community-aanbiedingen ([ADR](./DECISIONS.md#community-offer))  
+**Status:** PR A–F geïmplementeerd; **2026-07-16** oefeningengroepen + review-queue + Community Bijdragen/Overnemen ([ADR](./DECISIONS.md#community-adopt))  
 **Datum:** 2026-07-15 (bijgewerkt 2026-07-16)
 
 Dit document vertaalt de bevroren requirements naar concrete bouwstappen.
@@ -18,8 +18,8 @@ Volgorde is afhankelijkheidsgericht: data/model eerst, daarna enforcement, daarn
 - APIs: `GET/POST /api/admin/group-submissions`, `…/reject` (optionele reden), `…/reopen`.
 - Geen soft-hide: afkeuren/reopen vanaf approved **verwijdert** de global groep.
 - Seed: 2 pending, 2 approved community, 2 rejected groep-aanbiedingen.
-- Leerplan: tabs personal / community-oefeningengroepen; kopie community → personal + topic actief.
-- Community `/community`: Huidige oefeningengroepen aanbieden; Pending/Goedgekeurd/Afgekeurd op snapshots; geen withdraw.
+- Leerplan: persoonlijke oefeningengroepen + actief-toggle; link naar Community → Overnemen.
+- Community `/community`: **Bijdragen** (Huidige + Pending/Goedgekeurd/Afgekeurd) en **Overnemen** (bulk/single copy naar personal).
 
 ---
 

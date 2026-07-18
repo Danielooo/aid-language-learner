@@ -26,6 +26,7 @@ const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(500).default(10),
   sortDir: z.enum(["asc", "desc"]).default("desc"),
+  groupId: z.string().uuid().optional(),
   lang: z
     .string()
     .min(2)
@@ -50,6 +51,7 @@ export async function GET(req: Request): Promise<Response> {
     page: reqUrl.searchParams.get("page") ?? undefined,
     pageSize: reqUrl.searchParams.get("pageSize") ?? undefined,
     sortDir: reqUrl.searchParams.get("sortDir") ?? undefined,
+    groupId: reqUrl.searchParams.get("groupId") ?? undefined,
     lang: reqUrl.searchParams.get("lang") ?? undefined,
     topic: reqUrl.searchParams.get("topic") ?? undefined,
     q: reqUrl.searchParams.get("q") ?? undefined,
@@ -62,7 +64,7 @@ export async function GET(req: Request): Promise<Response> {
     );
   }
 
-  const { page, pageSize, sortDir, lang, topic, q } = parse.data;
+  const { page, pageSize, sortDir, groupId, lang, topic, q } = parse.data;
   const offset = (page - 1) * pageSize;
   const { supabase, userId } = auth;
 
@@ -72,6 +74,9 @@ export async function GET(req: Request): Promise<Response> {
     .eq("owner_id", userId)
     .order("created_at", { ascending: sortDir === "asc" });
 
+  if (groupId) {
+    query = query.eq("group_id", groupId);
+  }
   if (lang) {
     query = query.eq("source_lang", lang);
   }
@@ -81,8 +86,9 @@ export async function GET(req: Request): Promise<Response> {
   if (q) {
     const escaped = q.replace(/[%_]/g, "\\$&");
     const pattern = `%${escaped}%`;
+    // Cast text[] → text zodat substring-zoeken over alternatieven werkt.
     query = query.or(
-      `source_text.ilike.${pattern},target_text.ilike.${pattern}`,
+      `source_text.ilike.${pattern},target_text.ilike.${pattern},alternative_translations::text.ilike.${pattern}`,
     );
   }
 

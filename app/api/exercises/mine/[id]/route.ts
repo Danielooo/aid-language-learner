@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 const patchBodySchema = z.object({
+  source_text: z.string().min(1).optional(),
   target_text: z.string().min(1).optional(),
   topic: z.string().nullable().optional(),
   tags: z.string().optional(),
@@ -70,7 +71,14 @@ export async function PATCH(
   const patch = parse.data;
   const updates: Record<string, unknown> = { ...patch };
 
-  if (patch.target_text !== undefined && patch.target_text_manually_edited === undefined) {
+  // Markeer handmatige bewerkingen voor leerplan-kolom Bewerkt.
+  if (
+    patch.target_text_manually_edited === undefined &&
+    (patch.source_text !== undefined ||
+      patch.target_text !== undefined ||
+      patch.tags !== undefined ||
+      patch.alternative_translations !== undefined)
+  ) {
     updates.target_text_manually_edited = true;
   }
 

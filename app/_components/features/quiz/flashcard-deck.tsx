@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useAppProfile } from "@/app/(app)/_components/app-profile-provider";
 import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 
 import {
@@ -21,7 +20,6 @@ import {
 } from "@/lib/keyboard/quiz-shortcuts";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
 import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
-import { useExerciseSummaryStats } from "@/lib/dashboard/use-exercise-summary-stats";
 
 import { ExercisePicker } from "./exercise-picker";
 import { QuizSubPageMeta } from "./quiz-sub-page-meta";
@@ -62,8 +60,6 @@ function topicDisplayLabel(topic: string): string {
 
 export function FlashcardDeck() {
   const router = useRouter();
-  const { displayLabel } = useAppProfile();
-  const { stats, loading: statsLoading } = useExerciseSummaryStats();
   const containerRef = useRef<HTMLDivElement>(null);
   const cardContainerRef = useRef<HTMLDivElement>(null);
 
@@ -411,15 +407,12 @@ export function FlashcardDeck() {
       <AppPageHeader
         eyebrow="Oefenen"
         title="Flashcards"
-        accountLabel={displayLabel}
         meta={<QuizSubPageMeta escHint={escHint} />}
         description={
           screen === "playing"
             ? "Bekijk de Spaanse zin, draai de kaart om en beoordeel jezelf."
             : "Kies hoe en welke oefeningen je wilt oefenen."
         }
-        stats={stats.map((stat) => ({ ...stat, loading: statsLoading }))}
-        hideStats={screen === "playing"}
       />
 
       {screen === "selection" && selectionHydrated && (

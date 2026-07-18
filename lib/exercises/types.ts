@@ -33,6 +33,7 @@ export type AdminExerciseRow = AudioRow & {
 };
 
 export type ExercisePatchFields = {
+  source_text?: string;
   target_text?: string;
   topic?: string | null;
   tags?: string;

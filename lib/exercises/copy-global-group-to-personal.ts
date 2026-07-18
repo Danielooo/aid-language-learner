@@ -18,7 +18,8 @@ type CopyFailure = {
 /**
  * Kopieert een actieve global groep naar een nieuwe persoonlijke groep
  * en activeert het bijbehorende topic in het leerplan.
- * Faalt met 409 als er al een persoonlijke groep met dezelfde naam bestaat.
+ * Faalt met 409 als er al een personal kopie bestaat (zelfde source_group_id
+ * of dezelfde naam).
  */
 export async function copyGlobalGroupToPersonal(
   supabase: SupabaseClient,
@@ -47,6 +48,25 @@ export async function copyGlobalGroupToPersonal(
   const groupName = (globalGroup.name as string).trim();
   if (!groupName) {
     return { ok: false, error: "Groepsnaam mag niet leeg zijn.", status: 500 };
+  }
+
+  // Eerst op bron-link; daarna naam (legacy copies zonder source_group_id).
+  const { data: existingBySource, error: sourceError } = await supabase
+    .from("exercise_groups")
+    .select("id")
+    .eq("owner_id", userId)
+    .eq("source_group_id", globalGroupId)
+    .maybeSingle();
+
+  if (sourceError) {
+    return { ok: false, error: sourceError.message, status: 500 };
+  }
+  if (existingBySource?.id) {
+    return {
+      ok: false,
+      error: `Je hebt deze community-groep al in je leerplan.`,
+      status: 409,
+    };
   }
 
   const { data: existingPersonal, error: existingError } = await supabase
@@ -93,16 +113,17 @@ export async function copyGlobalGroupToPersonal(
       name: groupName,
       owner_id: userId,
       is_active: true,
+      source_group_id: globalGroupId,
     })
     .select("id")
     .maybeSingle();
 
   if (createError || !createdGroup?.id) {
-    // Unieke race: iemand anders maakte dezelfde naam aan.
+    // Unieke race: iemand anders maakte dezelfde naam of source-link aan.
     if (createError?.code === "23505") {
       return {
         ok: false,
-        error: `Je hebt al een persoonlijke groep met de naam "${groupName}".`,
+        error: `Je hebt deze community-groep al in je leerplan (of een groep met dezelfde naam).`,
         status: 409,
       };
     }

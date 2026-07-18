@@ -66,7 +66,7 @@ const proposeExercisesSchema = z.object({
 
 const proposeExercises = tool({
   description:
-    "Stel N Spaans→Nederlands vertaaloefeningen voor over een onderwerp. De UI toont de output aan de gebruiker, die kan kiezen om ze op te slaan in Supabase.",
+    "Stel N Spaans→Nederlands vertaaloefeningen voor over een onderwerp. De UI toont de output aan de gebruiker, die kan kiezen om de groep op te slaan.",
   inputSchema: proposeExercisesSchema,
   execute: async (input) => input,
 });

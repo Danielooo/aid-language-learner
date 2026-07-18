@@ -1,8 +1,6 @@
 "use client";
 
-import { useAppProfile } from "@/app/(app)/_components/app-profile-provider";
 import { AppPageHeader } from "@/app/_components/ui/app-page-header";
-import { useExerciseSummaryStats } from "@/lib/dashboard/use-exercise-summary-stats";
 
 import { QuizModeCard } from "./quiz-mode-card";
 import { SrsDueCard } from "./srs-due-card";
@@ -31,17 +29,12 @@ const QUIZ_MODES = [
 ] as const;
 
 export function ExercisesQuizPage() {
-  const { displayLabel } = useAppProfile();
-  const { stats, loading } = useExerciseSummaryStats();
-
   return (
     <div className="space-y-6">
       <AppPageHeader
         eyebrow="Oefenen"
         title="Oefenen"
-        accountLabel={displayLabel}
         description="Kies een quiz-vorm en hoe je wilt oefenen: willekeurig, spaced repetition of een eigen selectie."
-        stats={stats.map((stat) => ({ ...stat, loading }))}
       />
 
       <SrsDueCard />

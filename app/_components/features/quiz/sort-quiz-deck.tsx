@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useAppProfile } from "@/app/(app)/_components/app-profile-provider";
 import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 
 import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
@@ -18,7 +17,6 @@ import {
 } from "@/lib/keyboard/quiz-shortcuts";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
 import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
-import { useExerciseSummaryStats } from "@/lib/dashboard/use-exercise-summary-stats";
 import {
   MAX_SORT_FETCH_RETRIES,
   MIN_SORT_WORDS,
@@ -75,8 +73,6 @@ function directionDisplayLabel(direction: TranslationDirection): string {
 
 export function SortQuizDeck() {
   const router = useRouter();
-  const { displayLabel } = useAppProfile();
-  const { stats, loading: statsLoading } = useExerciseSummaryStats();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [screen, setScreen] = useState<DeckScreen>("setup");
@@ -472,15 +468,12 @@ export function SortQuizDeck() {
       <AppPageHeader
         eyebrow="Oefenen"
         title="Sorteren"
-        accountLabel={displayLabel}
         meta={<QuizSubPageMeta escHint={escHint} />}
         description={
           screen === "playing"
             ? "Sleep woorden of typ de eerste letter(s) per positie."
             : "Kies richting, selectie en oefeningen voor je sorteer-quiz."
         }
-        stats={stats.map((stat) => ({ ...stat, loading: statsLoading }))}
-        hideStats={screen === "playing"}
       />
 
       {screen !== "playing" && (

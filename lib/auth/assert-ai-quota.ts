@@ -11,8 +11,69 @@ export type AiQuotaResult =
   | { ok: true; remaining: number | null }
   | { ok: false; status: 401 | 403 | 429; error: string };
 
+export type AiQuotaStatus =
+  | {
+      ok: true;
+      remaining: number | null;
+      limit: number;
+      disabled: boolean;
+    }
+  | { ok: false; status: 401 | 403; error: string };
+
 function utcToday(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Leest AI-quota zonder de teller te verhogen (voor UI-weergave).
+ * Admins: remaining null (= onbeperkt).
+ */
+export async function getAiQuotaStatus(
+  user: User | null | undefined,
+): Promise<AiQuotaStatus> {
+  if (!user) {
+    return { ok: false, status: 401, error: "Niet ingelogd." };
+  }
+
+  if (isAdminUser(user)) {
+    return {
+      ok: true,
+      remaining: null,
+      limit: USER_AI_REQUESTS_PER_DAY,
+      disabled: false,
+    };
+  }
+
+  const admin = getSupabaseAdmin();
+  const { data: profile, error } = await admin
+    .from("profiles")
+    .select("ai_disabled, ai_requests_date, ai_requests_count")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    return {
+      ok: false,
+      status: 403,
+      error: `Profiel ophalen mislukt: ${error.message}`,
+    };
+  }
+
+  if (!profile) {
+    return { ok: false, status: 403, error: "Profiel niet gevonden." };
+  }
+
+  const today = utcToday();
+  const sameDay = profile.ai_requests_date === today;
+  const count = sameDay ? (profile.ai_requests_count ?? 0) : 0;
+  const remaining = Math.max(0, USER_AI_REQUESTS_PER_DAY - count);
+
+  return {
+    ok: true,
+    remaining,
+    limit: USER_AI_REQUESTS_PER_DAY,
+    disabled: Boolean(profile.ai_disabled),
+  };
 }
 
 /**

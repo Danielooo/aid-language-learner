@@ -1,7 +1,7 @@
 # Requirements — Admin & User rollen
 
 **Status:** bevroren (source of truth)  
-**Datum:** 2026-07-15 (bijgewerkt 2026-07-16: Community-aanbiedingen + naming)  
+**Datum:** 2026-07-15 (bijgewerkt 2026-07-16: Community Bijdragen/Overnemen + naming)  
 **Scope:** productrechten en constraints; geen implementatiedetail (zie [`IMPLEMENTATION-ROLES.md`](./IMPLEMENTATION-ROLES.md)).
 
 Rolbron (tot nader order): Supabase Auth `app_metadata.role === "admin"`.
@@ -23,7 +23,7 @@ Geen derde rol. Afwezige/null role = **user**.
 | Capability | User | Admin |
 | --- | --- | --- |
 | Community-oefeningengroepen lezen (actieve corpus-groepen) | ja | ja |
-| **Community-oefeningengroep kopiëren** naar personal (hele groep) | ja (leerplan) | ja (eigen account) |
+| **Community-oefeningengroep kopiëren** naar personal (hele groep) | ja (`/community` → Overnemen, single + bulk) | ja (eigen account) |
 | Eigen (persoonlijke) oefeningen / oefeningengroepen CRUD | ja | ja (eigen account) |
 | AI-generatie voor eigen oefeningen | ja, max **10 requests/dag** (tenzij admin AI heeft uitgezet) | ja, **onbeperkt** |
 | **Oefeningengroep** aan community **aanbieden** | ja → snapshot/pending via `/community` | n.v.t. (corpus via user-aanbiedingen) |
@@ -36,13 +36,14 @@ Geen derde rol. Afwezige/null role = **user**.
 | Andermans **persoonlijke** oefeningen zien/bewerken | nee | **nee** |
 | Tatoeba-import + AI-verrijking community corpus | nee | nee (geen Tatoeba-UI) |
 | Bulk ops (goedkeuren via review-queue) | nee | ja |
-| Eigen aanbiedingen + status bekijken | ja (`/community`) | n.v.t. |
+| Bulk community → personal (Overnemen) | ja | ja (eigen account) |
+| Eigen aanbiedingen + status bekijken | ja (`/community` → Bijdragen) | n.v.t. |
 
 ---
 
 ## Moderatieflow
 
-1. User biedt een **hele oefeningengroep** aan de community (via `/community` → Huidige oefeningengroepen) → **snapshot** van groepsnaam + alle lid-oefeningen als `pending`.
+1. User biedt een **hele oefeningengroep** aan de community (via `/community` → Bijdragen → Huidige oefeningengroepen) → **snapshot** van groepsnaam + alle lid-oefeningen als `pending`.
 2. Het **persoonlijke origineel** blijft bewerkbaar; wijzigingen raken de pending snapshot niet. Community toont alleen de snapshot.
 3. Admin reviewt in een **review-queue** met tabs **Pending | Goedgekeurd | Afgekeurd**:
    - **Goedkeuren** → **copy-on-approve**: nieuwe community `exercise_groups` (`owner_id` null) + member exercises; origineel blijft van de user; status `approved`.
@@ -52,21 +53,23 @@ Geen derde rol. Afwezige/null role = **user**.
    - **Goedkeuren vanaf Afgekeurd** → opnieuw copy-on-approve.
 4. User mag een pending aanbieding **niet** intrekken (geen withdraw-UI).
 5. Na reject mag user **opnieuw aanbieden** (nieuwe snapshot van de *huidige* personal groep). Na approve: opnieuw aanbieden geblokkeerd (tot admin de approve terugdraait).
-6. Geen e-mail/push; status in-app via `/community` (Pending / Goedgekeurd / Afgekeurd).
-7. Geen automatische personal kopie na approve. Users kunnen een community-oefeningengroep **on-demand** naar personal kopiëren via het leerplan (hele groep).
+6. Geen e-mail/push; status in-app via `/community` → Bijdragen (Pending / Goedgekeurd / Afgekeurd). In **Huidige oefeningengroepen** ziet de user per groep de **laatste** aanbiedstatus (`—` / Pending / Goedgekeurd / Afgekeurd) plus timestamp; geen historie daar (nieuwe aanbieding overschrijft). Reject-reden alleen in tab Afgekeurd.
+7. Geen automatische personal kopie na approve. Users halen community-groepen **on-demand** binnen via `/community` → **Overnemen** (hele groep, single of bulk).
 
 ### Terminologie
 
 - **Oefeningengroep** = set oefeningen (`exercise_groups` + leden).
-- **Oefening** = individuele vertaaloefening (CRUD op `/oefeningen`).
-- User-facing label **Community** (niet “Globaal”) voor het gedeelde corpus en de bijdrage-pagina.
+- **Oefening** = individuele vertaaloefening. CRUD per groep via `/leerplan` → klik groep → `/leerplan/[id]` (modal per oefening). Route `/oefeningen` bestaat niet meer.
+- User-facing label **Community** (niet “Globaal”) voor het gedeelde corpus en de bijdrage-/overnemen-pagina.
 
-### Community → personal (leerplan)
+### Community → personal (Overnemen)
 
-- User ziet actieve community-oefeningengroepen onder **Community oefeningengroepen**.
-- Openen toont alle lid-oefeningen; **één actie** kopieert de hele groep naar een nieuwe persoonlijke groep (`owner_id = user`).
+- `/community` heeft top-level tabs **Bijdragen** | **Overnemen**.
+- Onder **Overnemen** ziet de user actieve community-oefeningengroepen (tabel): zoeken op groepsnaam, optioneel tags meenemen; kolom “In leerplan” met timestamp.
+- Openen (modal) toont lid-oefeningen; actie kopieert de hele groep naar personal. Bulk-selectie (Review-queue-patroon) kopieert meerdere groepen.
+- Kopie zet `source_group_id` op de personal groep; timestamp = `created_at` van die kopie. Idempotent op `source_group_id` (en legacy: dezelfde groepsnaam).
 - Na kopie wordt het topic (groepsnaam) **actief** gezet in `user_topic_preferences` zodat oefenen/SRS werkt.
-- Idempotent op groepsnaam: bestaat er al een persoonlijke groep met dezelfde naam, dan geen tweede kopie.
+- `/leerplan` toont alleen persoonlijke groepen als **overzichtstabel**: herkomst (Persoonlijk / Community via `source_group_id`), Bewerkt (ja als minstens één lid handmatig is aangepast), tags, aantal oefeningen, actief-toggle, hard delete met bevestiging. Zoeken + filters (herkomst / bewerkt / actief); link naar Community → Overnemen. **Klik op een rij** opent `/leerplan/[id]` om lid-oefeningen te bewerken (read-only tabel + bewerk-modal).
 - Community-materiaal wordt niet meer “in place” geactiveerd; practice gebeurt via persoonlijke kopie.
 
 ### Duplicate / al-community

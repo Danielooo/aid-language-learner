@@ -71,7 +71,12 @@ function offerButtonLabel(state: GroupOfferState | undefined, busy: boolean) {
   if (state === "pending") return "Al aangeboden (pending)";
   if (state === "approved") return "Al goedgekeurd";
   if (state === "empty") return "Lege groep";
+  // available + rejected: opnieuw / voor het eerst aanbieden
   return "Aanbieden aan de community";
+}
+
+function canOfferWithState(state: GroupOfferState | undefined): boolean {
+  return state === "available" || state === "rejected";
 }
 
 /**
@@ -106,7 +111,7 @@ export function CommunityGroupModal({
 
   const canOffer =
     mode === "offer" &&
-    offerState === "available" &&
+    canOfferWithState(offerState) &&
     !busy &&
     !loading &&
     members.length > 0;
@@ -115,13 +120,6 @@ export function CommunityGroupModal({
   if (mode === "offer") {
     footer = (
       <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-3">
-        {offerState === "pending" || offerState === "approved" ? (
-          <p className="mr-auto text-sm text-muted-foreground">
-            {offerState === "pending"
-              ? "Deze oefeningengroep wacht op review."
-              : "Deze oefeningengroep is al goedgekeurd voor de community."}
-          </p>
-        ) : null}
         <button
           type="button"
           disabled={!canOffer}

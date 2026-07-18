@@ -297,12 +297,13 @@ export function AdminReviewQueue() {
           <table className="w-full min-w-[40rem] text-left text-sm">
             <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
               <tr>
-                <th className="px-3 py-2">
+                <th className="w-10 px-3 py-2 align-middle">
                   <input
                     type="checkbox"
                     checked={allSelected}
                     onChange={toggleAll}
                     aria-label="Alles selecteren"
+                    className="size-4 rounded border-border accent-accent"
                   />
                 </th>
                 <th className="px-3 py-2">Groep</th>
@@ -327,7 +328,7 @@ export function AdminReviewQueue() {
                     className="cursor-pointer border-b border-border/60 hover:bg-muted/40"
                   >
                     <td
-                      className="px-3 py-2"
+                      className="px-3 py-2 align-middle"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <input
@@ -335,6 +336,7 @@ export function AdminReviewQueue() {
                         checked={selected.has(row.id)}
                         onChange={() => toggle(row.id)}
                         aria-label={`Selecteer ${snap.name}`}
+                        className="size-4 rounded border-border accent-accent"
                       />
                     </td>
                     <td className="px-3 py-2 font-medium text-foreground">

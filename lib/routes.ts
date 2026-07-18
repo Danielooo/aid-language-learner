@@ -7,7 +7,6 @@ export const APP_ROUTES = {
   sorteren: "/oefenen/sorteren",
   leerplan: "/leerplan",
   community: "/community",
-  oefeningen: "/oefeningen",
   generator: "/generator",
   voortgang: "/voortgang",
   profiel: "/profiel",
@@ -21,3 +20,8 @@ export const APP_ROUTES = {
 } as const;
 
 export type AppRoute = (typeof APP_ROUTES)[keyof typeof APP_ROUTES];
+
+/** Bewerkpagina van een persoonlijke oefeningengroep. */
+export function leerplanGroupPath(groupId: string): string {
+  return `${APP_ROUTES.leerplan}/${groupId}`;
+}

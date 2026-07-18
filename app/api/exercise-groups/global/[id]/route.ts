@@ -11,8 +11,13 @@ export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+type PersonalCopyRow = {
+  id: string;
+  created_at: string;
+};
+
 /**
- * Detail van een actieve globale groep inclusief lid-oefeningen.
+ * Detail van een actieve community-groep inclusief lid-oefeningen.
  */
 export async function GET(
   _req: Request,
@@ -49,7 +54,7 @@ export async function GET(
 
   const groupName = (globalGroup.name as string).trim();
 
-  const [membersRes, personalRes] = await Promise.all([
+  const [membersRes, bySourceRes, byNameRes] = await Promise.all([
     access.supabase
       .from("exercises")
       .select("id, source_text, target_text, tags, topic")
@@ -58,7 +63,13 @@ export async function GET(
       .order("created_at", { ascending: true }),
     access.supabase
       .from("exercise_groups")
-      .select("id")
+      .select("id, created_at")
+      .eq("owner_id", access.userId)
+      .eq("source_group_id", id)
+      .maybeSingle(),
+    access.supabase
+      .from("exercise_groups")
+      .select("id, created_at")
       .eq("owner_id", access.userId)
       .eq("name", groupName)
       .maybeSingle(),
@@ -73,11 +84,20 @@ export async function GET(
       { status: 500 },
     );
   }
-  if (personalRes.error) {
+  if (bySourceRes.error) {
     return Response.json(
       {
         ok: false,
-        error: personalRes.error.message,
+        error: bySourceRes.error.message,
+      } satisfies ExerciseGroupsFailure,
+      { status: 500 },
+    );
+  }
+  if (byNameRes.error) {
+    return Response.json(
+      {
+        ok: false,
+        error: byNameRes.error.message,
       } satisfies ExerciseGroupsFailure,
       { status: 500 },
     );
@@ -91,11 +111,16 @@ export async function GET(
     topic: (row.topic as string | null) ?? null,
   }));
 
+  const match =
+    (bySourceRes.data as PersonalCopyRow | null) ??
+    (byNameRes.data as PersonalCopyRow | null);
+
   const detail: ExerciseGroupDetail = {
     id: globalGroup.id as string,
     name: groupName,
     exerciseCount: members.length,
-    alreadyCopied: Boolean(personalRes.data?.id),
+    alreadyCopied: Boolean(match?.id),
+    copiedAt: match?.created_at ?? null,
     members,
   };
 

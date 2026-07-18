@@ -133,7 +133,7 @@ export function TopicCombobox({
         }}
         onKeyDown={handleKeyDown}
         placeholder="Alle onderwerpen"
-        className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+        className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
       />
       {showDropdown && (
         <ul
@@ -148,7 +148,7 @@ export function TopicCombobox({
               role="option"
               aria-selected={index === highlightIndex}
               className={cn(
-                "cursor-pointer px-2 py-1.5 text-xs",
+                "cursor-pointer px-2 py-1.5 text-sm",
                 index === highlightIndex
                   ? "bg-accent/15 text-foreground"
                   : "text-foreground hover:bg-muted",

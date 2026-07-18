@@ -3,12 +3,19 @@
 import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useAppProfile } from "@/app/(app)/_components/app-profile-provider";
 import { AppPageHeader } from "@/app/_components/ui/app-page-header";
-import { useMyExercisesSummary } from "@/lib/exercises/use-my-exercises-summary";
+import {
+  useTextGeneratorDraft,
+  type PersistedChatMessage,
+} from "@/lib/hooks/use-text-generator-draft";
+import { USER_AI_REQUESTS_PER_DAY } from "@/types/exercise-group-submission";
 
+import {
+  GeneratorSavedGroupModal,
+  type SavedGroupMember,
+} from "./generator-saved-group-modal";
 import { ProposalTable } from "./proposal-table";
 import type {
   ExercisesPersistBody,
@@ -17,16 +24,16 @@ import type {
 } from "./proposal-table-adapter";
 import { mergeProposalBatches } from "./proposal-table-adapter";
 
-import type { UIMessage } from "ai";
-
 // Genereert Spaans→NL vertaaloefeningen via de Vercel AI SDK. De chatbot
 // krijgt één tool `proposeExercises` aangereikt; zodra die met output is
-// aangeroepen rendert de UI een tabel met een "Opslaan"-knop.
+// aangeroepen rendert de UI een tabel met een "Groep opslaan"-knop.
 
 type PersistResponse =
   | {
       ok: true;
       inserted: number;
+      groupId?: string;
+      groupName?: string;
       rows: Array<{
         id: string;
         source_text: string;
@@ -45,6 +52,17 @@ type PersistResponse =
       issues?: unknown;
     };
 
+type AiQuotaView = {
+  remaining: number | null;
+  limit: number;
+  disabled: boolean;
+};
+
+type SavedGroupSnapshot = {
+  name: string;
+  members: SavedGroupMember[];
+};
+
 const SUGGESTIONS = [
   "Geef me 10 zinnen die je nodig hebt bij een autogarage",
   "Genereer 8 zinnen voor in een restaurant",
@@ -53,12 +71,22 @@ const SUGGESTIONS = [
 
 const APPEND_SUGGESTION = "Voeg nog 5 zinnen toe";
 
-export function ExerciseGenerator() {
-  const { displayLabel } = useAppProfile();
-  const { stats: exerciseStats, loading: summaryLoading } = useMyExercisesSummary();
+type ExerciseGeneratorProps = {
+  /** Verberg AppPageHeader wanneer de parent (tabs) die al toont. */
+  hideHeader?: boolean;
+};
+
+export function ExerciseGenerator({ hideHeader = false }: ExerciseGeneratorProps) {
+  const draft = useTextGeneratorDraft();
+  const restoredRef = useRef(false);
+
   const [input, setInput] = useState("");
   const [batches, setBatches] = useState<ProposalBatch[]>([]);
+  const [chatLog, setChatLog] = useState<PersistedChatMessage[]>([]);
+  const [draftSelectedIds, setDraftSelectedIds] = useState<number[]>([]);
+  const [draftTopic, setDraftTopic] = useState("");
   const processedBatchIds = useRef(new Set<string>());
+  const batchesRef = useRef<ProposalBatch[]>([]);
   const mergedProposalRef = useRef<ProposeExercisesOutput | null>(null);
   const [persistState, setPersistState] = useState<{
     status: "idle" | "saving" | "success" | "error";
@@ -66,6 +94,28 @@ export function ExerciseGenerator() {
     response: PersistResponse | null;
     error: string | null;
   }>({ status: "idle", requestBody: null, response: null, error: null });
+  const [savedGroup, setSavedGroup] = useState<SavedGroupSnapshot | null>(null);
+  const [savedModalOpen, setSavedModalOpen] = useState(false);
+  const [aiQuota, setAiQuota] = useState<AiQuotaView | null>(null);
+
+  // Eenmalig draft herstellen na mount (localStorage).
+  /* eslint-disable react-hooks/set-state-in-effect -- hydrate from localStorage */
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const snap = draft.snapshot;
+    if (!snap) return;
+    if (snap.batches.length === 0 && snap.messages.length === 0) return;
+    setBatches(snap.batches);
+    setChatLog(snap.messages);
+    setDraftSelectedIds(snap.selectedAudioIds);
+    setDraftTopic(snap.topic);
+    batchesRef.current = snap.batches;
+    for (const batch of snap.batches) {
+      processedBatchIds.current.add(batch.id);
+    }
+  }, [draft.snapshot]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const mergedProposal = useMemo(
     () => (batches.length > 0 ? mergeProposalBatches(batches) : null),
@@ -75,23 +125,75 @@ export function ExerciseGenerator() {
     mergedProposalRef.current = mergedProposal;
   }, [mergedProposal]);
 
+  useEffect(() => {
+    batchesRef.current = batches;
+  }, [batches]);
+
+  // Batches + chat + meta persistent houden.
+  useEffect(() => {
+    if (!restoredRef.current) return;
+    if (batches.length === 0 && chatLog.length === 0) {
+      draft.clear();
+      return;
+    }
+    draft.save({
+      batches,
+      selectedAudioIds: draftSelectedIds,
+      topic: draftTopic || mergedProposal?.topic || "",
+      messages: chatLog,
+    });
+  }, [
+    batches,
+    chatLog,
+    draftSelectedIds,
+    draftTopic,
+    draft,
+    mergedProposal?.topic,
+  ]);
+
+  const refreshAiQuota = useCallback(async () => {
+    try {
+      const res = await fetch("/api/exercises/ai-quota");
+      const json = (await res.json()) as
+        | {
+            ok: true;
+            remaining: number | null;
+            limit: number;
+            disabled: boolean;
+          }
+        | { ok: false; error: string };
+      if (!res.ok || !json.ok) return;
+      setAiQuota({
+        remaining: json.remaining,
+        limit: json.limit,
+        disabled: json.disabled,
+      });
+    } catch {
+      // Quota-badge is nice-to-have; stil falen mag.
+    }
+  }, []);
+
+  /* eslint-disable react-hooks/set-state-in-effect -- AI-quota ophalen bij mount */
+  useEffect(() => {
+    void refreshAiQuota();
+  }, [refreshAiQuota]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   // De `body`-callback wordt pas door de AI SDK aangeroepen bij het
   // versturen van een bericht, dus `.current` lezen is daar veilig.
-  // ESLint's `react-hooks/refs` ziet dat verschil niet — vandaar de
-  // localized disable (zelfde patroon als exercise-chat.tsx).
   /* eslint-disable react-hooks/refs */
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/exercises/chat",
         body: () => {
-          const draft = mergedProposalRef.current;
-          if (!draft || draft.exercises.length === 0) return {};
+          const current = mergedProposalRef.current;
+          if (!current || current.exercises.length === 0) return {};
           return {
             draftSummary: {
-              topic: draft.topic,
-              count: draft.exercises.length,
-              existingSourceTexts: draft.exercises.map(
+              topic: current.topic,
+              count: current.exercises.length,
+              existingSourceTexts: current.exercises.map(
                 (exercise) => exercise.source_text,
               ),
             },
@@ -107,9 +209,39 @@ export function ExerciseGenerator() {
   });
 
   const isBusy = status === "submitted" || status === "streaming";
+  const wasBusyRef = useRef(false);
 
   useEffect(() => {
+    if (isBusy) {
+      wasBusyRef.current = true;
+      return;
+    }
+    if (wasBusyRef.current && status === "ready") {
+      wasBusyRef.current = false;
+      void refreshAiQuota();
+    }
+  }, [isBusy, status, refreshAiQuota]);
+
+  /* eslint-disable react-hooks/set-state-in-effect -- tool-output sync naar batch-stack */
+  useEffect(() => {
     for (const msg of messages) {
+      if (msg.role === "user") {
+        const text = msg.parts
+          .filter(
+            (part): part is { type: "text"; text: string } =>
+              part.type === "text",
+          )
+          .map((part) => part.text)
+          .join("")
+          .trim();
+        if (!text) continue;
+        setChatLog((prev) => {
+          if (prev.some((entry) => entry.id === msg.id)) return prev;
+          return [...prev, { id: msg.id, role: "user", text }];
+        });
+        continue;
+      }
+
       if (msg.role !== "assistant") continue;
       for (const part of msg.parts) {
         if (
@@ -121,14 +253,50 @@ export function ExerciseGenerator() {
           const batchId = `${msg.id}:proposeExercises`;
           if (processedBatchIds.current.has(batchId)) continue;
           processedBatchIds.current.add(batchId);
-          setBatches((prev) => [
-            ...prev,
-            { id: batchId, proposal: output },
-          ]);
+
+          const seen = new Set(
+            batchesRef.current.flatMap((batch) =>
+              batch.proposal.exercises.map((ex) =>
+                ex.source_text.trim().toLowerCase(),
+              ),
+            ),
+          );
+          const unique = output.exercises.filter((ex) => {
+            const key = ex.source_text.trim().toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          if (unique.length === 0) continue;
+
+          const nextBatch: ProposalBatch = {
+            id: batchId,
+            proposal: {
+              topic: output.topic,
+              exercises: unique,
+            },
+          };
+          batchesRef.current = [...batchesRef.current, nextBatch];
+          setBatches(batchesRef.current);
+
+          const count = unique.length;
+          const statusId = `status:${batchId}`;
+          const statusText =
+            count === 1
+              ? "1 oefening toegevoegd"
+              : `${count} oefeningen toegevoegd`;
+          setChatLog((log) => {
+            if (log.some((entry) => entry.id === statusId)) return log;
+            return [
+              ...log,
+              { id: statusId, role: "status", text: statusText },
+            ];
+          });
         }
       }
     }
   }, [messages]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -140,8 +308,13 @@ export function ExerciseGenerator() {
 
   function handleClearChat() {
     setMessages([]);
+    setChatLog([]);
     setBatches([]);
+    batchesRef.current = [];
+    setDraftSelectedIds([]);
+    setDraftTopic("");
     processedBatchIds.current.clear();
+    draft.clear();
     setPersistState({
       status: "idle",
       requestBody: null,
@@ -150,20 +323,20 @@ export function ExerciseGenerator() {
     });
   }
 
-  function handleUndoLastBatch() {
-    setBatches((prev) => prev.slice(0, -1));
+  function handleCloseSavedModal() {
+    setSavedModalOpen(false);
   }
 
-  function resetGenerator() {
-    setMessages([]);
-    setBatches([]);
-    processedBatchIds.current.clear();
-    setPersistState({
-      status: "idle",
-      requestBody: null,
-      response: null,
-      error: null,
-    });
+  function handleDraftMetaChange(meta: {
+    selectedAudioIds: number[];
+    topic: string;
+  }) {
+    setDraftSelectedIds((prev) =>
+      sameNumberArrays(prev, meta.selectedAudioIds)
+        ? prev
+        : meta.selectedAudioIds,
+    );
+    setDraftTopic((prev) => (prev === meta.topic ? prev : meta.topic));
   }
 
   async function handleSave(requestBody: ExercisesPersistBody) {
@@ -190,13 +363,35 @@ export function ExerciseGenerator() {
         });
         return;
       }
+
+      const members: SavedGroupMember[] = requestBody.exercises.map(
+        (ex, index) => ({
+          key: `${ex.source_text}-${index}`,
+          source_text: ex.source_text,
+          target_text: ex.target_text,
+          tags: ex.tags,
+        }),
+      );
+      setSavedGroup({
+        name: json.groupName ?? requestBody.topic,
+        members,
+      });
+      setSavedModalOpen(true);
+
+      setMessages([]);
+      setChatLog([]);
+      setBatches([]);
+      batchesRef.current = [];
+      setDraftSelectedIds([]);
+      setDraftTopic("");
+      processedBatchIds.current.clear();
+      draft.clear();
       setPersistState({
         status: "success",
         requestBody,
         response: json,
         error: null,
       });
-      resetGenerator();
     } catch (err) {
       setPersistState({
         status: "error",
@@ -207,18 +402,19 @@ export function ExerciseGenerator() {
     }
   }
 
+  const quotaLabel = formatQuotaLabel(aiQuota);
+  const canClear = chatLog.length > 0 || messages.length > 0 || batches.length > 0;
+  const showEmptyHints = chatLog.length === 0 && batches.length === 0;
+
   return (
     <div className="space-y-6">
-      <AppPageHeader
-        eyebrow="Mijn materiaal"
-        title="Generator"
-        accountLabel={displayLabel}
-        description='Vraag de chatbot om Spaans→Nederlands vertaaloefeningen voor een onderwerp, bijvoorbeeld "10 zinnen voor in een restaurant". Je reviewt het voorstel en klikt "Opslaan" om ze aan je eigen oefeningen toe te voegen.'
-        stats={exerciseStats.map((stat) => ({
-          ...stat,
-          loading: summaryLoading,
-        }))}
-      />
+      {!hideHeader && (
+        <AppPageHeader
+          eyebrow="Mijn materiaal"
+          title="Generator"
+          description='Vraag de chatbot om Spaans→Nederlands vertaaloefeningen voor een onderwerp, bijvoorbeeld "10 zinnen voor in een restaurant". Je reviewt het voorstel en klikt "Groep opslaan" om ze aan je eigen oefeningen toe te voegen.'
+        />
+      )}
 
       {persistState.status === "success" && (
         <p className="rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-foreground">
@@ -241,7 +437,7 @@ export function ExerciseGenerator() {
               Status:{" "}
               <code className="font-mono text-foreground">{status}</code>
             </span>
-            {messages.length > 0 && (
+            {canClear && (
               <button
                 type="button"
                 onClick={handleClearChat}
@@ -254,7 +450,7 @@ export function ExerciseGenerator() {
         </header>
 
         <div className="min-h-[120px] space-y-3 rounded-md border border-dashed border-border bg-muted/30 p-3 text-sm">
-          {messages.length === 0 && (
+          {showEmptyHints && (
             <div className="space-y-2">
               <p className="text-muted-foreground">
                 Nog geen berichten. Probeer:
@@ -274,19 +470,14 @@ export function ExerciseGenerator() {
               </ul>
             </div>
           )}
-          {messages.length > 0 && batches.length > 0 && (
-            <div className="pb-2">
-              <button
-                type="button"
-                onClick={() => setInput(APPEND_SUGGESTION)}
-                className="text-left font-mono text-xs text-accent hover:underline"
-              >
-                &quot;{APPEND_SUGGESTION}&quot;
-              </button>
-            </div>
+          {chatLog.length === 0 && batches.length > 0 && (
+            <p className="text-muted-foreground">
+              Hersteld voorstel uit je vorige sessie. Genereer verder of sla de
+              groep op.
+            </p>
           )}
-          {messages.map((m) => (
-            <MessageBubble key={m.id} message={m} />
+          {chatLog.map((entry) => (
+            <ChatLogEntry key={entry.id} entry={entry} />
           ))}
         </div>
 
@@ -295,6 +486,16 @@ export function ExerciseGenerator() {
             <p className="font-medium">Fout in chat-request</p>
             <pre className="mt-1 font-mono">{error.message}</pre>
           </div>
+        )}
+
+        {batches.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setInput(APPEND_SUGGESTION)}
+            className="text-left font-mono text-xs text-accent hover:underline"
+          >
+            &quot;{APPEND_SUGGESTION}&quot;
+          </button>
         )}
 
         <form onSubmit={handleSubmit} className="flex gap-2">
@@ -327,67 +528,66 @@ export function ExerciseGenerator() {
             </button>
           )}
         </form>
+
+        {quotaLabel && (
+          <p className="text-[11px] text-muted-foreground">{quotaLabel}</p>
+        )}
       </section>
 
       {mergedProposal && batches.length > 0 && (
         <ProposalTable
           batches={batches}
           proposal={mergedProposal}
-          canUndo={batches.length >= 1}
-          onUndo={handleUndoLastBatch}
           persistState={persistState}
           onSave={handleSave}
+          initialSelectedIds={draftSelectedIds}
+          initialTopic={draftTopic || mergedProposal.topic}
+          onDraftMetaChange={handleDraftMetaChange}
         />
       )}
+
+      <GeneratorSavedGroupModal
+        open={savedModalOpen}
+        name={savedGroup?.name ?? null}
+        members={savedGroup?.members ?? []}
+        onClose={handleCloseSavedModal}
+      />
     </div>
   );
 }
 
-function MessageBubble({ message }: { message: UIMessage }) {
-  const isUser = message.role === "user";
+function formatQuotaLabel(quota: AiQuotaView | null): string | null {
+  if (!quota) return null;
+  if (quota.disabled) {
+    return "AI-generatie is uitgeschakeld voor jouw account.";
+  }
+  if (quota.remaining === null) {
+    return "AI-requests: onbeperkt";
+  }
+  const limit = quota.limit || USER_AI_REQUESTS_PER_DAY;
+  return `Nog ${quota.remaining} van ${limit} AI-requests vandaag`;
+}
+
+function ChatLogEntry({ entry }: { entry: PersistedChatMessage }) {
+  if (entry.role === "status") {
+    return (
+      <p className="text-xs text-muted-foreground">{entry.text}</p>
+    );
+  }
+
   return (
-    <div
-      className={`rounded-md border px-3 py-2 ${isUser
-          ? "border-accent/40 bg-accent/10"
-          : "border-border bg-background"
-        }`}
-    >
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {message.role}
-      </p>
-      <div className="mt-1 space-y-1 text-sm text-foreground">
-        {message.parts.map((part, i) => {
-          if (part.type === "text") {
-            return (
-              <span key={i} className="whitespace-pre-wrap">
-                {part.text}
-              </span>
-            );
-          }
-          if (part.type === "tool-proposeExercises") {
-            return <ToolPartHint key={i} state={part.state} />;
-          }
-          return null;
-        })}
-      </div>
+    <div className="rounded-md border border-accent/40 bg-accent/10 px-3 py-2">
+      <p className="whitespace-pre-wrap text-sm text-foreground">{entry.text}</p>
     </div>
   );
 }
 
-function ToolPartHint({ state }: { state: string }) {
-  const label =
-    state === "input-streaming"
-      ? "→ proposeExercises: input wordt gegenereerd..."
-      : state === "input-available"
-        ? "→ proposeExercises: tool aangeroepen, wachten op execute..."
-        : state === "output-available"
-          ? "✓ proposeExercises: output beschikbaar (zie tabel hieronder)"
-          : state === "output-error"
-            ? "✗ proposeExercises: error"
-            : `→ proposeExercises [${state}]`;
-  return (
-    <p className="font-mono text-xs text-muted-foreground">{label}</p>
-  );
+function sameNumberArrays(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
 }
 
 // Valideer tool-output voordat we 'm op de batch-stack zetten.

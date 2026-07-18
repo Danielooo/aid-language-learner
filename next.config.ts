@@ -4,8 +4,13 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: "/oefeningen/generator",
-        destination: "/generator",
+        source: "/oefeningen",
+        destination: "/leerplan",
+        permanent: true,
+      },
+      {
+        source: "/oefeningen/:path*",
+        destination: "/leerplan",
         permanent: true,
       },
     ];
