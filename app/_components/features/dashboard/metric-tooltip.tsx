@@ -1,15 +1,19 @@
 export const METRIC_TERMS = {
-  "grafiek-srs-stappen": {
-    label: "Oefeningen per SRS-stap",
-    help: "Per SRS-stap: hoeveel oefeningen je X keer goed hebt gehad. Standaard zie je het totaal; schakel naar Verdeeld om aan de beurt (blauw) en wachten (groen) te zien.",
+  "voortgang-samenvatting": {
+    label: "Samenvatting",
+    help: "Het percentage toont hoeveel oefeningen je 9× goed hebt gemaakt (beheerst / langetermijngeheugen). Aan de beurt zijn oefeningen die nu in je herhaalschema speelbaar zijn.",
+  },
+  "voortgang-topics": {
+    label: "Per topic",
+    help: "Klik op een topic voor detail. Status: Nog starten (0%), Bezig, Ver gevorderd (≥70%) of Beheerst (100%). Beheerst = 9× goed.",
+  },
+  "grafiek-komende-herhalingen": {
+    label: "Komende herhalingen",
+    help: "Aantal oefeningen per dag in je herhaalschema voor de komende 7 dagen. Achterstallige oefeningen tellen mee bij vandaag.",
   },
   "grafiek-activiteit": {
     label: "Oefenactiviteit",
-    help: "Schakel tussen Pogingen (donkerblauw = veel, lichtblauw = weinig, grijs = geen) en Nauwkeurigheid (groen = meer goed, rood = meer fout). Nauwkeurigheidskleur geldt vanaf 10 pogingen per dag. Streak telt aaneengesloten dagen met minstens één poging.",
-  },
-  "grafiek-accuracy": {
-    label: "Goed vs fout",
-    help: "Verdeling van je quiz-pogingen: groen = goed, rood = fout. Kies een periode via het menu. Altijd toont maximaal je 5000 meest recente pogingen uit actieve topics.",
+    help: "Aantal quiz-pogingen per dag over de laatste 14 dagen. Streak telt aaneengesloten dagen met minstens één poging.",
   },
 } as const;
 

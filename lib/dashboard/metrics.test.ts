@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildDashboardStats, computeSrsStepDistribution } from "@/lib/dashboard/metrics";
+import {
+  buildDashboardStats,
+  computeSrsStepDistribution,
+  computeTopicProgress,
+  computeUpcomingByDay,
+} from "@/lib/dashboard/metrics";
 
-import type { ProgressRow } from "@/lib/dashboard/types";
+import type { ExerciseTopicRow, ProgressRow } from "@/lib/dashboard/types";
 
 const NOW = new Date("2026-07-09T12:00:00.000Z");
 
@@ -142,5 +147,123 @@ describe("buildDashboardStats", () => {
     );
 
     assert.equal(chartDueTotal, stats.dueNowCount);
+  });
+
+  it("telt masteredCount bij 9× goed of meer", () => {
+    const rows: ProgressRow[] = [
+      makeRow({ exercise_id: "a", repetition_count: 8 }),
+      makeRow({
+        exercise_id: "b",
+        repetition_count: 9,
+        interval_days: 90,
+        last_reviewed_at: "2026-06-01T12:00:00.000Z",
+        next_review_at: "2026-09-01T12:00:00.000Z",
+      }),
+      makeRow({
+        exercise_id: "c",
+        repetition_count: 10,
+        interval_days: 180,
+        last_reviewed_at: "2026-01-01T12:00:00.000Z",
+        next_review_at: "2026-12-01T12:00:00.000Z",
+      }),
+    ];
+    const exercises: ExerciseTopicRow[] = [
+      { id: "a", topic: "A" },
+      { id: "b", topic: "A" },
+      { id: "c", topic: "A" },
+    ];
+
+    const stats = buildDashboardStats(rows, [], NOW, exercises);
+    assert.equal(stats.masteredCount, 2);
+    assert.equal(stats.totalExercises, 3);
+  });
+});
+
+describe("computeTopicProgress", () => {
+  it("berekent % klaar en status per topic, laagste % eerst", () => {
+    const exercises: ExerciseTopicRow[] = [
+      { id: "a1", topic: "Alpha" },
+      { id: "a2", topic: "Alpha" },
+      { id: "b1", topic: "Beta" },
+      { id: "b2", topic: "Beta" },
+      { id: "b3", topic: "Beta" },
+    ];
+    const rows: ProgressRow[] = [
+      makeRow({
+        exercise_id: "a1",
+        repetition_count: 9,
+        interval_days: 90,
+        next_review_at: "2026-09-01T12:00:00.000Z",
+      }),
+      makeRow({
+        exercise_id: "a2",
+        repetition_count: 9,
+        interval_days: 90,
+        next_review_at: "2026-09-01T12:00:00.000Z",
+      }),
+      makeRow({ exercise_id: "b1", repetition_count: 9, next_review_at: "2026-09-01T12:00:00.000Z" }),
+      makeRow({ exercise_id: "b2", repetition_count: 2 }),
+      // b3 zonder progress
+    ];
+
+    const topics = computeTopicProgress(exercises, rows, NOW);
+
+    assert.equal(topics[0]?.topic, "Beta");
+    assert.equal(topics[0]?.masteredCount, 1);
+    assert.equal(topics[0]?.totalCount, 3);
+    assert.equal(topics[0]?.percentMastered, 33);
+    assert.equal(topics[0]?.status, "bezig");
+    assert.equal(topics[0]?.dueCount, 2);
+    assert.deepEqual(topics[0]?.buckets, {
+      nogNiet: 1,
+      bezig: 1,
+      gevorderd: 0,
+      beheerst: 1,
+    });
+
+    assert.equal(topics[1]?.topic, "Alpha");
+    assert.equal(topics[1]?.percentMastered, 100);
+    assert.equal(topics[1]?.status, "beheerst");
+    assert.deepEqual(topics[1]?.buckets, {
+      nogNiet: 0,
+      bezig: 0,
+      gevorderd: 0,
+      beheerst: 2,
+    });
+  });
+});
+
+describe("computeUpcomingByDay", () => {
+  it("bundelt achterstallige reviews onder vandaag en geeft 7 dagen", () => {
+    const exercises: ExerciseTopicRow[] = [
+      { id: "overdue", topic: "A" },
+      { id: "tomorrow", topic: "A" },
+      { id: "fresh", topic: "A" },
+    ];
+    const rows: ProgressRow[] = [
+      makeRow({
+        exercise_id: "overdue",
+        repetition_count: 4,
+        next_review_at: "2026-07-01T12:00:00.000Z",
+      }),
+      makeRow({
+        exercise_id: "tomorrow",
+        repetition_count: 4,
+        next_review_at: "2026-07-10T12:00:00.000Z",
+      }),
+      // fresh: geen progress → vandaag
+    ];
+
+    const upcoming = computeUpcomingByDay(exercises, rows, NOW);
+    assert.equal(upcoming.length, 7);
+
+    const today = upcoming.find((day) => day.label === "Vandaag");
+    const tomorrow = upcoming.find((day) => day.label === "Morgen");
+
+    assert.ok(today);
+    assert.equal(today.count, 2);
+    assert.ok(tomorrow);
+    assert.equal(tomorrow.count, 1);
+    assert.ok(upcoming.every((day) => typeof day.count === "number"));
   });
 });

@@ -1,8 +1,9 @@
 "use client";
 
-import { AccuracyPieChart } from "./accuracy-pie-chart";
-import { ActivityCalendarChart } from "./activity-calendar-chart";
-import { SrsStepDistributionChart } from "./srs-step-distribution-chart";
+import { ActivityBarsChart } from "./activity-bars-chart";
+import { ProgressSummary } from "./progress-summary";
+import { TopicProgressList } from "./topic-progress-list";
+import { UpcomingReviewsChart } from "./upcoming-reviews-chart";
 import { useDashboardStats } from "./use-dashboard-stats";
 
 import type { DashboardStatsResponse } from "@/lib/dashboard/types";
@@ -19,7 +20,6 @@ export function DashboardWithStats() {
 }
 
 export function Dashboard({ stats, loading, error }: DashboardProps) {
-
   if (loading) {
     return <DashboardSkeleton />;
   }
@@ -35,14 +35,17 @@ export function Dashboard({ stats, loading, error }: DashboardProps) {
 
   return (
     <div className="space-y-6">
-      <SrsStepDistributionChart
-        data={stats.srsStepDistribution}
+      <ProgressSummary
+        masteredCount={stats.masteredCount}
         totalExercises={stats.totalExercises}
+        dueNowCount={stats.dueNowCount}
       />
 
+      <TopicProgressList topics={stats.topicProgress} />
+
       <section className="grid gap-6 lg:grid-cols-2">
-        <ActivityCalendarChart data={stats.activityDays} streakDays={stats.streakDays} />
-        <AccuracyPieChart attempts={stats.attemptSnapshots} />
+        <UpcomingReviewsChart data={stats.upcomingByDay} />
+        <ActivityBarsChart data={stats.activityBars} streakDays={stats.streakDays} />
       </section>
     </div>
   );
@@ -51,10 +54,11 @@ export function Dashboard({ stats, loading, error }: DashboardProps) {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="h-80 animate-pulse rounded-lg border border-border bg-muted/40" />
+      <div className="h-32 animate-pulse rounded-lg border border-border bg-muted/40" />
+      <div className="h-44 animate-pulse rounded-md border border-border bg-muted/40" />
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="h-64 animate-pulse rounded-lg border border-border bg-muted/40" />
-        <div className="h-64 animate-pulse rounded-lg border border-border bg-muted/40" />
+        <div className="h-52 animate-pulse rounded-lg border border-border bg-muted/40" />
+        <div className="h-52 animate-pulse rounded-lg border border-border bg-muted/40" />
       </div>
     </div>
   );

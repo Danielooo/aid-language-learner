@@ -1,3 +1,4 @@
+import { MASTERED_REPETITION_THRESHOLD } from "@/lib/srs/mastery";
 import {
   getSrsStepIndex,
   getSrsStepInfo,
@@ -10,13 +11,35 @@ import {
   computeActivityDays,
   computeAttemptStreakDays,
 } from "./attempt-metrics";
+import { toDayKey } from "./streak";
 
 import type {
+  ActivityBar,
   AttemptRow,
   DashboardStatsResponse,
+  ExerciseTopicRow,
   ProgressRow,
   SrsStepBar,
+  TopicProgressBuckets,
+  TopicProgressRow,
+  TopicProgressStatus,
+  UpcomingDay,
 } from "./types";
+
+export const UPCOMING_HORIZON_DAYS = 7;
+export const ACTIVITY_BARS_DAYS = 14;
+
+function emptyBuckets(): TopicProgressBuckets {
+  return { nogNiet: 0, bezig: 0, gevorderd: 0, beheerst: 0 };
+}
+
+/** Deelt een oefening in op basis van repetition_count (geen progress = 0). */
+function bucketKeyForRepetition(repetitionCount: number): keyof TopicProgressBuckets {
+  if (repetitionCount >= MASTERED_REPETITION_THRESHOLD) return "beheerst";
+  if (repetitionCount >= 4) return "gevorderd";
+  if (repetitionCount >= 1) return "bezig";
+  return "nogNiet";
+}
 
 function toCardState(row: ProgressRow) {
   return {
@@ -37,8 +60,38 @@ function isDueRow(row: ProgressRow, now: Date): boolean {
   return isRelearningRow(row) || new Date(row.next_review_at) <= now;
 }
 
+function isMasteredRow(row: ProgressRow): boolean {
+  if (row.is_suspended) return false;
+  return row.repetition_count >= MASTERED_REPETITION_THRESHOLD;
+}
+
 function formatSrsStepLabel(stepIndex: number): string {
   return `${stepIndex}× goed`;
+}
+
+function topicStatusFromPercent(percentMastered: number): TopicProgressStatus {
+  if (percentMastered >= 100) return "beheerst";
+  if (percentMastered >= 70) return "ver-gevorderd";
+  if (percentMastered > 0) return "bezig";
+  return "nog-starten";
+}
+
+function addDaysToDayKey(dayKey: string, days: number): string {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  const utc = new Date(Date.UTC(year!, month! - 1, day! + days, 12, 0, 0));
+  return toDayKey(utc);
+}
+
+function formatUpcomingLabel(dayKey: string, todayKey: string): string {
+  if (dayKey === todayKey) return "Vandaag";
+  if (dayKey === addDaysToDayKey(todayKey, 1)) return "Morgen";
+
+  const [year, month, day] = dayKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year!, month! - 1, day!, 12, 0, 0));
+  return new Intl.DateTimeFormat("nl-NL", {
+    weekday: "short",
+    timeZone: "Europe/Amsterdam",
+  }).format(date);
 }
 
 export function computeSrsStepDistribution(
@@ -82,19 +135,198 @@ export function computeSrsStepDistribution(
   });
 }
 
+/** Voortgang per topic: klaar = 9× goed (beheerst). */
+export function computeTopicProgress(
+  exercises: ReadonlyArray<ExerciseTopicRow>,
+  progressRows: ReadonlyArray<ProgressRow>,
+  now = new Date(),
+): TopicProgressRow[] {
+  const progressByExerciseId = new Map(
+    progressRows.map((row) => [row.exercise_id, row] as const),
+  );
+
+  const byTopic = new Map<
+    string,
+    {
+      totalCount: number;
+      masteredCount: number;
+      dueCount: number;
+      buckets: TopicProgressBuckets;
+    }
+  >();
+
+  for (const exercise of exercises) {
+    const progress = progressByExerciseId.get(exercise.id);
+    if (progress?.is_suspended) continue;
+
+    const bucket = byTopic.get(exercise.topic) ?? {
+      totalCount: 0,
+      masteredCount: 0,
+      dueCount: 0,
+      buckets: emptyBuckets(),
+    };
+    bucket.totalCount += 1;
+
+    const repetitionCount = progress?.repetition_count ?? 0;
+    bucket.buckets[bucketKeyForRepetition(repetitionCount)] += 1;
+
+    if (progress) {
+      if (isMasteredRow(progress)) bucket.masteredCount += 1;
+      if (isDueRow(progress, now)) bucket.dueCount += 1;
+    } else {
+      // Geen progress-rij = direct aan de beurt
+      bucket.dueCount += 1;
+    }
+
+    byTopic.set(exercise.topic, bucket);
+  }
+
+  return Array.from(byTopic.entries())
+    .map(([topic, bucket]) => {
+      const percentMastered =
+        bucket.totalCount === 0
+          ? 0
+          : Math.round((bucket.masteredCount / bucket.totalCount) * 100);
+      return {
+        topic,
+        totalCount: bucket.totalCount,
+        masteredCount: bucket.masteredCount,
+        dueCount: bucket.dueCount,
+        percentMastered,
+        status: topicStatusFromPercent(percentMastered),
+        buckets: bucket.buckets,
+      };
+    })
+    .sort((a, b) => {
+      if (a.percentMastered !== b.percentMastered) {
+        return a.percentMastered - b.percentMastered;
+      }
+      return a.topic.localeCompare(b.topic, "nl");
+    });
+}
+
+/**
+ * Herhalingen per kalenderdag (Europe/Amsterdam).
+ * Achterstallig + alles tot einde vandaag → "Vandaag".
+ * Geeft altijd `horizonDays` dagen terug (inclusief nullen).
+ */
+export function computeUpcomingByDay(
+  exercises: ReadonlyArray<ExerciseTopicRow>,
+  progressRows: ReadonlyArray<ProgressRow>,
+  now = new Date(),
+  horizonDays = UPCOMING_HORIZON_DAYS,
+): UpcomingDay[] {
+  const todayKey = toDayKey(now);
+  const lastKey = addDaysToDayKey(todayKey, horizonDays - 1);
+  const progressByExerciseId = new Map(
+    progressRows.map((row) => [row.exercise_id, row] as const),
+  );
+
+  const counts = new Map<string, number>();
+
+  for (const exercise of exercises) {
+    const progress = progressByExerciseId.get(exercise.id);
+    if (progress?.is_suspended) continue;
+
+    if (!progress) {
+      counts.set(todayKey, (counts.get(todayKey) ?? 0) + 1);
+      continue;
+    }
+
+    const reviewDay = toDayKey(new Date(progress.next_review_at));
+    const bucketDay = reviewDay <= todayKey ? todayKey : reviewDay;
+    if (bucketDay > lastKey) continue;
+
+    counts.set(bucketDay, (counts.get(bucketDay) ?? 0) + 1);
+  }
+
+  const out: UpcomingDay[] = [];
+  for (let i = 0; i < horizonDays; i++) {
+    const day = addDaysToDayKey(todayKey, i);
+    out.push({
+      day,
+      label: formatUpcomingLabel(day, todayKey),
+      count: counts.get(day) ?? 0,
+    });
+  }
+  return out;
+}
+
+export function computeActivityBars(
+  attemptRows: ReadonlyArray<AttemptRow>,
+  now = new Date(),
+  days = ACTIVITY_BARS_DAYS,
+): ActivityBar[] {
+  return computeActivityDays(attemptRows, days, now).map(
+    ({ day, count, correct, incorrect }) => ({
+      day,
+      count,
+      correct,
+      incorrect,
+    }),
+  );
+}
+
 export function buildDashboardStats(
   progressRows: ReadonlyArray<ProgressRow>,
   attemptRows: ReadonlyArray<AttemptRow> = [],
   now = new Date(),
+  exercises: ReadonlyArray<ExerciseTopicRow> = [],
 ): DashboardStatsResponse {
-  const activeRows = progressRows.filter((row) => !row.is_suspended);
-  const dueNowCount = activeRows.filter((row) => isDueRow(row, now)).length;
-  const relearningCount = activeRows.filter((row) => isRelearningRow(row)).length;
+  const progressByExerciseId = new Map(
+    progressRows.map((row) => [row.exercise_id, row] as const),
+  );
+
+  // Schema-totalen: alle oefeningen in actieve topics, behalve geschorst
+  const schemaExercises = exercises.filter((exercise) => {
+    const progress = progressByExerciseId.get(exercise.id);
+    return !progress?.is_suspended;
+  });
+
+  let dueNowCount = 0;
+  let relearningCount = 0;
+  let masteredCount = 0;
+
+  for (const exercise of schemaExercises) {
+    const progress = progressByExerciseId.get(exercise.id);
+    if (!progress) {
+      dueNowCount += 1;
+      continue;
+    }
+    if (isDueRow(progress, now)) dueNowCount += 1;
+    if (isRelearningRow(progress)) relearningCount += 1;
+    if (isMasteredRow(progress)) masteredCount += 1;
+  }
+
+  // Fallback wanneer caller nog geen exercises doorgeeft (oude tests)
+  const totalExercises =
+    exercises.length > 0
+      ? schemaExercises.length
+      : progressRows.filter((row) => !row.is_suspended).length;
+
+  const fallbackMastered =
+    exercises.length > 0
+      ? masteredCount
+      : progressRows.filter((row) => isMasteredRow(row)).length;
+
+  const fallbackDue =
+    exercises.length > 0
+      ? dueNowCount
+      : progressRows.filter((row) => isDueRow(row, now)).length;
+
+  const fallbackRelearning =
+    exercises.length > 0
+      ? relearningCount
+      : progressRows.filter((row) => isRelearningRow(row)).length;
 
   return {
-    totalExercises: activeRows.length,
-    dueNowCount,
-    relearningCount,
+    totalExercises,
+    masteredCount: fallbackMastered,
+    dueNowCount: fallbackDue,
+    relearningCount: fallbackRelearning,
+    topicProgress: computeTopicProgress(exercises, progressRows, now),
+    upcomingByDay: computeUpcomingByDay(exercises, progressRows, now),
+    activityBars: computeActivityBars(attemptRows, now),
     srsStepDistribution: computeSrsStepDistribution(progressRows, now),
     streakDays: computeAttemptStreakDays(attemptRows, now),
     activityDays: computeActivityDays(attemptRows, ACTIVITY_CALENDAR_DAYS, now),

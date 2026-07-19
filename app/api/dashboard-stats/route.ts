@@ -3,7 +3,7 @@ import { createMockDashboardStats } from "@/lib/dashboard/mock-data";
 import { getExerciseUserAccess } from "@/lib/exercises/exercise-access";
 import { getActiveTopicsForUser, isTopicActive } from "@/lib/topics/active-topics";
 
-import type { AttemptRow, ProgressRow } from "@/lib/dashboard/types";
+import type { AttemptRow, ExerciseTopicRow, ProgressRow } from "@/lib/dashboard/types";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +61,10 @@ export async function GET(req: Request) {
     topicByExerciseId.set(row.id, row.topic);
   }
 
+  const exercises: ExerciseTopicRow[] = (exerciseTopicsRes.data ?? [])
+    .filter((row) => row.topic != null && isTopicActive(activeTopics, row.topic))
+    .map((row) => ({ id: row.id, topic: row.topic as string }));
+
   const progressRows = ((progressRes.data ?? []) as unknown as ProgressRow[]).filter(
     (row) => {
       const topic = topicByExerciseId.get(row.exercise_id) ?? null;
@@ -78,5 +82,5 @@ export async function GET(req: Request) {
     }))
     .filter((row) => isTopicActive(activeTopics, row.topic));
 
-  return Response.json(buildDashboardStats(progressRows, attemptRows, now));
+  return Response.json(buildDashboardStats(progressRows, attemptRows, now, exercises));
 }
