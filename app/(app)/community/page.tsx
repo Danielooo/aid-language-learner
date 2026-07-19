@@ -12,7 +12,7 @@ export default function CommunityPage() {
     <div className="space-y-6">
       <AppPageHeader
         title="Community"
-        description="Bied oefeningengroepen aan onder Bijdragen, of haal goedgekeurde community-groepen binnen onder Overnemen."
+        description="Haal onder Overnemen een goedgekeurd community-topic binnen als bewerkbare kopie in je leerplan, of bied eigen topics aan onder Bijdragen."
       />
       <CommunityPageContent />
     </div>

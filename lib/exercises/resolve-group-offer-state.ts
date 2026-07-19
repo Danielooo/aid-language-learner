@@ -7,6 +7,7 @@ export type OfferSubmissionRow = {
   created_at: string;
   updated_at: string;
   reviewed_at: string | null;
+  reject_reason?: string | null;
 };
 
 export type ResolvedGroupOffer = {

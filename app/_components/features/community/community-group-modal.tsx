@@ -153,7 +153,7 @@ export function CommunityGroupModal({
               ? "Laden…"
               : mode === "snapshot"
                 ? `${members.length} oefening${members.length === 1 ? "" : "en"} in de ingeleverde snapshot`
-                : `${members.length} oefening${members.length === 1 ? "" : "en"} in deze oefeningengroep`}
+                : `${members.length} oefening${members.length === 1 ? "" : "en"} in dit topic`}
           </p>
           <button
             type="button"
@@ -184,7 +184,7 @@ export function CommunityGroupModal({
             </div>
           ) : members.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Geen oefeningen in deze oefeningengroep.
+              Geen oefeningen in dit topic.
             </p>
           ) : (
             members.map((ex) => (

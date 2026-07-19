@@ -32,6 +32,8 @@ export type ExerciseGroupListItem = {
   offerState?: GroupOfferState;
   /** ISO-timestamp van die laatste status; null als nooit aangeboden. */
   offerStatusAt?: string | null;
+  /** Community: afwijsreden van de laatste submission (alleen bij rejected). */
+  rejectReason?: string | null;
   /**
    * Personal: bron-community-groep; null = zelf gemaakt (of legacy zonder link).
    */
@@ -96,6 +98,8 @@ export type ExerciseGroupBulkCopySuccess = {
 export type ExerciseGroupsFailure = {
   ok: false;
   error: string;
+  code?: "NAME_CONFLICT";
+  suggestedName?: string;
 };
 
 export type ExerciseGroupSubmitSuccess = {
