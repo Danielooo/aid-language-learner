@@ -1,0 +1,67 @@
+---
+description: Product-UX — loading, empty, feedback, forms, quiz-a11y (geen chrome/copy)
+globs: app/(app)/**/*.tsx,app/_components/features/**/*.tsx,app/_components/ui/**/*.tsx
+alwaysApply: false
+---
+
+# Product-UX (interactie & feedback)
+
+Dit geldt voor **loading, empty, fout/succes, forms, quiz-a11y**.
+Forceer geen toast-bibliotheek of nieuwe shared Alert/Skeleton/EmptyState-primitives.
+
+Complementair: `ui-terminology` = copy · `page-layout` = chrome · `styling-tailwind` = Tailwind-techniek · dit = interactie.
+
+## Loading
+
+| Situatie | Patroon |
+| --- | --- |
+| Lijst/admin-paneel | `<p className="text-sm text-muted-foreground">Laden…</p>` |
+| Layout-vorm telt (dashboard, quiz, pickers) | Lokale `animate-pulse` skeleton die de chrome nabootst |
+| Route-overgang | Bestaande `app/loading.tsx` (spinner + `role="status"`) |
+| Refresh-in-place | Content laten staan, dimmen (`opacity-60`) — geen volle skeleton |
+| Button pending | Label → `Laden…` / pending-copy; `disabled` + `disabled:opacity-50` |
+
+- Typografische ellipsis (`…`), niet ASCII `...`.
+- Geen spinner i.p.v. muted “Laden…” op list fetches.
+
+## Empty states
+
+- Lijsten: muted one-liner (+ optionele link); aparte filtered vs unfiltered message als er filters zijn.
+- Actiegerichte empty: dashed banner (`border-dashed` + CTA), geen card-EmptyState.
+- Quiz completion / generator: dedicated centered of dashed suggestion-block — list-empty-patroon niet forceren.
+- Geen nieuwe shared `EmptyState`-primitive (`page-layout`).
+
+## Feedback (geen toasts)
+
+Er is **geen** toast-systeem. Voeg geen sonner / react-hot-toast / ToastProvider toe.
+
+| Situatie | Patroon |
+| --- | --- |
+| Inline fout | `text-sm text-destructive` + `role="alert"` |
+| Form/page-fout | `rounded-md border border-destructive/50 bg-destructive/10` |
+| Retrybaar | + underline `Opnieuw` / `Opnieuw proberen` |
+| Succes (form) | `role="status"` + accent box (`border-accent/40 bg-accent/10`) |
+| Succes (actie) | muted one-liner |
+| Quiz antwoord | Lokale FeedbackBanner (“Goed!” / “Niet goed.”) — niet derde kopie zonder extract |
+| Quiz load-fout | `ExerciseErrorState` |
+
+Geen stille failure die eruitziet als lege data.
+
+## Forms
+
+Referentie: `auth-form`, `profile-page-content`.
+
+- Field errors: `aria-invalid`, `aria-describedby`, `aria-[invalid=true]:border-destructive`, `text-xs text-destructive` onder het veld.
+- Form-level alert alleen als er geen field errors zijn.
+- Submit: `disabled` op `pending` én harde preconditions (lege selectie, geen match, etc.).
+
+## Quiz keyboard / focus
+
+- Shortcuts via `lib/keyboard/quiz-shortcuts.ts`; Esc + input-guard (geen shortcuts in input/textarea/select/contentEditable).
+- Deck: programmatic focus (`tabIndex={-1}`); custom controls: `focus-visible:ring-*` + `aria-label` / `aria-checked` waar relevant.
+
+## Niet doen
+
+- Geen ToastProvider of nieuwe Alert/Skeleton/EmptyState “voor consistency”.
+- Geen spinner op elke list fetch; geen stille failures.
+- Copy → `ui-terminology`; chrome → `page-layout`.

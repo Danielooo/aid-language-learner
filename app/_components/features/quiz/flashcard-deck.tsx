@@ -38,12 +38,9 @@ import { SrsTopicPickerSection } from "./srs-topic-picker-section";
 import { TopicPickerGrid } from "./topic-picker-grid";
 import { useQuizSession } from "./hooks/use-quiz-session";
 import { useItemResponseTime } from "./hooks/use-item-response-time";
+import { useQuizTopics } from "./hooks/use-quiz-topics";
 
 import type { FlashcardPhase } from "./flashcard";
-import type {
-  TopicStat,
-  TopicsResponse,
-} from "@/types/quiz";
 import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
 
 const TOPIC_KEY = "aid:exercises-quiz-flashcards:topic";
@@ -68,8 +65,8 @@ export function FlashcardDeck() {
   const [animating, setAnimating] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  const [topicStats, setTopicStats] = useState<TopicStat[]>([]);
-  const [topicsLoading, setTopicsLoading] = useState(true);
+  const { data: topicsData, isPending: topicsLoading } = useQuizTopics();
+  const topicStats = topicsData?.stats ?? [];
   const [selectedTopic, setSelectedTopic] = useState<string>(ALL_TOPICS);
   const [topicHydrated, setTopicHydrated] = useState(false);
   const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(
@@ -127,25 +124,6 @@ export function FlashcardDeck() {
       }
     }
     setTopicHydrated(true);
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/quiz/topics", {
-          cache: "no-store",
-        });
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        const data = (await res.json()) as TopicsResponse;
-        if (!cancelled) setTopicStats(data.stats ?? []);
-      } catch {
-        if (!cancelled) setTopicStats([]);
-      } finally {
-        if (!cancelled) setTopicsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   useEffect(() => {

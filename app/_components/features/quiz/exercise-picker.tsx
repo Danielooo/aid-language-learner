@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+
+import { queryKeys } from "@/lib/query-keys";
+import { fetchJson } from "@/lib/api/fetch-json";
 
 import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
 import { TopicPickerGrid } from "./topic-picker-grid";
@@ -31,9 +35,6 @@ export function ExercisePicker({
   onClear,
   onStart,
 }: ExercisePickerProps) {
-  const [exercises, setExercises] = useState<ExercisePickerItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -42,43 +43,32 @@ export function ExercisePicker({
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (selectedTopic !== ALL_TOPICS) {
-          params.set("topic", selectedTopic);
-        }
-        if (debouncedSearch.length > 0) {
-          params.set("search", debouncedSearch);
-        }
-        params.set("pageSize", "100");
-
-        const res = await fetch(
-          `/api/quiz/list?${params.toString()}`,
-          { cache: "no-store" },
-        );
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        const data = (await res.json()) as ExerciseListResponse;
-        if (!cancelled) {
-          setExercises(data.exercises);
-          setTotal(data.total);
-        }
-      } catch {
-        if (!cancelled) {
-          setExercises([]);
-          setTotal(0);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+  const {
+    data: result,
+    isLoading: loading,
+  } = useQuery({
+    queryKey: queryKeys.quizList({
+      topic: selectedTopic === ALL_TOPICS ? undefined : selectedTopic,
+      q: debouncedSearch || undefined,
+    }),
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedTopic !== ALL_TOPICS) {
+        params.set("topic", selectedTopic);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedTopic, debouncedSearch]);
+      if (debouncedSearch.length > 0) {
+        params.set("search", debouncedSearch);
+      }
+      params.set("pageSize", "100");
+
+      return await fetchJson<ExerciseListResponse>(
+        `/api/quiz/list?${params.toString()}`,
+      );
+    },
+  });
+
+  const exercises = result?.exercises ?? [];
+  const total = result?.total ?? 0;
 
   const visibleIds = exercises.map((e) => e.id);
   const allVisibleSelected =

@@ -676,15 +676,13 @@ export function AudioResultTable({
                         ? "Dubbelklik om te bewerken"
                         : undefined
                     }
-                    className={`border-t border-border hover:bg-muted/30 ${
-                      modalEditMode ? "align-middle" : "align-top"
-                    } ${onRowDoubleClick ? "cursor-pointer" : ""} ${
-                      isHighlighted
+                    className={`border-t border-border hover:bg-muted/30 ${modalEditMode ? "align-middle" : "align-top"
+                      } ${onRowDoubleClick ? "cursor-pointer" : ""} ${isHighlighted
                         ? "bg-accent/15"
                         : isSelected
                           ? "bg-accent/5"
                           : ""
-                    }`}
+                      }`}
                   >
                     {selection && (
                       <td
@@ -1002,11 +1000,10 @@ function FilterToggle({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium hover:bg-muted ${
-          hasActive
+        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium hover:bg-muted ${hasActive
             ? "border-accent/40 bg-accent/10 text-foreground"
             : "border-border bg-background text-muted-foreground hover:text-foreground"
-        }`}
+          }`}
         title={
           hasActive
             ? `${activeCount} actief filter${activeCount === 1 ? "" : "s"} — klik om te bewerken`
@@ -1737,11 +1734,10 @@ function TranslationCell({
                 onClick={() => setShowAddAlt((v) => !v)}
                 title="Voeg een alternatieve correcte vertaling toe"
                 aria-pressed={showAddAlt}
-                className={`rounded border px-1.5 py-0.5 text-[10px] ${
-                  showAddAlt
+                className={`rounded border px-1.5 py-0.5 text-[10px] ${showAddAlt
                     ? "border-accent bg-accent text-accent-foreground"
                     : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+                  }`}
               >
                 ＋
               </button>
@@ -1914,9 +1910,8 @@ function TopicCell({
         setDraft(cached.topic ?? "");
         setEditing(true);
       }}
-      className={`rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] text-accent ${
-        persistMode ? "cursor-text" : ""
-      }${compact ? " block max-w-full truncate" : ""}`}
+      className={`rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] text-accent ${persistMode ? "cursor-text" : ""
+        }${compact ? " block max-w-full truncate" : ""}`}
       title={
         compact
           ? (cached.topic ?? undefined)
@@ -2196,11 +2191,10 @@ function AlternativesCell({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[10px] hover:text-foreground ${
-          count > 0
+        className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[10px] hover:text-foreground ${count > 0
             ? "border-accent/40 bg-accent/10 text-accent"
             : "border-border bg-background text-muted-foreground"
-        }`}
+          }`}
         title={
           count === 0
             ? "Klap uit om een alternatieve vertaling toe te voegen"

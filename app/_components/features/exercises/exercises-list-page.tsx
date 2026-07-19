@@ -46,13 +46,13 @@ type LoadState =
   | { status: "idle" }
   | { status: "loading" }
   | {
-      status: "loaded";
-      rows: AdminExerciseRow[];
-      total: number;
-      page: number;
-      pageSize: number;
-      isRefreshing?: boolean;
-    }
+    status: "loaded";
+    rows: AdminExerciseRow[];
+    total: number;
+    page: number;
+    pageSize: number;
+    isRefreshing?: boolean;
+  }
   | { status: "error"; error: string };
 
 export type ExercisesListPageProps = {
@@ -449,11 +449,11 @@ export function ExercisesListPage({
         initial={
           editRow
             ? {
-                sourceText: editRow.sentence_text,
-                targetText: editRow.target_text,
-                tags: parseTagsCsv(editRow.tags),
-                alternatives: [...editRow.alternative_translations],
-              }
+              sourceText: editRow.sentence_text,
+              targetText: editRow.target_text,
+              tags: parseTagsCsv(editRow.tags),
+              alternatives: [...editRow.alternative_translations],
+            }
             : null
         }
         saving={editSaving}

@@ -294,7 +294,7 @@ export function AudioProposalTable({
         translation={{
           cache: translationLookup,
           state: {},
-          onTranslateRow: () => {},
+          onTranslateRow: () => { },
         }}
         selection={{
           selectedIds,
@@ -336,17 +336,17 @@ export function AudioProposalTable({
         initial={
           editRow
             ? (() => {
-                const cached = translationLookup.get(
-                  editRow.audio_id,
-                  editRow.sentence_text,
-                );
-                return {
-                  sourceText: editRow.sentence_text,
-                  targetText: cached?.translation ?? "",
-                  tags: cached?.tags ?? [],
-                  alternatives: cached?.alternatives ?? [],
-                };
-              })()
+              const cached = translationLookup.get(
+                editRow.audio_id,
+                editRow.sentence_text,
+              );
+              return {
+                sourceText: editRow.sentence_text,
+                targetText: cached?.translation ?? "",
+                tags: cached?.tags ?? [],
+                alternatives: cached?.alternatives ?? [],
+              };
+            })()
             : null
         }
         saving={false}

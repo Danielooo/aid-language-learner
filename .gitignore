@@ -37,6 +37,9 @@ yarn-error.log*
 # test credentials (Auth0 seed script)
 CRED.md
 
+# opdrachtbeschrijving (lokaal, niet committen)
+EINDOPDRACHT.md
+
 # vercel
 .vercel
 

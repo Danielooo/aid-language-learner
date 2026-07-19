@@ -31,7 +31,9 @@ export async function GET(): Promise<Response> {
     getActiveTopicsForUser(access.supabase, access.userId),
     access.supabase
       .from("exercise_group_submissions")
-      .select("source_group_id, status, created_at, updated_at, reviewed_at")
+      .select(
+        "source_group_id, status, created_at, updated_at, reviewed_at, reject_reason",
+      )
       .eq("submitted_by", access.userId)
       .in("status", ["pending", "approved", "rejected"]),
   ]);
@@ -101,9 +103,10 @@ export async function GET(): Promise<Response> {
     const id = g.id as string;
     const name = (g.name as string).trim();
     const exerciseCount = countByGroup.get(id) ?? 0;
+    const latest = offerByGroup.get(id);
     const { offerState, offerStatusAt } = resolveGroupOfferState(
       exerciseCount,
-      offerByGroup.get(id),
+      latest,
     );
     const sourceGroupId = (g.source_group_id as string | null) ?? null;
 
@@ -114,6 +117,10 @@ export async function GET(): Promise<Response> {
       isActive: activeTopics.has(name),
       offerState,
       offerStatusAt,
+      rejectReason:
+        latest?.status === "rejected"
+          ? (latest.reject_reason ?? null)
+          : null,
       sourceGroupId,
       isEdited: editedByGroup.get(id) ?? false,
       hasAudio: hasAudioByGroup.get(id) ?? false,

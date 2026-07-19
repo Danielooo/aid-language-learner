@@ -45,14 +45,11 @@ import { SrsTopicPickerSection } from "./srs-topic-picker-section";
 import { TopicPickerGrid } from "./topic-picker-grid";
 import { useQuizSession } from "./hooks/use-quiz-session";
 import { useItemResponseTime } from "./hooks/use-item-response-time";
+import { useQuizTopics } from "./hooks/use-quiz-topics";
 
 import type { SortFeedback } from "./sort-exercise";
 import type { ExercisePickerItem } from "@/types/quiz";
 import type { ExerciseQuizItem } from "@/types/quiz";
-import type {
-  TopicStat,
-  TopicsResponse,
-} from "@/types/quiz";
 import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
 import type { TranslationDirection } from "@/lib/quiz/typing-config";
 
@@ -83,8 +80,8 @@ export function SortQuizDeck() {
   const [lastAnswer, setLastAnswer] = useState("");
   const [showHistory, setShowHistory] = useState(false);
 
-  const [topicStats, setTopicStats] = useState<TopicStat[]>([]);
-  const [topicsLoading, setTopicsLoading] = useState(true);
+  const { data: topicsData, isPending: topicsLoading } = useQuizTopics();
+  const topicStats = topicsData?.stats ?? [];
   const [selectedTopic, setSelectedTopic] = useState<string>(ALL_TOPICS);
   const [topicHydrated, setTopicHydrated] = useState(false);
   const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(
@@ -200,25 +197,6 @@ export function SortQuizDeck() {
     }
     setConfigHydrated(true);
     setTopicHydrated(true);
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/quiz/topics", {
-          cache: "no-store",
-        });
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        const data = (await res.json()) as TopicsResponse;
-        if (!cancelled) setTopicStats(data.stats ?? []);
-      } catch {
-        if (!cancelled) setTopicStats([]);
-      } finally {
-        if (!cancelled) setTopicsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   useEffect(() => {

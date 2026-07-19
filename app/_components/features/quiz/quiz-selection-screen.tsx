@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import {
   QUIZ_SELECTION_MODE_KEY,
@@ -10,10 +10,10 @@ import {
   selectionModeLabel,
 } from "@/lib/quiz/selection-config";
 
+import { useExerciseProgress } from "./hooks/use-exercise-progress";
 import { SrsExplainer } from "./srs-explainer";
 
 import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
-import type { ProgressStatsResponse } from "@/types/progress";
 
 type QuizSelectionScreenProps = {
   selectedMode: QuizSelectionMode;
@@ -24,27 +24,7 @@ export function QuizSelectionScreen({
   selectedMode,
   onSelect,
 }: QuizSelectionScreenProps) {
-  const [stats, setStats] = useState<ProgressStatsResponse | null>(null);
-  const [statsLoading, setStatsLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/exercise-progress", { cache: "no-store" });
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        const data = (await res.json()) as ProgressStatsResponse;
-        if (!cancelled) setStats(data);
-      } catch {
-        if (!cancelled) setStats(null);
-      } finally {
-        if (!cancelled) setStatsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: stats = null, isPending: statsLoading } = useExerciseProgress();
 
   return (
     <section className="space-y-4 rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">

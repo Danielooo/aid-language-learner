@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { APP_ROUTES, leerplanGroupPath } from "@/lib/routes";
+import { queryKeys } from "@/lib/query-keys";
+import { fetchJson } from "@/lib/api/fetch-json";
 
 import { LeerplanGroupDeleteDialog } from "./leerplan-group-delete-dialog";
 
@@ -18,44 +21,47 @@ type OriginFilter = "all" | "personal" | "community";
 type EditedFilter = "all" | "yes" | "no";
 type ActiveFilter = "all" | "active" | "inactive";
 
-async function fetchMineGroups(): Promise<ExerciseGroupListItem[]> {
-  const res = await fetch("/api/exercise-groups/mine", { cache: "no-store" });
-  const body = (await res.json()) as ExerciseGroupsListSuccess & {
-    error?: string;
-  };
-  if (!res.ok || !body.ok) {
-    throw new Error(body.error ?? `Status ${res.status}`);
-  }
-  return body.groups;
-}
-
 function isCommunityOrigin(item: ExerciseGroupListItem): boolean {
   return Boolean(item.sourceGroupId);
 }
 
-function formatTagPreview(tagText: string | undefined): string {
-  if (!tagText?.trim()) return "—";
+function formatTagPreview(tagText: string | undefined): {
+  preview: string;
+  full: string | undefined;
+} {
+  if (!tagText?.trim()) return { preview: "—", full: undefined };
   const parts = tagText
     .split(/[,\s]+/)
     .map((t) => t.trim())
     .filter(Boolean);
   const unique = Array.from(new Set(parts));
-  if (unique.length === 0) return "—";
-  return unique.join(", ");
+  if (unique.length === 0) return { preview: "—", full: undefined };
+  const full = unique.join(", ");
+  return { preview: full, full };
 }
 
 /**
- * Overzichtstabel van persoonlijke oefeningengroepen in het leerplan.
- * Klik op een rij opent de bewerkpagina van die set.
+ * Overzichtstabel van persoonlijke topics in het leerplan.
+ * Klik op een rij opent de bewerkpagina van dat topic.
  */
 export function LeerplanGroupsPage() {
   const router = useRouter();
-  const [personalGroups, setPersonalGroups] = useState<ExerciseGroupListItem[]>(
-    [],
-  );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [togglingName, setTogglingName] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const {
+    data: personalGroups = [],
+    isLoading: loading,
+    error: queryError,
+    isFetching,
+  } = useQuery({
+    queryKey: queryKeys.learningTopics(),
+    queryFn: async () => {
+      const body = await fetchJson<ExerciseGroupsListSuccess>(
+        "/api/exercise-groups/mine",
+      );
+      return body.groups;
+    },
+  });
 
   const [query, setQuery] = useState("");
   const [originFilter, setOriginFilter] = useState<OriginFilter>("all");
@@ -64,37 +70,48 @@ export function LeerplanGroupsPage() {
 
   const [deleteTarget, setDeleteTarget] =
     useState<ExerciseGroupListItem | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
-  const refreshLists = useCallback(async () => {
-    const personal = await fetchMineGroups();
-    setPersonalGroups(personal);
-  }, []);
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Kon topics niet laden."
+    : null;
 
-  useEffect(() => {
-    let cancelled = false;
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({
+      name,
+      isActive,
+    }: {
+      name: string;
+      isActive: boolean;
+    }) => {
+      await fetchJson("/api/learning-topics", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: name, isActive }),
+      });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.learningTopics(),
+      });
+    },
+  });
 
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        await refreshLists();
-      } catch (err) {
-        if (!cancelled) {
-          setPersonalGroups([]);
-          setError(
-            err instanceof Error ? err.message : "Kon groepen niet laden.",
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshLists]);
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await fetchJson<ExerciseGroupsDeleteSuccess>(
+        `/api/exercise-groups/mine/${id}`,
+        { method: "DELETE" },
+      );
+    },
+    onSuccess: () => {
+      setDeleteTarget(null);
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.learningTopics(),
+      });
+    },
+  });
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -123,61 +140,16 @@ export function LeerplanGroupsPage() {
     router.push(leerplanGroupPath(item.id));
   }
 
-  async function handleToggleActive(name: string, isActive: boolean) {
-    const previous = personalGroups;
-    setTogglingName(name);
-    setPersonalGroups((current) =>
-      current.map((item) =>
-        item.name === name ? { ...item, isActive } : item,
-      ),
-    );
-
-    try {
-      const res = await fetch("/api/learning-topics", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: name, isActive }),
-      });
-      const body = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok || !body.ok) {
-        throw new Error(body.error ?? `Status ${res.status}`);
-      }
-      await refreshLists();
-    } catch (err) {
-      setPersonalGroups(previous);
-      setError(
-        err instanceof Error ? err.message : "Kon voorkeur niet opslaan.",
-      );
-    } finally {
-      setTogglingName(null);
-    }
+  function handleToggleActive(name: string, isActive: boolean) {
+    toggleActiveMutation.mutate({ name, isActive });
   }
 
-  async function confirmDelete() {
+  function confirmDelete() {
     if (!deleteTarget) return;
-    setDeleting(true);
-    setError(null);
-    try {
-      const res = await fetch(
-        `/api/exercise-groups/mine/${deleteTarget.id}`,
-        { method: "DELETE" },
-      );
-      const body = (await res.json()) as ExerciseGroupsDeleteSuccess & {
-        error?: string;
-      };
-      if (!res.ok || !body.ok) {
-        throw new Error(body.error ?? `Status ${res.status}`);
-      }
-      setDeleteTarget(null);
-      await refreshLists();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Verwijderen mislukt.",
-      );
-    } finally {
-      setDeleting(false);
-    }
+    deleteMutation.mutate(deleteTarget.id);
   }
+
+  const isRefreshing = isFetching && !loading;
 
   return (
     <div className="space-y-4">
@@ -237,8 +209,12 @@ export function LeerplanGroupsPage() {
         </label>
         <button
           type="button"
-          disabled={loading}
-          onClick={() => void refreshLists()}
+          disabled={loading || isRefreshing}
+          onClick={() =>
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.learningTopics(),
+            })
+          }
           className="ml-auto inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-foreground disabled:opacity-50"
         >
           Ververs
@@ -263,14 +239,14 @@ export function LeerplanGroupsPage() {
         <p className="text-sm text-muted-foreground">Laden…</p>
       ) : personalGroups.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Nog geen persoonlijke oefeningengroepen.{" "}
+          Nog geen persoonlijke topics.{" "}
           <Link
             href={APP_ROUTES.generator}
             className="font-medium text-accent underline-offset-2 hover:underline"
           >
             Genereer oefeningen
           </Link>{" "}
-          of haal groepen binnen via{" "}
+          of haal topics binnen via{" "}
           <Link
             href={APP_ROUTES.community}
             className="font-medium text-accent underline-offset-2 hover:underline"
@@ -281,18 +257,18 @@ export function LeerplanGroupsPage() {
         </p>
       ) : filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Geen groepen die bij je zoekopdracht of filters passen.
+          Geen topics die bij je zoekopdracht of filters passen.
         </p>
       ) : (
         <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full min-w-[52rem] text-left text-sm">
             <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
               <tr>
-                <th className="px-3 py-2">Oefeningengroep</th>
+                <th className="px-3 py-2">Topic</th>
                 <th className="px-3 py-2">Herkomst</th>
                 <th className="px-3 py-2">Bewerkt</th>
                 <th className="px-3 py-2">Audio</th>
-                <th className="px-3 py-2">Tags</th>
+                <th className="px-3 py-2">Alle tags</th>
                 <th className="px-3 py-2">Oefeningen</th>
                 <th className="px-3 py-2">Actief</th>
                 <th className="px-3 py-2">Acties</th>
@@ -301,9 +277,10 @@ export function LeerplanGroupsPage() {
             <tbody>
               {filtered.map((item) => {
                 const fromCommunity = isCommunityOrigin(item);
-                const tagsPreview = formatTagPreview(item.tagText);
+                const { preview: tagsPreview, full: tagsFull } =
+                  formatTagPreview(item.tagText);
                 const isActive = item.isActive ?? false;
-                const toggling = togglingName === item.name;
+                const toggling = toggleActiveMutation.isPending;
 
                 return (
                   <tr
@@ -329,9 +306,7 @@ export function LeerplanGroupsPage() {
                     </td>
                     <td
                       className="max-w-[12rem] truncate px-3 py-2 text-muted-foreground"
-                      title={
-                        tagsPreview === "—" ? undefined : tagsPreview
-                      }
+                      title={tagsFull}
                     >
                       {tagsPreview}
                     </td>
@@ -347,13 +322,13 @@ export function LeerplanGroupsPage() {
                         checked={isActive}
                         disabled={toggling}
                         onChange={(e) =>
-                          void handleToggleActive(
+                          handleToggleActive(
                             item.name,
                             e.target.checked,
                           )
                         }
                         className="size-4 rounded border-border accent-accent"
-                        aria-label={`${isActive ? "Deactiveer" : "Activeer"} groep ${item.name}`}
+                        aria-label={`${isActive ? "Deactiveer" : "Activeer"} topic ${item.name}`}
                       />
                     </td>
                     <td
@@ -380,11 +355,11 @@ export function LeerplanGroupsPage() {
         open={deleteTarget != null}
         groupName={deleteTarget?.name ?? null}
         exerciseCount={deleteTarget?.exerciseCount ?? 0}
-        deleting={deleting}
+        deleting={deleteMutation.isPending}
         onCancel={() => {
-          if (!deleting) setDeleteTarget(null);
+          if (!deleteMutation.isPending) setDeleteTarget(null);
         }}
-        onConfirm={() => void confirmDelete()}
+        onConfirm={confirmDelete}
       />
     </div>
   );

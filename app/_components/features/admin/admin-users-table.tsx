@@ -1,13 +1,16 @@
 "use client";
 
 import {
-  useCallback,
   useEffect,
   useEffectEvent,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { queryKeys } from "@/lib/query-keys";
+import { fetchJson } from "@/lib/api/fetch-json";
 
 import type { AdminUserRow } from "@/app/api/admin/users/route";
 import type { ReactNode } from "react";
@@ -162,16 +165,31 @@ const STATUS_OPTIONS: FilterOption<StatusFilter>[] = [
 ];
 
 export function AdminUsersTable() {
-  const [rows, setRows] = useState<AdminUserRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const {
+    data: rows = [],
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: queryKeys.adminUsers(),
+    queryFn: async () => {
+      const json = await fetchJson<ListResponse>("/api/admin/users");
+      return json.rows;
+    },
+  });
 
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [aiFilter, setAiFilter] = useState<AiFilter>("all");
   const [openFilter, setOpenFilter] = useState<OpenFilter>(null);
+
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Laden mislukt."
+    : null;
 
   const tableHeadRef = useRef<HTMLTableSectionElement>(null);
 
@@ -201,28 +219,6 @@ export function AdminUsersTable() {
     };
   }, [openFilter]);
 
-  const reload = useCallback(async () => {
-    setError(null);
-    const res = await fetch("/api/admin/users", { cache: "no-store" });
-    const json = (await res.json()) as ListResponse;
-    if (!json.ok) {
-      setError(json.error);
-      return;
-    }
-    setRows(json.rows);
-  }, []);
-
-  useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      try {
-        await reload();
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [reload]);
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((row) => {
@@ -238,35 +234,30 @@ export function AdminUsersTable() {
     });
   }, [rows, search, roleFilter, statusFilter, aiFilter]);
 
-  async function patch(body: Record<string, unknown>, userId: string) {
-    setBusyId(userId);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/users", {
+  const patchMutation = useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      await fetchJson("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const json = (await res.json()) as { ok: boolean; error?: string };
-      if (!json.ok) {
-        setError(json.error ?? "Actie mislukt.");
-        return;
-      }
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout.");
-    } finally {
-      setBusyId(null);
-    }
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers() });
+    },
+  });
+
+  function patch(body: Record<string, unknown>) {
+    patchMutation.mutate(body);
   }
 
   function confirmBan(row: AdminUserRow) {
     const label = row.display_name || row.username || row.id.slice(0, 8);
     const ok = window.confirm(
-      `Weet je zeker dat je “${label}” wilt deactiveren? Die gebruiker kan dan niet meer inloggen.`,
+      `Weet je zeker dat je "${label}" wilt deactiveren? Die gebruiker kan dan niet meer inloggen.`,
     );
     if (!ok) return;
-    void patch({ action: "ban", user_id: row.id }, row.id);
+    patch({ action: "ban", user_id: row.id });
   }
 
   function toggleFilter(key: Exclude<OpenFilter, null>) {
@@ -385,7 +376,7 @@ export function AdminUsersTable() {
 
             {!loading &&
               filtered.map((row) => {
-                const busy = busyId === row.id;
+                const busy = patchMutation.isPending;
                 return (
                   <tr
                     key={row.id}
@@ -431,14 +422,11 @@ export function AdminUsersTable() {
                           disabled={busy}
                           className={actionBtnClass}
                           onClick={() =>
-                            void patch(
-                              {
-                                action: "set_role",
-                                user_id: row.id,
-                                role: row.role === "admin" ? "user" : "admin",
-                              },
-                              row.id,
-                            )
+                            patch({
+                              action: "set_role",
+                              user_id: row.id,
+                              role: row.role === "admin" ? "user" : "admin",
+                            })
                           }
                         >
                           {row.role === "admin" ? "Maak user" : "Maak admin"}
@@ -448,14 +436,11 @@ export function AdminUsersTable() {
                           disabled={busy}
                           className={actionBtnClass}
                           onClick={() =>
-                            void patch(
-                              {
-                                action: "set_ai_disabled",
-                                user_id: row.id,
-                                ai_disabled: !row.ai_disabled,
-                              },
-                              row.id,
-                            )
+                            patch({
+                              action: "set_ai_disabled",
+                              user_id: row.id,
+                              ai_disabled: !row.ai_disabled,
+                            })
                           }
                         >
                           {row.ai_disabled ? "AI aan" : "AI uit"}
@@ -466,10 +451,7 @@ export function AdminUsersTable() {
                             disabled={busy}
                             className={actionBtnClass}
                             onClick={() =>
-                              void patch(
-                                { action: "unban", user_id: row.id },
-                                row.id,
-                              )
+                              patch({ action: "unban", user_id: row.id })
                             }
                           >
                             Reactiveer

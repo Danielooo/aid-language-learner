@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
 
+import { useExerciseProgress } from "./hooks/use-exercise-progress";
 import { SrsCompleteState } from "./srs-complete-state";
 import { SrsExplainer } from "./srs-explainer";
 import { TopicPickerGrid } from "./topic-picker-grid";
 
 import type { TopicStat } from "@/types/quiz";
-import type { ProgressStatsResponse } from "@/types/progress";
 
 type SrsTopicPickerSectionProps = {
   topicStats: TopicStat[];
@@ -26,30 +24,8 @@ export function SrsTopicPickerSection({
   onSelect,
   onBack,
 }: SrsTopicPickerSectionProps) {
-  const [stats, setStats] = useState<ProgressStatsResponse | null>(null);
-  const [statsLoading, setStatsLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(
-          "/api/exercise-progress?breakdown=topics",
-          { cache: "no-store" },
-        );
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        const data = (await res.json()) as ProgressStatsResponse;
-        if (!cancelled) setStats(data);
-      } catch {
-        if (!cancelled) setStats(null);
-      } finally {
-        if (!cancelled) setStatsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: stats = null, isPending: statsLoading } =
+    useExerciseProgress("topics");
 
   const loading = topicsLoading || statsLoading;
   const dueByTopic = stats?.dueByTopic ?? {};

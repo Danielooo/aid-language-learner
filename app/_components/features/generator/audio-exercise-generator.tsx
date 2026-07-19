@@ -9,8 +9,11 @@ import {
   useAudioGeneratorDraft,
   type PersistedChatMessage,
 } from "@/lib/hooks/use-audio-generator-draft";
-import { USER_AI_REQUESTS_PER_DAY } from "@/types/exercise-group-submission";
 
+import {
+  formatQuotaLabel,
+  useAiQuota,
+} from "./hooks/use-ai-quota";
 import { AudioProposalTable } from "./audio-proposal-table";
 import {
   mergeAudioProposalBatches,
@@ -39,12 +42,6 @@ type PersistResponse =
       error: string;
       results?: unknown;
     };
-
-type AiQuotaView = {
-  remaining: number | null;
-  limit: number;
-  disabled: boolean;
-};
 
 type SavedGroupSnapshot = {
   name: string;
@@ -79,7 +76,7 @@ export function AudioExerciseGenerator() {
   }>({ status: "idle", requestBody: null, response: null, error: null });
   const [savedGroup, setSavedGroup] = useState<SavedGroupSnapshot | null>(null);
   const [savedModalOpen, setSavedModalOpen] = useState(false);
-  const [aiQuota, setAiQuota] = useState<AiQuotaView | null>(null);
+  const { aiQuota, refreshAiQuota } = useAiQuota();
 
   // Eenmalig draft herstellen na mount (localStorage).
   /* eslint-disable react-hooks/set-state-in-effect -- hydrate from localStorage */
@@ -133,34 +130,6 @@ export function AudioExerciseGenerator() {
     draft,
     mergedProposal?.topic,
   ]);
-
-  const refreshAiQuota = useCallback(async () => {
-    try {
-      const res = await fetch("/api/exercises/ai-quota");
-      const json = (await res.json()) as
-        | {
-            ok: true;
-            remaining: number | null;
-            limit: number;
-            disabled: boolean;
-          }
-        | { ok: false; error: string };
-      if (!res.ok || !json.ok) return;
-      setAiQuota({
-        remaining: json.remaining,
-        limit: json.limit,
-        disabled: json.disabled,
-      });
-    } catch {
-      // Quota-badge is nice-to-have.
-    }
-  }, []);
-
-  /* eslint-disable react-hooks/set-state-in-effect -- AI-quota ophalen bij mount */
-  useEffect(() => {
-    void refreshAiQuota();
-  }, [refreshAiQuota]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   /* eslint-disable react-hooks/refs */
   const transport = useMemo(
@@ -540,18 +509,6 @@ export function AudioExerciseGenerator() {
       />
     </div>
   );
-}
-
-function formatQuotaLabel(quota: AiQuotaView | null): string | null {
-  if (!quota) return null;
-  if (quota.disabled) {
-    return "AI-generatie is uitgeschakeld voor jouw account.";
-  }
-  if (quota.remaining === null) {
-    return "AI-requests: onbeperkt";
-  }
-  const limit = quota.limit || USER_AI_REQUESTS_PER_DAY;
-  return `Nog ${quota.remaining} van ${limit} AI-requests vandaag`;
 }
 
 function ChatLogEntry({ entry }: { entry: PersistedChatMessage }) {

@@ -1,19 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-// Bron-van-waarheid voor quiz-historie is Supabase (tabel
-// `quiz_attempts`). RLS scope't naar `user_id = auth.uid()`, dus elke
-// ingelogde user ziet alleen eigen pogingen. Public API is bewust
-// ongewijzigd zodat callers (`quiz.tsx`, `dashboard.tsx`) niets hoeven
-// aan te passen.
-//
-// Strategie:
-//   * GET op mount → vul `attempts`
-//   * POST per `recordAttempt` met optimistische update (UI blijft snel),
-//     bij netwerkfout: rollback + console.warn (dev-only, geen toast)
-//   * DELETE bij `reset`, ook optimistisch
-//   * `score` is een afgeleide van `attempts` — geen aparte teller meer
+import { queryKeys } from "@/lib/query-keys";
+import { fetchJson } from "@/lib/api/fetch-json";
 
 import type { QuizAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
 import { toQuizAttemptPostBody } from "@/lib/quiz/record-quiz-attempt";
@@ -42,85 +33,75 @@ function summarize(list: ReadonlyArray<QuizAttempt>): QuizScore {
 }
 
 export function useQuizStorage() {
-  const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Initiële fetch. AbortController zodat een unmount tijdens de fetch
-  // geen "Cannot update state on unmounted component"-warn triggert.
-  useEffect(() => {
-    const controller = new AbortController();
-    (async () => {
-      try {
-        const res = await fetch("/api/quiz-attempts", {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        const data = (await res.json()) as GetResponse;
-        setAttempts(data.attempts);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        // Stilzwijgend falen mag niet — anders blijft het dashboard
-        // op "geen pogingen" hangen zonder uitleg. Loggen volstaat
-        // voor dev-only; geen toast-systeem in de codebase.
-        console.warn("Quiz-historie ophalen mislukt:", err);
-      } finally {
-        if (!controller.signal.aborted) setHydrated(true);
+  const {
+    data: attempts = [],
+    isLoading: isLoadingAttempts,
+  } = useQuery({
+    queryKey: queryKeys.quizAttempts(),
+    queryFn: async () => {
+      const data = await fetchJson<GetResponse>("/api/quiz-attempts");
+      return data.attempts;
+    },
+  });
+
+  const recordMutation = useMutation({
+    mutationFn: async (attempt: QuizAttempt) => {
+      await fetchJson("/api/quiz-attempts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(toQuizAttemptPostBody(attempt)),
+      });
+      return attempt;
+    },
+    onMutate: async (attempt) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.quizAttempts() });
+      const prev = queryClient.getQueryData<QuizAttempt[]>(
+        queryKeys.quizAttempts(),
+      );
+      queryClient.setQueryData<QuizAttempt[]>(
+        queryKeys.quizAttempts(),
+        (old = []) => [attempt, ...old],
+      );
+      return { prev };
+    },
+    onError: (_err, _attempt, context) => {
+      if (context?.prev) {
+        queryClient.setQueryData(queryKeys.quizAttempts(), context.prev);
       }
-    })();
-    return () => controller.abort();
-  }, []);
+    },
+  });
 
-  const recordAttempt = useCallback((attempt: QuizAttempt) => {
-    // Optimistisch vooraan toevoegen zodat de UI direct reageert
-    // (FeedbackBanner verschijnt instant, score-bar telt op).
-    setAttempts((prev) => [attempt, ...prev]);
-
-    void (async () => {
-      try {
-        const res = await fetch("/api/quiz-attempts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(toQuizAttemptPostBody(attempt)),
-        });
-        if (!res.ok) {
-          throw new Error(`Status ${res.status}`);
-        }
-      } catch (err) {
-        // Rollback: trek alleen díe attempt eruit, niet alle pogingen
-        // sinds. Matchen op (exerciseId + at) is uniek genoeg voor
-        // pogingen die binnen één ms van elkaar liggen niet voorkomen
-        // (één user, één klik per submit).
-        console.warn("Attempt opslaan mislukt, rollback:", err);
-        setAttempts((prev) =>
-          prev.filter(
-            (a) => !(a.exerciseId === attempt.exerciseId && a.at === attempt.at),
-          ),
-        );
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      await fetchJson("/api/quiz-attempts", { method: "DELETE" });
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.quizAttempts() });
+      const prev = queryClient.getQueryData<QuizAttempt[]>(
+        queryKeys.quizAttempts(),
+      );
+      queryClient.setQueryData<QuizAttempt[]>(queryKeys.quizAttempts(), []);
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) {
+        queryClient.setQueryData(queryKeys.quizAttempts(), context.prev);
       }
-    })();
-  }, []);
-
-  const reset = useCallback(() => {
-    const snapshot = attempts;
-    setAttempts([]);
-    void (async () => {
-      try {
-        const res = await fetch("/api/quiz-attempts", {
-          method: "DELETE",
-        });
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-      } catch (err) {
-        console.warn("Reset mislukt, rollback:", err);
-        setAttempts(snapshot);
-      }
-    })();
-  }, [attempts]);
+    },
+  });
 
   const score = useMemo<QuizScore>(
     () => (attempts.length === 0 ? EMPTY_SCORE : summarize(attempts)),
     [attempts],
   );
 
-  return { score, attempts, recordAttempt, reset, hydrated };
+  return {
+    score,
+    attempts,
+    recordAttempt: (attempt: QuizAttempt) => recordMutation.mutate(attempt),
+    reset: () => resetMutation.mutate(),
+    hydrated: !isLoadingAttempts,
+  };
 }

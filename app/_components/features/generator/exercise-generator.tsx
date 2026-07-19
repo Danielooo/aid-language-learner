@@ -10,8 +10,11 @@ import {
   useTextGeneratorDraft,
   type PersistedChatMessage,
 } from "@/lib/hooks/use-text-generator-draft";
-import { USER_AI_REQUESTS_PER_DAY } from "@/types/exercise-group-submission";
 
+import {
+  formatQuotaLabel,
+  useAiQuota,
+} from "./hooks/use-ai-quota";
 import {
   GeneratorSavedGroupModal,
   type SavedGroupMember,
@@ -52,12 +55,6 @@ type PersistResponse =
       issues?: unknown;
     };
 
-type AiQuotaView = {
-  remaining: number | null;
-  limit: number;
-  disabled: boolean;
-};
-
 type SavedGroupSnapshot = {
   name: string;
   members: SavedGroupMember[];
@@ -96,7 +93,7 @@ export function ExerciseGenerator({ hideHeader = false }: ExerciseGeneratorProps
   }>({ status: "idle", requestBody: null, response: null, error: null });
   const [savedGroup, setSavedGroup] = useState<SavedGroupSnapshot | null>(null);
   const [savedModalOpen, setSavedModalOpen] = useState(false);
-  const [aiQuota, setAiQuota] = useState<AiQuotaView | null>(null);
+  const { aiQuota, refreshAiQuota } = useAiQuota();
 
   // Eenmalig draft herstellen na mount (localStorage).
   /* eslint-disable react-hooks/set-state-in-effect -- hydrate from localStorage */
@@ -150,34 +147,6 @@ export function ExerciseGenerator({ hideHeader = false }: ExerciseGeneratorProps
     draft,
     mergedProposal?.topic,
   ]);
-
-  const refreshAiQuota = useCallback(async () => {
-    try {
-      const res = await fetch("/api/exercises/ai-quota");
-      const json = (await res.json()) as
-        | {
-            ok: true;
-            remaining: number | null;
-            limit: number;
-            disabled: boolean;
-          }
-        | { ok: false; error: string };
-      if (!res.ok || !json.ok) return;
-      setAiQuota({
-        remaining: json.remaining,
-        limit: json.limit,
-        disabled: json.disabled,
-      });
-    } catch {
-      // Quota-badge is nice-to-have; stil falen mag.
-    }
-  }, []);
-
-  /* eslint-disable react-hooks/set-state-in-effect -- AI-quota ophalen bij mount */
-  useEffect(() => {
-    void refreshAiQuota();
-  }, [refreshAiQuota]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   // De `body`-callback wordt pas door de AI SDK aangeroepen bij het
   // versturen van een bericht, dus `.current` lezen is daar veilig.
@@ -553,18 +522,6 @@ export function ExerciseGenerator({ hideHeader = false }: ExerciseGeneratorProps
       />
     </div>
   );
-}
-
-function formatQuotaLabel(quota: AiQuotaView | null): string | null {
-  if (!quota) return null;
-  if (quota.disabled) {
-    return "AI-generatie is uitgeschakeld voor jouw account.";
-  }
-  if (quota.remaining === null) {
-    return "AI-requests: onbeperkt";
-  }
-  const limit = quota.limit || USER_AI_REQUESTS_PER_DAY;
-  return `Nog ${quota.remaining} van ${limit} AI-requests vandaag`;
 }
 
 function ChatLogEntry({ entry }: { entry: PersistedChatMessage }) {

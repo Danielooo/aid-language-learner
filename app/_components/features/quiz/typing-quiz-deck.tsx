@@ -47,12 +47,9 @@ import {
 } from "./typing-exercise";
 import { useQuizSession } from "./hooks/use-quiz-session";
 import { useItemResponseTime } from "./hooks/use-item-response-time";
+import { useQuizTopics } from "./hooks/use-quiz-topics";
 
 import type { TypingFeedback } from "./typing-exercise";
-import type {
-  TopicStat,
-  TopicsResponse,
-} from "@/types/quiz";
 import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
 import type {
   TranslationDirection,
@@ -92,8 +89,8 @@ export function TypingQuizDeck() {
   const [hintVisible, setHintVisible] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  const [topicStats, setTopicStats] = useState<TopicStat[]>([]);
-  const [topicsLoading, setTopicsLoading] = useState(true);
+  const { data: topicsData, isPending: topicsLoading } = useQuizTopics();
+  const topicStats = topicsData?.stats ?? [];
   const [selectedTopic, setSelectedTopic] = useState<string>(ALL_TOPICS);
   const [topicHydrated, setTopicHydrated] = useState(false);
   const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(
@@ -171,25 +168,6 @@ export function TypingQuizDeck() {
     }
     setConfigHydrated(true);
     setTopicHydrated(true);
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/quiz/topics", {
-          cache: "no-store",
-        });
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        const data = (await res.json()) as TopicsResponse;
-        if (!cancelled) setTopicStats(data.stats ?? []);
-      } catch {
-        if (!cancelled) setTopicStats([]);
-      } finally {
-        if (!cancelled) setTopicsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   useEffect(() => {

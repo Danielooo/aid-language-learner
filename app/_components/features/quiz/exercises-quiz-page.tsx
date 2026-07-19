@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 
+import { useExerciseProgress } from "./hooks/use-exercise-progress";
 import {
   FlashcardsIcon,
   QuizModeCard,
@@ -11,7 +12,6 @@ import {
   TypenIcon,
 } from "./quiz-mode-card";
 
-import type { ProgressStatsResponse } from "@/types/progress";
 import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
 
 type HubSelection = Extract<QuizSelectionMode, "topic" | "srs">;
@@ -39,24 +39,8 @@ const QUIZ_MODES = [
 
 export function ExercisesQuizPage() {
   const [selection, setSelection] = useState<HubSelection | null>(null);
-  const [dueCount, setDueCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/exercise-progress", { cache: "no-store" });
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        const data = (await res.json()) as ProgressStatsResponse;
-        if (!cancelled) setDueCount(data.dueCount);
-      } catch {
-        if (!cancelled) setDueCount(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: progress } = useExerciseProgress();
+  const dueCount = progress?.dueCount ?? null;
 
   const dueBadge =
     dueCount !== null && dueCount > 0
