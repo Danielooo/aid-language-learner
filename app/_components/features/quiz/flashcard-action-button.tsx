@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 
 type FlashcardActionButtonProps = {
   label: string;
-  shortcut: string | string[];
+  /** Optioneel; weglaten = geen kbd-hint (wel klikbaar). */
+  shortcut?: string | string[];
   onClick: () => void;
   disabled?: boolean;
   variant?: "default" | "success" | "danger" | "accent";
@@ -34,7 +35,11 @@ export function FlashcardActionButton({
   disabled = false,
   variant = "default",
 }: FlashcardActionButtonProps) {
-  const keys = Array.isArray(shortcut) ? shortcut : [shortcut];
+  const keys = shortcut
+    ? Array.isArray(shortcut)
+      ? shortcut
+      : [shortcut]
+    : [];
 
   return (
     <button
@@ -45,16 +50,18 @@ export function FlashcardActionButton({
     >
       <span>{label}</span>
       {/* Sneltoets-hints zijn ruis op touch-schermen; alleen op ≥sm tonen. */}
-      <span className="hidden items-center gap-1 sm:flex">
-        {keys.map((key, i) => (
-          <span key={key} className="flex items-center gap-1">
-            {i > 0 && (
-              <span className="text-[10px] font-normal opacity-60">/</span>
-            )}
-            <Kbd>{key}</Kbd>
-          </span>
-        ))}
-      </span>
+      {keys.length > 0 ? (
+        <span className="hidden items-center gap-1 sm:flex">
+          {keys.map((key, i) => (
+            <span key={key} className="flex items-center gap-1">
+              {i > 0 && (
+                <span className="text-[10px] font-normal opacity-60">/</span>
+              )}
+              <Kbd>{key}</Kbd>
+            </span>
+          ))}
+        </span>
+      ) : null}
     </button>
   );
 }

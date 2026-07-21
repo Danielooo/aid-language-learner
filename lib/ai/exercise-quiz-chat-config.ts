@@ -1,8 +1,6 @@
 // Gedeelde constants/utilities voor quiz-oefening chat.
-// Zowel de chat-route (server) als de exercise-chat component (client)
-// importeren MODEL en `buildQuizChatSystemPrompt` zodat het debug-panel
-// "verzonden naar OpenAI" gegarandeerd toont wat de server ook
-// daadwerkelijk meestuurt. Geen secrets — mag in de client-bundle.
+// MODEL en `buildQuizChatSystemPrompt` worden door de chat-route (server)
+// gebruikt. Geen secrets — mag in de client-bundle.
 
 export const EXERCISE_QUIZ_CHAT_MODEL = "gpt-4o-mini";
 
@@ -34,9 +32,7 @@ const GUARDRAIL = [
   "- Houd antwoorden kort en concreet — geen lange uitweidingen.",
 ].join("\n");
 
-// Bouw het system-prompt voor de quiz-chat. Wordt zowel server-side
-// (route → streamText) als client-side (debug-panel) aangeroepen met
-// dezelfde input zodat het paneel exact toont wat de LLM ziet.
+// Bouw het system-prompt voor de quiz-chat (server-side route → streamText).
 export function buildQuizChatSystemPrompt(
   input: BuildQuizChatSystemPromptInput,
 ): string {

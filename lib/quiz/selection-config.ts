@@ -25,7 +25,7 @@ export function selectionModeLabel(mode: QuizSelectionMode): string {
     case "topic":
       return "Topic oefenen";
     case "srs":
-      return "Spaced repetition";
+      return "Herhaalschema";
     case "custom":
       return "Zelf kiezen";
   }

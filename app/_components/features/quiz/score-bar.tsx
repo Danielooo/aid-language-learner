@@ -1,10 +1,11 @@
 type ScoreBarProps = {
   score: { correct: number; incorrect: number; total: number };
   hydrated: boolean;
-  onReset: () => void;
+  /** Bijv. "3 van 10" — zelfde regel als Goed/Fout/Totaal. */
+  progressLabel?: string | null;
 };
 
-export function ScoreBar({ score, hydrated, onReset }: ScoreBarProps) {
+export function ScoreBar({ score, hydrated, progressLabel }: ScoreBarProps) {
   const pct =
     score.total === 0 ? 0 : Math.round((score.correct / score.total) * 100);
 
@@ -35,14 +36,11 @@ export function ScoreBar({ score, hydrated, onReset }: ScoreBarProps) {
           <span className="text-muted-foreground">({pct}%)</span>
         )}
       </div>
-      <button
-        type="button"
-        onClick={onReset}
-        disabled={!hydrated || score.total === 0}
-        className="cursor-pointer text-xs text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        Reset score
-      </button>
+      {progressLabel ? (
+        <span className="text-sm font-medium tabular-nums text-foreground">
+          {progressLabel}
+        </span>
+      ) : null}
     </div>
   );
 }

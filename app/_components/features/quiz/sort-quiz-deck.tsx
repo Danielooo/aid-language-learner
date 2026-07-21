@@ -7,13 +7,12 @@ import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 
 import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
 import { ExerciseErrorState } from "@/app/_components/features/quiz/exercise-error-state";
-import { HistoryList } from "@/app/_components/features/quiz/history-list";
 import { ScoreBar } from "@/app/_components/features/quiz/score-bar";
 import { ExerciseChat } from "@/app/_components/features/quiz/exercise-chat";
 import { useQuizStorage } from "@/app/_components/features/quiz/use-quiz-storage";
 import {
-  isQuizShortcut,
-  QUIZ_SHORTCUTS,
+  isTypingBracketShortcut,
+  TYPING_SHORTCUTS,
 } from "@/lib/keyboard/quiz-shortcuts";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
 import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
@@ -28,7 +27,8 @@ import {
 import { isValidTranslationDirection } from "@/lib/quiz/typing-config";
 
 import { ExercisePicker } from "./exercise-picker";
-import { QuizSubPageMeta } from "./quiz-sub-page-meta";
+import { QuizBackToOverviewButton } from "./quiz-back-to-overview-button";
+import { QuizLeaveSessionDialog } from "./quiz-leave-session-dialog";
 import { ActiveTopicsEmptyBanner } from "./active-topics-empty-banner";
 import {
   QuizSelectionScreen,
@@ -44,6 +44,7 @@ import { SrsCompleteState } from "./srs-complete-state";
 import { SrsTopicPickerSection } from "./srs-topic-picker-section";
 import { TopicPickerGrid } from "./topic-picker-grid";
 import { useQuizSession } from "./hooks/use-quiz-session";
+import { useQuizLeaveGuard } from "./hooks/use-quiz-leave-guard";
 import { useItemResponseTime } from "./hooks/use-item-response-time";
 import { useQuizTopics } from "./hooks/use-quiz-topics";
 
@@ -60,12 +61,9 @@ type DeckScreen =
   | "exercise-picker"
   | "playing";
 
-function topicDisplayLabel(topic: string): string {
+function topicDisplayLabel(topic: string, mode: QuizSelectionMode): string {
+  if (mode === "custom") return "Zelf kiezen";
   return topic === ALL_TOPICS ? "Alle topics" : topic;
-}
-
-function directionDisplayLabel(direction: TranslationDirection): string {
-  return direction === "es-to-nl" ? "ES → NL" : "NL → ES";
 }
 
 export function SortQuizDeck() {
@@ -78,7 +76,6 @@ export function SortQuizDeck() {
 
   const [feedback, setFeedback] = useState<SortFeedback | null>(null);
   const [lastAnswer, setLastAnswer] = useState("");
-  const [showHistory, setShowHistory] = useState(false);
 
   const { data: topicsData, isPending: topicsLoading } = useQuizTopics();
   const topicStats = topicsData?.stats ?? [];
@@ -104,7 +101,6 @@ export function SortQuizDeck() {
     sessionComplete,
     srsComplete,
     sessionPhase,
-    queueRemaining,
     queueProgress,
     queueTotal,
     initialQueueTotal,
@@ -115,16 +111,17 @@ export function SortQuizDeck() {
     startSession,
     resetSession,
     fetchNext,
+    fetchPrevious,
     fetchNextValidated,
     recordAnswer,
     recordSkip,
     startMistakeReview,
     finishSession,
     recordSrsReview,
-    suspendExercise,
+    canGoPrevious,
   } = useQuizSession();
 
-  const { score, attempts, recordAttempt, reset, hydrated } = useQuizStorage();
+  const { score, recordAttempt, hydrated } = useQuizStorage();
   const getResponseTimeMs = useItemResponseTime(item?.id);
 
   const isSortEligible = useCallback(
@@ -297,9 +294,28 @@ export function SortQuizDeck() {
     setScreen("selection");
   }, [resetSession, resetExerciseState]);
 
-  const handleBackToSetup = useCallback(() => {
-    setScreen("setup");
-  }, []);
+  const handleBackToOverview = useCallback(() => {
+    resetSession();
+    resetExerciseState();
+    router.push("/oefenen");
+  }, [resetSession, resetExerciseState, router]);
+
+  const {
+    confirmOpen: leaveConfirmOpen,
+    requestLeave,
+    confirmLeave,
+    dismissLeave,
+    handleEscape,
+  } = useQuizLeaveGuard({
+    isMidSession: screen === "playing" && showPlayingUi,
+    onLeave: handleBackToOverview,
+  });
+
+  const handlePrevious = useCallback(() => {
+    if (loading || !canGoPrevious) return;
+    resetExerciseState();
+    void fetchPrevious();
+  }, [loading, canGoPrevious, resetExerciseState, fetchPrevious]);
 
   const handleSkip = useCallback(() => {
     if (loading || !item) return;
@@ -343,15 +359,6 @@ export function SortQuizDeck() {
     loadNext();
   }, [loading, loadNext]);
 
-  const handleSuspend = useCallback(async () => {
-    if (!item) return;
-    if (!window.confirm("Deze oefening niet meer tonen in spaced repetition?")) {
-      return;
-    }
-    await suspendExercise(item.id);
-    loadNext();
-  }, [item, suspendExercise, loadNext]);
-
   const handleStartMistakeReview = useCallback(() => {
     startMistakeReview();
     resetExerciseState();
@@ -379,45 +386,22 @@ export function SortQuizDeck() {
         )
       : null;
 
-  function handleReset() {
-    if (window.confirm("Score en geschiedenis echt wissen?")) reset();
-  }
-
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      const target = e.target;
-      const inInput =
-        target instanceof HTMLElement &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.tagName === "SELECT" ||
-          target.isContentEditable);
-
       if (e.key === "Escape") {
         e.preventDefault();
-        if (screen === "playing") {
-          handleChangeSetup();
-        } else if (screen === "selection") {
-          handleBackToSetup();
-        } else if (screen === "topic-picker" || screen === "exercise-picker") {
-          setScreen("selection");
-        } else {
-          router.push("/oefenen");
-        }
+        handleEscape();
         return;
       }
+
+      if (leaveConfirmOpen) return;
 
       if (screen !== "playing" || loading || !item) return;
 
-      if (e.key === "Enter" && !e.shiftKey && !inInput) {
-        e.preventDefault();
-        if (feedback) {
-          handleNext();
-        }
-        return;
-      }
-
-      if (!feedback && isQuizShortcut(e, QUIZ_SHORTCUTS.skip)) {
+      if (
+        !feedback &&
+        isTypingBracketShortcut(e, TYPING_SHORTCUTS.skip)
+      ) {
         e.preventDefault();
         handleSkip();
       }
@@ -431,46 +415,34 @@ export function SortQuizDeck() {
     loading,
     item,
     feedback,
-    router,
-    handleChangeSetup,
-    handleBackToSetup,
-    handleNext,
+    handleEscape,
     handleSkip,
+    leaveConfirmOpen,
   ]);
 
-  const escHint =
-    screen === "setup"
-      ? "Esc = terug naar overzicht"
-      : screen === "selection"
-        ? "Esc = terug naar instellingen"
-        : screen === "playing"
-          ? "Esc = wijzig instellingen"
-          : "Esc = terug naar moduskeuze";
+  const headerTitle =
+    screen === "playing"
+      ? topicDisplayLabel(selectedTopic, selectionMode)
+      : "Sorteren";
+
+  const playingDescription =
+    screen === "playing"
+      ? "Sleep of typ de woorden in de juiste volgorde."
+      : "Kies richting, selectie en oefeningen.";
 
   return (
     <div ref={containerRef} tabIndex={-1} className="space-y-6 outline-none">
       <AppPageHeader
-        title="Sorteren"
-        meta={<QuizSubPageMeta escHint={escHint} />}
-        description={
-          screen === "playing"
-            ? "Sleep woorden of typ de eerste letter(s) per positie."
-            : "Kies richting, selectie en oefeningen voor je sorteer-quiz."
-        }
+        title={headerTitle}
+        description={playingDescription}
+        actions={<QuizBackToOverviewButton onClick={requestLeave} />}
       />
 
-      {screen !== "playing" && (
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="rounded-full bg-muted px-2 py-0.5">
-            {directionDisplayLabel(direction)}
-          </span>
-          {screen !== "setup" && (
-            <span className="rounded-full bg-muted px-2 py-0.5">
-              {selectionModeLabel(selectionMode)}
-            </span>
-          )}
-        </div>
-      )}
+      <QuizLeaveSessionDialog
+        open={leaveConfirmOpen}
+        onStay={dismissLeave}
+        onLeave={confirmLeave}
+      />
 
       {screen === "setup" && configHydrated && (
         <SortSetupScreen
@@ -550,49 +522,11 @@ export function SortQuizDeck() {
 
       {screen === "playing" && (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-medium text-accent">
-                {selectionModeLabel(selectionMode)}
-              </span>
-              {selectionMode !== "custom" && (
-                <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                  {topicDisplayLabel(selectedTopic)}
-                </span>
-              )}
-              <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                {directionDisplayLabel(direction)}
-              </span>
-              {progressLabel && (
-                <span className="text-xs text-muted-foreground">
-                  {progressLabel}
-                </span>
-              )}
-              {selectionMode === "custom" && queueRemaining > 0 && !progressLabel && (
-                <span className="text-xs text-muted-foreground">
-                  Nog {queueRemaining} in wachtrij
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={handleChangeSetup}
-                className="cursor-pointer text-xs text-muted-foreground underline hover:text-foreground"
-              >
-                Wijzig instellingen
-              </button>
-            </div>
-            {selectionMode === "srs" && item && (
-              <button
-                type="button"
-                onClick={() => void handleSuspend()}
-                className="cursor-pointer text-xs text-muted-foreground underline hover:text-foreground"
-              >
-                Niet meer tonen
-              </button>
-            )}
-          </div>
-
-          <ScoreBar score={score} hydrated={hydrated} onReset={handleReset} />
+          <ScoreBar
+            score={score}
+            hydrated={hydrated}
+            progressLabel={progressLabel}
+          />
 
           <section className="rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
             {sessionComplete && (
@@ -645,6 +579,9 @@ export function SortQuizDeck() {
                 onSubmit={handleSubmit}
                 onSkip={handleSkip}
                 onNext={handleNext}
+                onPrevious={handlePrevious}
+                canGoPrevious={canGoPrevious && !loading}
+                shortcutsEnabled={!leaveConfirmOpen}
               />
             )}
           </section>
@@ -659,20 +596,6 @@ export function SortQuizDeck() {
           )}
         </>
       )}
-
-      <details
-        className="rounded-md border border-border bg-card text-card-foreground"
-        open={showHistory}
-        onToggle={(e) => setShowHistory(e.currentTarget.open)}
-      >
-        <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-muted-foreground">
-          Recente pogingen ({attempts.length})
-        </summary>
-        <HistoryList
-          attempts={attempts}
-          emptyMessage="Nog geen pogingen — beantwoord een oefening om te beginnen."
-        />
-      </details>
     </div>
   );
 }

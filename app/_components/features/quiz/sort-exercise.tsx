@@ -17,10 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ExerciseAudioAttribution } from "@/app/_components/features/quiz/exercise-audio-attribution";
 import { ExerciseAudioControls } from "@/app/_components/features/quiz/exercise-audio-controls";
 import { useSortWordPlacementAnimation } from "@/app/_components/features/quiz/hooks/use-sort-word-placement-animation";
-import {
-  QUIZ_SHORTCUTS,
-  formatQuizShortcut,
-} from "@/lib/keyboard/quiz-shortcuts";
+import { TYPING_SHORTCUTS } from "@/lib/keyboard/quiz-shortcuts";
 import {
   createInitialSortState,
   getSortExerciseData,
@@ -36,6 +33,8 @@ import {
   isExactPrefixMatch,
   matchWordsByPrefix,
 } from "@/lib/quiz/sort-validate";
+
+import { FlashcardActionButton } from "./flashcard-action-button";
 
 import type { SortExerciseState, SortPoolItem } from "@/lib/quiz/sort-config";
 import type { ExerciseQuizItem } from "@/types/quiz";
@@ -54,6 +53,10 @@ type SortExerciseProps = {
   onSubmit: (userAnswer: string, feedback: SortFeedback) => void;
   onSkip: () => void;
   onNext: () => void;
+  onPrevious?: () => void;
+  canGoPrevious?: boolean;
+  /** Uit bij leave-dialog zodat Enter = blijven oefenen. */
+  shortcutsEnabled?: boolean;
 };
 
 export function SortExercise({
@@ -63,6 +66,9 @@ export function SortExercise({
   onSubmit,
   onSkip,
   onNext,
+  onPrevious,
+  canGoPrevious = false,
+  shortcutsEnabled = true,
 }: SortExerciseProps) {
   const exerciseData = useMemo(
     () => getSortExerciseData(item, direction),
@@ -137,8 +143,28 @@ export function SortExercise({
     setSortState((prev) => ({ ...prev, typePrefix: value }));
   }
 
+  function handleCheck() {
+    if (feedback) return;
+    if (!isAllSlotsFilled(sortState.slots)) return;
+    const userWords = getWordsFromSlots(sortState.slots, poolById);
+    const result = evaluateSortOrder(
+      userWords,
+      exerciseData.correctSequences,
+      exerciseData.primaryAnswer,
+    );
+    onSubmit(userWords.join(" "), result);
+  }
+
   function handlePrefixKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key !== "Enter" || feedback || isAnimating) return;
+
+    // Alle slots vol → Enter = controleren (niet proberen te plaatsen)
+    if (isAllSlotsFilled(sortState.slots)) {
+      e.preventDefault();
+      handleCheck();
+      return;
+    }
+
     e.preventDefault();
 
     const matches = matchWordsByPrefix(sortState.typePrefix, sortState.pool);
@@ -193,57 +219,87 @@ export function SortExercise({
       onNext();
       return;
     }
-
-    const userWords = getWordsFromSlots(sortState.slots, poolById);
-    const result = evaluateSortOrder(
-      userWords,
-      exerciseData.correctSequences,
-      exerciseData.primaryAnswer,
-    );
-    onSubmit(userWords.join(" "), result);
+    handleCheck();
   }
 
   const activeDragItem = activeDragId
     ? poolById.get(activeDragId)
     : undefined;
   const allFilled = isAllSlotsFilled(sortState.slots);
-  const disabled = feedback !== null;
+  const hasFeedback = feedback !== null;
+  const showPrevious = Boolean(onPrevious);
+
+  // Enter: controleren als alles geplaatst is, of volgende na feedback —
+  // ook als focus niet (meer) in het prefix-veld zit.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (!shortcutsEnabled) return;
+      if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) {
+        return;
+      }
+      if (isAnimating) return;
+
+      if (feedback) {
+        e.preventDefault();
+        e.stopPropagation();
+        onNext();
+        return;
+      }
+
+      if (!isAllSlotsFilled(sortState.slots)) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      const userWords = getWordsFromSlots(sortState.slots, poolById);
+      const result = evaluateSortOrder(
+        userWords,
+        exerciseData.correctSequences,
+        exerciseData.primaryAnswer,
+      );
+      onSubmit(userWords.join(" "), result);
+    }
+
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", onKeyDown, { capture: true });
+  }, [
+    shortcutsEnabled,
+    feedback,
+    isAnimating,
+    sortState.slots,
+    poolById,
+    exerciseData.correctSequences,
+    exerciseData.primaryAnswer,
+    onSubmit,
+    onNext,
+  ]);
 
   return (
-    <form onSubmit={handleFormSubmit} className="space-y-5">
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    <form onSubmit={handleFormSubmit} className="mx-auto w-full max-w-lg">
+      {/* Prompt-kaart — zelfde taal als flashcard / typen */}
+      <div className="relative flex min-h-64 flex-col items-center justify-center rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/15 via-accent/5 to-card p-6 text-center shadow-lg shadow-accent/10 sm:min-h-72">
+        <div className="flex w-full flex-col items-center gap-3">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {exerciseData.promptLabel}
+          </span>
+          <p className="text-2xl font-semibold leading-snug text-foreground sm:text-3xl">
+            {exerciseData.prompt}
           </p>
-          {item.topic && (
-            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              {item.topic}
-            </span>
+          {item.mp3_url && (
+            <ExerciseAudioControls mp3Url={item.mp3_url} variant="large" />
+          )}
+          {item.mp3_url && (
+            <ExerciseAudioAttribution
+              author={item.tatoeba_author}
+              license={item.tatoeba_license}
+              attributionUrl={item.tatoeba_attribution_url}
+            />
           )}
         </div>
-        <p className="text-xl font-medium leading-snug text-foreground">
-          {exerciseData.prompt}
-        </p>
-        {item.mp3_url && (
-          <ExerciseAudioControls mp3Url={item.mp3_url} variant="large" />
-        )}
-        {item.mp3_url && (
-          <ExerciseAudioAttribution
-            author={item.tatoeba_author}
-            license={item.tatoeba_license}
-            attributionUrl={item.tatoeba_attribution_url}
-          />
-        )}
-        <p className="font-mono text-[10px] text-muted-foreground/70">
-          #{item.id.slice(0, 8)}
+        <p className="absolute bottom-4 text-[11px] text-muted-foreground/80">
+          Sleep of typ de woorden ({exerciseData.answerLabel}) in volgorde
         </p>
       </div>
-
-      <p className="text-xs text-muted-foreground">
-        Zet de woorden ({exerciseData.answerLabel}) in de juiste volgorde —
-        sleep of typ de eerste letter(s) per positie.
-      </p>
 
       <DndContext
         sensors={sensors}
@@ -251,7 +307,7 @@ export function SortExercise({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div ref={sortAreaRef} className="space-y-4">
+        <div ref={sortAreaRef} className="mt-4 space-y-4">
           <div className="space-y-2">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Volgorde
@@ -263,7 +319,7 @@ export function SortExercise({
                   index={index}
                   item={slotItemId ? poolById.get(slotItemId) : undefined}
                   isActive={sortState.activeSlotIndex === index}
-                  disabled={disabled}
+                  disabled={hasFeedback}
                   onClick={() => handleSlotClick(index)}
                 />
               ))}
@@ -273,7 +329,7 @@ export function SortExercise({
           <WordPool
             items={sortState.pool}
             typePrefix={sortState.typePrefix}
-            disabled={disabled}
+            disabled={hasFeedback}
           />
         </div>
 
@@ -284,8 +340,8 @@ export function SortExercise({
         </DragOverlay>
       </DndContext>
 
-      {!disabled && (
-        <label htmlFor="sort-prefix" className="flex flex-col gap-1.5">
+      {!hasFeedback && !allFilled && (
+        <label htmlFor="sort-prefix" className="mt-4 flex flex-col gap-1.5">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Typ voor positie {sortState.activeSlotIndex + 1}
           </span>
@@ -297,10 +353,10 @@ export function SortExercise({
             onChange={(e) => handleTypePrefixChange(e.target.value)}
             onKeyDown={handlePrefixKeyDown}
             disabled={sortState.pool.length === 0 || isAnimating}
-            placeholder="Eerste letter(s) van het woord..."
+            placeholder="Eerste letter(s) van het woord…"
             autoComplete="off"
             className={clsx(
-              "w-full rounded-md border bg-background px-3 py-2 text-sm",
+              "w-full rounded-xl border bg-background px-4 py-3 text-sm shadow-sm disabled:opacity-70",
               prefixError
                 ? "border-destructive ring-1 ring-destructive/40"
                 : "border-input",
@@ -325,35 +381,44 @@ export function SortExercise({
         </label>
       )}
 
-      {feedback && <FeedbackBanner feedback={feedback} />}
+      {/* Vaste feedback-hoogte zodat knoppen niet omlaag springen */}
+      <div className="mt-4 min-h-[4.75rem]">
+        {feedback ? <FeedbackBanner feedback={feedback} /> : null}
+      </div>
 
-      <div className="flex flex-wrap gap-2">
-        {!feedback && (
-          <>
-            <button
-              type="submit"
-              disabled={!allFilled}
-              className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Controleren
-            </button>
-            <button
-              type="button"
-              onClick={onSkip}
-              className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-4 text-sm hover:bg-muted"
-            >
-              Skip ({formatQuizShortcut(QUIZ_SHORTCUTS.skip)})
-            </button>
-          </>
+      {showPrevious ? (
+        <div className="mt-4">
+          <FlashcardActionButton
+            label="Vorige oefening"
+            onClick={() => onPrevious?.()}
+            disabled={!canGoPrevious}
+          />
+        </div>
+      ) : null}
+
+      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {hasFeedback ? (
+          <FlashcardActionButton
+            label="Volgende oefening"
+            shortcut="Enter"
+            onClick={onNext}
+            variant="accent"
+          />
+        ) : (
+          <FlashcardActionButton
+            label="Controleren"
+            shortcut="Enter"
+            onClick={handleCheck}
+            disabled={!allFilled}
+            variant="accent"
+          />
         )}
-        {feedback && (
-          <button
-            type="submit"
-            className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
-          >
-            Volgende oefening (Enter)
-          </button>
-        )}
+        <FlashcardActionButton
+          label="Overslaan"
+          shortcut={TYPING_SHORTCUTS.skip}
+          onClick={onSkip}
+          disabled={hasFeedback}
+        />
       </div>
     </form>
   );
@@ -382,7 +447,7 @@ function SortSlot({
       ref={setNodeRef}
       data-sort-slot-index={index}
       className={clsx(
-        "rounded-lg border border-dashed transition-colors",
+        "rounded-xl border border-dashed transition-colors",
         item
           ? "inline-flex w-fit items-center justify-center p-1"
           : "flex min-h-12 min-w-[4.5rem] items-center justify-center px-2 py-1.5 sm:min-h-10",
@@ -436,7 +501,7 @@ function WordPool({
       <div
         ref={setNodeRef}
         className={clsx(
-          "flex min-h-12 flex-wrap gap-2 rounded-lg border border-border bg-muted/20 p-3",
+          "flex min-h-12 flex-wrap gap-2 rounded-xl border border-border/60 bg-muted/20 p-3",
           isOver && "border-accent bg-accent/5",
         )}
       >
@@ -524,7 +589,7 @@ function WordChip({
       data-sort-word-chip
       className={clsx(
         // Ruimere padding op touch-schermen: vingervriendelijke sleepdoelen.
-        "inline-flex min-h-10 cursor-grab touch-manipulation items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm active:cursor-grabbing sm:min-h-8 sm:px-2.5 sm:py-1",
+        "inline-flex min-h-10 cursor-grab touch-manipulation items-center rounded-xl border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm active:cursor-grabbing sm:min-h-8 sm:px-2.5 sm:py-1",
         isExactMatch && isPrefixMatch
           ? "border-accent ring-1 ring-accent/30"
           : "border-border",
@@ -552,7 +617,7 @@ function WordChipLabel({ word, prefix }: { word: string; prefix: string }) {
 function FeedbackBanner({ feedback }: { feedback: SortFeedback }) {
   if (feedback.isCorrect) {
     return (
-      <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">
+      <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-center text-sm text-emerald-700 dark:text-emerald-300">
         <p className="font-medium">Goed!</p>
         <p className="mt-1 text-xs opacity-80">
           Antwoord:{" "}
@@ -563,7 +628,7 @@ function FeedbackBanner({ feedback }: { feedback: SortFeedback }) {
   }
 
   return (
-    <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+    <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-center text-sm text-destructive">
       <p className="font-medium">Niet goed.</p>
       <p className="mt-1 text-xs">
         Geldig antwoord:{" "}
@@ -575,11 +640,15 @@ function FeedbackBanner({ feedback }: { feedback: SortFeedback }) {
 
 export function SortExerciseSkeleton() {
   return (
-    <div className="space-y-3">
-      <div className="h-3 w-16 animate-pulse rounded bg-muted" />
-      <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
-      <div className="h-12 w-full animate-pulse rounded bg-muted" />
-      <div className="h-16 w-full animate-pulse rounded bg-muted" />
+    <div className="mx-auto w-full max-w-lg space-y-4">
+      <div className="h-64 animate-pulse rounded-2xl bg-muted/60 sm:h-72" />
+      <div className="h-12 animate-pulse rounded-xl bg-muted/60" />
+      <div className="h-16 animate-pulse rounded-xl bg-muted/60" />
+      <div className="h-[4.75rem]" />
+      <div className="grid grid-cols-2 gap-2">
+        <div className="h-12 animate-pulse rounded-xl bg-muted/60" />
+        <div className="h-12 animate-pulse rounded-xl bg-muted/60" />
+      </div>
     </div>
   );
 }

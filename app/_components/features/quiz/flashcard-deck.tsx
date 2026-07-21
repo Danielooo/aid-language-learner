@@ -11,18 +11,19 @@ import {
   FLASHCARD_ANSWER_INCORRECT,
 } from "@/app/_components/features/quiz/constants";
 import { ExerciseErrorState } from "@/app/_components/features/quiz/exercise-error-state";
-import { HistoryList } from "@/app/_components/features/quiz/history-list";
+import { ExerciseChat } from "@/app/_components/features/quiz/exercise-chat";
 import { ScoreBar } from "@/app/_components/features/quiz/score-bar";
 import { useQuizStorage } from "@/app/_components/features/quiz/use-quiz-storage";
 import {
-  isQuizShortcut,
-  QUIZ_SHORTCUTS,
+  FLASHCARD_SHORTCUTS,
+  isPlainLetterShortcut,
 } from "@/lib/keyboard/quiz-shortcuts";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
 import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
 
 import { ExercisePicker } from "./exercise-picker";
-import { QuizSubPageMeta } from "./quiz-sub-page-meta";
+import { QuizBackToOverviewButton } from "./quiz-back-to-overview-button";
+import { QuizLeaveSessionDialog } from "./quiz-leave-session-dialog";
 import { ActiveTopicsEmptyBanner } from "./active-topics-empty-banner";
 import { animateCardExit, Flashcard } from "./flashcard";
 import {
@@ -37,6 +38,7 @@ import { SrsCompleteState } from "./srs-complete-state";
 import { SrsTopicPickerSection } from "./srs-topic-picker-section";
 import { TopicPickerGrid } from "./topic-picker-grid";
 import { useQuizSession } from "./hooks/use-quiz-session";
+import { useQuizLeaveGuard } from "./hooks/use-quiz-leave-guard";
 import { useItemResponseTime } from "./hooks/use-item-response-time";
 import { useQuizTopics } from "./hooks/use-quiz-topics";
 
@@ -51,7 +53,8 @@ type DeckScreen =
   | "exercise-picker"
   | "playing";
 
-function topicDisplayLabel(topic: string): string {
+function topicDisplayLabel(topic: string, mode: QuizSelectionMode): string {
+  if (mode === "custom") return "Zelf kiezen";
   return topic === ALL_TOPICS ? "Alle topics" : topic;
 }
 
@@ -63,7 +66,6 @@ export function FlashcardDeck() {
   const [screen, setScreen] = useState<DeckScreen>("selection");
   const [phase, setPhase] = useState<FlashcardPhase>("front");
   const [animating, setAnimating] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
 
   const { data: topicsData, isPending: topicsLoading } = useQuizTopics();
   const topicStats = topicsData?.stats ?? [];
@@ -89,7 +91,6 @@ export function FlashcardDeck() {
     sessionComplete,
     srsComplete,
     sessionPhase,
-    queueRemaining,
     queueProgress,
     queueTotal,
     initialQueueTotal,
@@ -100,15 +101,15 @@ export function FlashcardDeck() {
     startSession,
     resetSession,
     fetchNext,
+    fetchPrevious,
     recordAnswer,
-    recordSkip,
     startMistakeReview,
     finishSession,
     recordSrsReview,
-    suspendExercise,
+    canGoPrevious,
   } = useQuizSession();
 
-  const { score, attempts, recordAttempt, reset, hydrated } = useQuizStorage();
+  const { score, recordAttempt, hydrated } = useQuizStorage();
   const getResponseTimeMs = useItemResponseTime(item?.id);
 
   useEffect(() => {
@@ -208,15 +209,6 @@ export function FlashcardDeck() {
     setPhase((p) => (p === "front" ? "back" : "front"));
   }, [animating, loading]);
 
-  const handleSkip = useCallback(() => {
-    if (animating || loading || !item) return;
-    if (selectionMode === "topic") {
-      recordSkip(item.id);
-    }
-    setPhase("front");
-    void fetchNext();
-  }, [animating, loading, item, selectionMode, recordSkip, fetchNext]);
-
   const handleGrade = useCallback(
     async (isCorrect: boolean) => {
       if (!item || phase !== "back" || animating || loading) return;
@@ -271,15 +263,28 @@ export function FlashcardDeck() {
     ],
   );
 
-  const handleSuspend = useCallback(async () => {
-    if (!item) return;
-    if (!window.confirm("Deze oefening niet meer tonen in spaced repetition?")) {
-      return;
-    }
-    await suspendExercise(item.id);
+  const handlePrevious = useCallback(() => {
+    if (animating || loading || !canGoPrevious) return;
     setPhase("front");
-    void fetchNext();
-  }, [item, suspendExercise, fetchNext]);
+    setAnimating(false);
+    void fetchPrevious();
+  }, [animating, loading, canGoPrevious, fetchPrevious]);
+
+  const handleBackToOverview = useCallback(() => {
+    resetSession();
+    router.push("/oefenen");
+  }, [resetSession, router]);
+
+  const {
+    confirmOpen: leaveConfirmOpen,
+    requestLeave,
+    confirmLeave,
+    dismissLeave,
+    handleEscape,
+  } = useQuizLeaveGuard({
+    isMidSession: screen === "playing" && showPlayingUi,
+    onLeave: handleBackToOverview,
+  });
 
   const handleStartMistakeReview = useCallback(() => {
     startMistakeReview();
@@ -308,10 +313,6 @@ export function FlashcardDeck() {
         )
       : null;
 
-  function handleReset() {
-    if (window.confirm("Score en geschiedenis echt wissen?")) reset();
-  }
-
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target;
@@ -324,44 +325,36 @@ export function FlashcardDeck() {
 
       if (e.key === "Escape") {
         e.preventDefault();
-        if (screen === "playing") {
-          handleChangeSetup();
-        } else if (screen === "topic-picker" || screen === "exercise-picker") {
-          setScreen("selection");
-        } else {
-          router.push("/oefenen");
-        }
+        handleEscape();
         return;
       }
 
-      if (screen === "playing" && !loading && !animating && item) {
-        if (isQuizShortcut(e, QUIZ_SHORTCUTS.skip)) {
+      if (leaveConfirmOpen) return;
+
+      if (inInput) return;
+      if (screen !== "playing" || loading || animating || !item) return;
+
+      if (isPlainLetterShortcut(e, FLASHCARD_SHORTCUTS.previous)) {
+        e.preventDefault();
+        handlePrevious();
+        return;
+      }
+
+      if (phase === "back") {
+        if (isPlainLetterShortcut(e, FLASHCARD_SHORTCUTS.gradeCorrect)) {
           e.preventDefault();
-          handleSkip();
+          void handleGrade(true);
           return;
         }
-
-        if (phase === "back") {
-          if (isQuizShortcut(e, QUIZ_SHORTCUTS.gradeCorrect)) {
-            e.preventDefault();
-            void handleGrade(true);
-            return;
-          }
-
-          if (isQuizShortcut(e, QUIZ_SHORTCUTS.gradeIncorrect)) {
-            e.preventDefault();
-            void handleGrade(false);
-            return;
-          }
+        if (isPlainLetterShortcut(e, FLASHCARD_SHORTCUTS.gradeIncorrect)) {
+          e.preventDefault();
+          void handleGrade(false);
+          return;
         }
       }
 
-      if (inInput) return;
-
-      if (screen !== "playing" || loading || animating) return;
-      if (!item) return;
-
-      if (e.key === " " || e.key === "Enter") {
+      // Alleen Spatie — Enter triggert geen omdraaien.
+      if (e.key === " ") {
         e.preventDefault();
         handleFlip();
       }
@@ -376,30 +369,34 @@ export function FlashcardDeck() {
     animating,
     item,
     phase,
-    router,
     handleGrade,
     handleFlip,
-    handleSkip,
-    handleChangeSetup,
+    handlePrevious,
+    handleEscape,
+    leaveConfirmOpen,
   ]);
 
-  const escHint =
-    screen === "selection"
-      ? "Esc = terug naar overzicht"
-      : screen === "playing"
-        ? "Esc = wijzig instellingen"
-        : "Esc = terug naar moduskeuze";
+  const headerTitle =
+    screen === "playing"
+      ? topicDisplayLabel(selectedTopic, selectionMode)
+      : "Flashcards";
 
   return (
     <div ref={containerRef} tabIndex={-1} className="space-y-6 outline-none">
       <AppPageHeader
-        title="Flashcards"
-        meta={<QuizSubPageMeta escHint={escHint} />}
+        title={headerTitle}
         description={
           screen === "playing"
             ? "Bekijk de Spaanse zin, draai de kaart om en beoordeel jezelf."
             : "Kies hoe en welke oefeningen je wilt oefenen."
         }
+        actions={<QuizBackToOverviewButton onClick={requestLeave} />}
+      />
+
+      <QuizLeaveSessionDialog
+        open={leaveConfirmOpen}
+        onStay={dismissLeave}
+        onLeave={confirmLeave}
       />
 
       {screen === "selection" && selectionHydrated && (
@@ -472,46 +469,11 @@ export function FlashcardDeck() {
 
       {screen === "playing" && (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-medium text-accent">
-                {selectionModeLabel(selectionMode)}
-              </span>
-              {selectionMode !== "custom" && (
-                <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                  {topicDisplayLabel(selectedTopic)}
-                </span>
-              )}
-              {progressLabel && (
-                <span className="text-xs text-muted-foreground">
-                  {progressLabel}
-                </span>
-              )}
-              {selectionMode === "custom" && queueRemaining > 0 && !progressLabel && (
-                <span className="text-xs text-muted-foreground">
-                  Nog {queueRemaining} in wachtrij
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={handleChangeSetup}
-                className="cursor-pointer text-xs text-muted-foreground underline hover:text-foreground"
-              >
-                Wijzig instellingen
-              </button>
-            </div>
-            {selectionMode === "srs" && item && (
-              <button
-                type="button"
-                onClick={() => void handleSuspend()}
-                className="cursor-pointer text-xs text-muted-foreground underline hover:text-foreground"
-              >
-                Niet meer tonen
-              </button>
-            )}
-          </div>
-
-          <ScoreBar score={score} hydrated={hydrated} onReset={handleReset} />
+          <ScoreBar
+            score={score}
+            hydrated={hydrated}
+            progressLabel={progressLabel}
+          />
 
           <section className="rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
             {sessionComplete && (
@@ -563,28 +525,30 @@ export function FlashcardDeck() {
                   onFlip={handleFlip}
                   onGradeCorrect={() => void handleGrade(true)}
                   onGradeIncorrect={() => void handleGrade(false)}
-                  onSkip={handleSkip}
+                  onPrevious={handlePrevious}
+                  canGoPrevious={canGoPrevious}
                   animating={animating}
                 />
               </div>
             )}
           </section>
+
+          {showPlayingUi && !sessionLoading && !loading && !error && item && (
+            <ExerciseChat
+              key={item.id}
+              exercise={item}
+              // Na omdraaien mag de chat de vertaling gebruiken (zonder
+              // zelfbeoordeling — isCorrect blijft onbekend tot Goed/Fout).
+              feedback={
+                phase === "back"
+                  ? { correctAnswer: item.target_text }
+                  : null
+              }
+              userAnswer=""
+            />
+          )}
         </>
       )}
-
-      <details
-        className="rounded-md border border-border bg-card text-card-foreground"
-        open={showHistory}
-        onToggle={(e) => setShowHistory(e.currentTarget.open)}
-      >
-        <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-muted-foreground">
-          Recente pogingen ({attempts.length})
-        </summary>
-        <HistoryList
-          attempts={attempts}
-          emptyMessage="Nog geen pogingen — beoordeel een kaart om te beginnen."
-        />
-      </details>
     </div>
   );
 }

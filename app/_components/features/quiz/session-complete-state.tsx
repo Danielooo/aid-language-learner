@@ -68,7 +68,7 @@ export function SessionCompleteState({
           <p className="text-xs text-muted-foreground">
             {skippedIneligible} oefening
             {skippedIneligible === 1 ? "" : "en"} overgeslagen (niet geschikt
-            voor deze quiz).
+            voor deze sessie).
           </p>
         )}
         <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">

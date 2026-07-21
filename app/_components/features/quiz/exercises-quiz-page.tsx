@@ -24,16 +24,16 @@ const QUIZ_MODES = [
     icon: <FlashcardsIcon />,
   },
   {
-    title: "Typen",
-    description: "Typ de vertaling.",
-    href: "/oefenen/typen",
-    icon: <TypenIcon />,
-  },
-  {
     title: "Sorteren",
     description: "Zet in de juiste volgorde.",
     href: "/oefenen/sorteren",
     icon: <SorterenIcon />,
+  },
+  {
+    title: "Typen",
+    description: "Typ de vertaling.",
+    href: "/oefenen/typen",
+    icon: <TypenIcon />,
   },
 ] as const;
 

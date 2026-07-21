@@ -71,6 +71,11 @@ export function useQuizStorage() {
         queryClient.setQueryData(queryKeys.quizAttempts(), context.prev);
       }
     },
+    onSettled: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.dashboardStats(),
+      });
+    },
   });
 
   const resetMutation = useMutation({
@@ -89,6 +94,11 @@ export function useQuizStorage() {
       if (context?.prev) {
         queryClient.setQueryData(queryKeys.quizAttempts(), context.prev);
       }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.dashboardStats(),
+      });
     },
   });
 

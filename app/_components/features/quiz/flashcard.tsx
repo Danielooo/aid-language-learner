@@ -4,10 +4,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useEffect, useRef } from "react";
 
-import {
-  QUIZ_SHORTCUTS,
-  formatQuizShortcut,
-} from "@/lib/keyboard/quiz-shortcuts";
+import { FLASHCARD_SHORTCUTS } from "@/lib/keyboard/quiz-shortcuts";
 
 import { ExerciseAudioAttribution } from "./exercise-audio-attribution";
 import { ExerciseAudioControls } from "./exercise-audio-controls";
@@ -25,7 +22,8 @@ type FlashcardProps = {
   onFlip: () => void;
   onGradeCorrect: () => void;
   onGradeIncorrect: () => void;
-  onSkip: () => void;
+  onPrevious?: () => void;
+  canGoPrevious?: boolean;
   animating?: boolean;
 };
 
@@ -42,7 +40,8 @@ export function Flashcard({
   onFlip,
   onGradeCorrect,
   onGradeIncorrect,
-  onSkip,
+  onPrevious,
+  canGoPrevious = false,
   animating = false,
 }: FlashcardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -112,6 +111,7 @@ export function Flashcard({
   }
 
   const isBack = phase === "back";
+  const showPrevious = Boolean(onPrevious);
 
   return (
     <div className="mx-auto w-full max-w-lg">
@@ -119,7 +119,7 @@ export function Flashcard({
         ref={cardRef}
         data-flashcard-root
         role="button"
-        aria-label={isBack ? "Kaart terugdraaien" : "Kaart omdraaien"}
+        aria-label="Kaart omdraaien"
         onClick={handleCardClick}
         onPointerDown={handleCardPointerDown}
         onPointerUp={handleCardPointerUp}
@@ -140,11 +140,6 @@ export function Flashcard({
             style={{ backfaceVisibility: "hidden" }}
           >
             <div className="flex w-full flex-col items-center gap-3">
-              {item.topic && (
-                <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
-                  {item.topic}
-                </span>
-              )}
               <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Spaans
               </span>
@@ -193,53 +188,53 @@ export function Flashcard({
         </div>
       </div>
 
+      {showPrevious ? (
+        <div className="mt-4">
+          <FlashcardActionButton
+            label="Vorige oefening"
+            shortcut={FLASHCARD_SHORTCUTS.previous.toUpperCase()}
+            onClick={() => onPrevious?.()}
+            disabled={animating || !canGoPrevious}
+          />
+        </div>
+      ) : null}
+
       <div
-        className={`mt-4 grid gap-2 ${isBack ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2"}`}
+        className={`mt-2 grid gap-2 ${
+          isBack ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1"
+        }`}
       >
         {!isBack && (
+          <FlashcardActionButton
+            label="Omdraaien"
+            shortcut="Spatie"
+            onClick={onFlip}
+            disabled={animating}
+            variant="accent"
+          />
+        )}
+        {isBack && (
           <>
             <FlashcardActionButton
               label="Omdraaien"
-              shortcut={["Spatie", "Enter"]}
+              shortcut="Spatie"
               onClick={onFlip}
               disabled={animating}
               variant="accent"
             />
             <FlashcardActionButton
-              label="Overslaan"
-              shortcut={formatQuizShortcut(QUIZ_SHORTCUTS.skip)}
-              onClick={onSkip}
-              disabled={animating}
-            />
-          </>
-        )}
-        {isBack && (
-          <>
-            <FlashcardActionButton
               label="Goed"
-              shortcut={formatQuizShortcut(QUIZ_SHORTCUTS.gradeCorrect)}
+              shortcut={FLASHCARD_SHORTCUTS.gradeCorrect.toUpperCase()}
               onClick={onGradeCorrect}
               disabled={animating}
               variant="success"
             />
             <FlashcardActionButton
               label="Fout"
-              shortcut={formatQuizShortcut(QUIZ_SHORTCUTS.gradeIncorrect)}
+              shortcut={FLASHCARD_SHORTCUTS.gradeIncorrect.toUpperCase()}
               onClick={onGradeIncorrect}
               disabled={animating}
               variant="danger"
-            />
-            <FlashcardActionButton
-              label="Terug"
-              shortcut={["Spatie", "Enter"]}
-              onClick={onFlip}
-              disabled={animating}
-            />
-            <FlashcardActionButton
-              label="Overslaan"
-              shortcut={formatQuizShortcut(QUIZ_SHORTCUTS.skip)}
-              onClick={onSkip}
-              disabled={animating}
             />
           </>
         )}

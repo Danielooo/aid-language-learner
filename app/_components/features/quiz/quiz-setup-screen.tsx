@@ -72,7 +72,7 @@ export function QuizSetupScreen({
     <section className="space-y-6 rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
       <div className="space-y-1">
         <h2 className="text-sm font-semibold text-foreground">
-          Stel je quiz in
+          Stel je oefening in
         </h2>
         <p className="text-xs text-muted-foreground">
           Kies modus en vertaalrichting. Daarna selecteer je een topic.

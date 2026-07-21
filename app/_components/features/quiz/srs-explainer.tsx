@@ -60,8 +60,7 @@ export function SrsExplainer({ compact = false }: SrsExplainerProps) {
         })}
 
         <p className="text-xs">
-          Overslaan telt niet mee. Via <em>Niet meer tonen</em> kun je een oefening
-          uitsluiten.
+          Overslaan telt niet mee voor je herhaalschema.
         </p>
       </div>
     </details>

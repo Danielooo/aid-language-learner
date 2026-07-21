@@ -31,7 +31,7 @@ export function ChatThread({ messages, status, emptyState }: ChatThreadProps) {
   return (
     <div
       ref={scrollRef}
-      className="min-h-[4.5rem] max-h-[min(16rem,40vh)] space-y-2 overflow-y-auto rounded-lg bg-chat-thread-bg px-7 py-3"
+      className="min-h-[4.5rem] max-h-[min(16rem,40vh)] space-y-2 overflow-y-auto rounded-xl bg-chat-thread-bg px-7 py-3"
       aria-live="polite"
       aria-busy={isBusy}
     >
