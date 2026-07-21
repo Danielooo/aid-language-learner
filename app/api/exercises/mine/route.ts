@@ -86,9 +86,10 @@ export async function GET(req: Request): Promise<Response> {
   if (q) {
     const escaped = q.replace(/[%_]/g, "\\$&");
     const pattern = `%${escaped}%`;
-    // Cast text[] → text zodat substring-zoeken over alternatieven werkt.
+    // alternatives_search = generated column (array_to_string); ::text-cast
+    // in .or() faalt in PostgREST.
     query = query.or(
-      `source_text.ilike.${pattern},target_text.ilike.${pattern},alternative_translations::text.ilike.${pattern}`,
+      `source_text.ilike.${pattern},target_text.ilike.${pattern},alternatives_search.ilike.${pattern}`,
     );
   }
 

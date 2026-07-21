@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { DeleteConfirmDialog } from "@/app/_components/features/exercises/delete-confirm-dialog";
 import {
@@ -11,13 +12,15 @@ import {
 } from "@/app/_components/features/exercises/exercise-edit-modal";
 import { MyExercisesTable } from "@/app/_components/features/exercises/my-exercises-table";
 import { PaginationBar } from "@/app/_components/features/exercises/pagination-bar";
+import { DeleteAllExercisesDialog } from "@/app/_components/features/topics/delete-all-exercises-dialog";
+import { queryKeys } from "@/lib/query-keys";
 
 import type {
   AdminExerciseRow,
   ExercisePatchFields,
 } from "@/lib/exercises/types";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 10;
 
 type ListSuccess = {
   ok: true;
@@ -64,6 +67,13 @@ export type ExercisesListPageProps = {
   emptyFilteredMessage?: string;
   /** Wordt aangeroepen wanneer het totaal in deze groep wijzigt. */
   onTotalChange?: (total: number) => void;
+  /** Topicnaam voor bevestigingscopy bij alles-verwijderen. */
+  topicName?: string | null;
+  /**
+   * Na succesvol verwijderen van alle oefeningen: topic ook weg + navigeren.
+   * Alleen aangeroepen bij “alle oefeningen” (zonder zoekfilter).
+   */
+  onDeleteTopic?: () => Promise<void>;
 };
 
 export function ExercisesListPage({
@@ -73,9 +83,12 @@ export function ExercisesListPage({
   emptyMessage,
   emptyFilteredMessage = "Geen oefeningen gevonden voor deze filters.",
   onTotalChange,
+  topicName = null,
+  onDeleteTopic,
 }: ExercisesListPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const q = searchParams.get("q") ?? "";
@@ -86,9 +99,9 @@ export function ExercisesListPage({
   const [deleting, setDeleting] = useState(false);
   const [deletePrompt, setDeletePrompt] = useState<{
     ids: string[];
-    showAudioOption: boolean;
+    hasAudio: boolean;
+    emptiesTopic: boolean;
   } | null>(null);
-  const [deleteAudio, setDeleteAudio] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [editRow, setEditRow] = useState<AdminExerciseRow | null>(null);
@@ -109,11 +122,22 @@ export function ExercisesListPage({
   const isInitialLoading = load.status === "loading";
   const busy = isInitialLoading || isRefreshing || deleting;
 
+  const invalidateLeerplanOverview = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.learningTopics(),
+    });
+  }, [queryClient]);
+
   useEffect(() => {
     if (load.status === "loaded") {
       onTotalChange?.(load.total);
     }
   }, [load, onTotalChange]);
+
+  // URL (browser Back/Forward) is bron van waarheid voor het zoekveld.
+  useEffect(() => {
+    setSearchDraft(q);
+  }, [q]);
 
   const updateParams = useCallback(
     (patch: Record<string, string | null>) => {
@@ -190,6 +214,16 @@ export function ExercisesListPage({
     void fetchList(false);
   }, [fetchList]);
 
+  // Te hoge ?page= terugzetten i.p.v. valse “lege topic”-CTA.
+  useEffect(() => {
+    if (load.status !== "loaded" || load.isRefreshing) return;
+    if (load.total === 0) return;
+    const maxPages = Math.max(1, Math.ceil(load.total / PAGE_SIZE));
+    if (page > maxPages) {
+      updateParams({ page: String(maxPages) });
+    }
+  }, [load, page, updateParams]);
+
   const [prevRows, setPrevRows] = useState(rows);
   if (rows !== prevRows) {
     setPrevRows(rows);
@@ -234,8 +268,9 @@ export function ExercisesListPage({
           ),
         };
       });
+      invalidateLeerplanOverview();
     },
-    [apiBase],
+    [apiBase, invalidateLeerplanOverview],
   );
 
   const selectedRows = useMemo(
@@ -245,12 +280,15 @@ export function ExercisesListPage({
 
   const handleDeleteRequest = useCallback(() => {
     if (selectedRows.length === 0) return;
-    setDeleteAudio(false);
+    // Zonder filter: selectie van alles in het topic → oefeningen + topic weg.
+    const emptiesTopic =
+      !q.trim() && selectedRows.length >= total && total > 0;
     setDeletePrompt({
       ids: selectedRows.map((r) => r.exercise_id),
-      showAudioOption: selectedRows.some((r) => r.has_audio),
+      hasAudio: selectedRows.some((r) => r.has_audio),
+      emptiesTopic,
     });
-  }, [selectedRows]);
+  }, [selectedRows, q, total]);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deletePrompt) return;
@@ -263,18 +301,35 @@ export function ExercisesListPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           exercise_ids: deletePrompt.ids,
-          delete_audio: deleteAudio,
+          delete_audio: true,
         }),
       });
       const json = (await res.json()) as DeleteSuccess | DeleteFailure;
       if (!res.ok || !json.ok) {
         throw new Error(json.ok ? `HTTP ${res.status}` : json.error);
       }
+
+      if (deletePrompt.emptiesTopic) {
+        setDeletePrompt(null);
+        setSelectedIds(new Set());
+        try {
+          await onDeleteTopic?.();
+        } catch (topicErr) {
+          // Oefeningen zijn weg; toon lege staat + fout i.p.v. stale rijen.
+          await fetchList(true);
+          invalidateLeerplanOverview();
+          throw topicErr;
+        }
+        invalidateLeerplanOverview();
+        return;
+      }
+
       setActionMessage(
-        `${json.deleted} verwijderd${json.audio_removed > 0 ? `, ${json.audio_removed} audio-bestand(en)` : ""}.`,
+        `${json.deleted} verwijderd${json.audio_removed > 0 ? `, ${json.audio_removed} audiobestand(en)` : ""}.`,
       );
       setDeletePrompt(null);
       setSelectedIds(new Set());
+      invalidateLeerplanOverview();
       if (page > 1 && rows.length <= deletePrompt.ids.length) {
         updateParams({ page: String(page - 1) });
       } else {
@@ -288,11 +343,12 @@ export function ExercisesListPage({
   }, [
     apiBase,
     deletePrompt,
-    deleteAudio,
     page,
     rows.length,
     updateParams,
     fetchList,
+    onDeleteTopic,
+    invalidateLeerplanOverview,
   ]);
 
   const handleModalSave = useCallback(
@@ -399,7 +455,11 @@ export function ExercisesListPage({
         <p className="text-sm text-muted-foreground">Laden…</p>
       ) : load.status === "loaded" && rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          {hasActiveFilters ? emptyFilteredMessage : emptyMessage}
+          {total === 0
+            ? hasActiveFilters
+              ? emptyFilteredMessage
+              : emptyMessage
+            : "Geen oefeningen op deze pagina."}
         </p>
       ) : rows.length > 0 ? (
         <div
@@ -456,6 +516,9 @@ export function ExercisesListPage({
             }
             : null
         }
+        mp3Url={
+          editRow?.has_audio && editRow.mp3_url ? editRow.mp3_url : null
+        }
         saving={editSaving}
         error={editError}
         onClose={() => {
@@ -468,11 +531,19 @@ export function ExercisesListPage({
       />
 
       <DeleteConfirmDialog
-        open={deletePrompt !== null}
+        open={deletePrompt !== null && !deletePrompt.emptiesTopic}
         count={deletePrompt?.ids.length ?? 0}
-        showAudioOption={deletePrompt?.showAudioOption ?? false}
-        deleteAudio={deleteAudio}
-        onDeleteAudioChange={setDeleteAudio}
+        hasAudio={deletePrompt?.hasAudio ?? false}
+        onCancel={() => setDeletePrompt(null)}
+        onConfirm={() => void handleConfirmDelete()}
+        deleting={deleting}
+      />
+
+      <DeleteAllExercisesDialog
+        open={deletePrompt !== null && deletePrompt.emptiesTopic}
+        topicName={topicName}
+        count={deletePrompt?.ids.length ?? 0}
+        hasAudio={deletePrompt?.hasAudio ?? false}
         onCancel={() => setDeletePrompt(null)}
         onConfirm={() => void handleConfirmDelete()}
         deleting={deleting}

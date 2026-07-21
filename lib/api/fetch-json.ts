@@ -1,5 +1,6 @@
 /**
  * Dunne fetch-helper: gooit bij !ok zodat TanStack Query de error-state zet.
+ * Probeert `error` uit de JSON-body te lezen voor bruikbare UI-copy.
  */
 export async function fetchJson<T>(
   input: RequestInfo | URL,
@@ -9,8 +10,24 @@ export async function fetchJson<T>(
     cache: "no-store",
     ...init,
   });
-  if (!res.ok) {
-    throw new Error(`Status ${res.status}`);
+
+  let json: unknown = null;
+  try {
+    json = await res.json();
+  } catch {
+    json = null;
   }
-  return (await res.json()) as T;
+
+  if (!res.ok) {
+    const bodyError =
+      json &&
+      typeof json === "object" &&
+      "error" in json &&
+      typeof (json as { error: unknown }).error === "string"
+        ? (json as { error: string }).error
+        : null;
+    throw new Error(bodyError || `Status ${res.status}`);
+  }
+
+  return json as T;
 }

@@ -39,23 +39,39 @@ export function LeerplanGroupDeleteDialog({
     >
       <div className="space-y-4 p-5">
         <header className="space-y-1">
-          <h2 className="text-base font-semibold">
-            Oefeningengroep verwijderen?
-          </h2>
+          <h2 className="text-base font-semibold">Topic verwijderen?</h2>
           <p className="text-sm text-muted-foreground">
-            Weet je het zeker?{" "}
-            {groupName ? (
+            {exerciseCount === 0 ? (
               <>
-                <span className="font-medium text-foreground">
-                  “{groupName}”
-                </span>{" "}
+                {groupName ? (
+                  <>
+                    <span className="font-medium text-foreground">
+                      “{groupName}”
+                    </span>{" "}
+                    heeft geen oefeningen.{" "}
+                  </>
+                ) : (
+                  <>Dit topic heeft geen oefeningen. </>
+                )}
+                Verwijderen uit je leerplan?
               </>
-            ) : null}
-            en{" "}
-            {exerciseCount === 1
-              ? "1 oefening"
-              : `${exerciseCount} oefeningen`}{" "}
-            verdwijnen permanent uit je leerplan.
+            ) : (
+              <>
+                Weet je het zeker?{" "}
+                {groupName ? (
+                  <>
+                    <span className="font-medium text-foreground">
+                      “{groupName}”
+                    </span>{" "}
+                  </>
+                ) : null}
+                en{" "}
+                {exerciseCount === 1
+                  ? "1 oefening"
+                  : `${exerciseCount} oefeningen`}{" "}
+                verdwijnen permanent uit je leerplan.
+              </>
+            )}
           </p>
         </header>
 

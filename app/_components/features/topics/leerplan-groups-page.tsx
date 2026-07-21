@@ -71,12 +71,6 @@ export function LeerplanGroupsPage() {
   const [deleteTarget, setDeleteTarget] =
     useState<ExerciseGroupListItem | null>(null);
 
-  const error = queryError
-    ? queryError instanceof Error
-      ? queryError.message
-      : "Kon topics niet laden."
-    : null;
-
   const toggleActiveMutation = useMutation({
     mutationFn: async ({
       name,
@@ -91,7 +85,31 @@ export function LeerplanGroupsPage() {
         body: JSON.stringify({ topic: name, isActive }),
       });
     },
-    onSuccess: () => {
+    onMutate: async ({ name, isActive }) => {
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.learningTopics(),
+      });
+      const previous = queryClient.getQueryData<ExerciseGroupListItem[]>(
+        queryKeys.learningTopics(),
+      );
+      queryClient.setQueryData<ExerciseGroupListItem[]>(
+        queryKeys.learningTopics(),
+        (old) =>
+          (old ?? []).map((g) =>
+            g.name === name ? { ...g, isActive } : g,
+          ),
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) {
+        queryClient.setQueryData(
+          queryKeys.learningTopics(),
+          ctx.previous,
+        );
+      }
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.learningTopics(),
       });
@@ -113,6 +131,22 @@ export function LeerplanGroupsPage() {
     },
   });
 
+  const loadError = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Kon topics niet laden."
+    : null;
+
+  const actionError =
+    toggleActiveMutation.error instanceof Error
+      ? toggleActiveMutation.error.message
+      : deleteMutation.error instanceof Error
+        ? deleteMutation.error.message
+        : toggleActiveMutation.isError || deleteMutation.isError
+          ? "Actie mislukt."
+          : null;
+
+  const displayError = actionError ?? loadError;
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return personalGroups.filter((g) => {
@@ -229,9 +263,12 @@ export function LeerplanGroupsPage() {
           : ""}
       </p>
 
-      {error && (
-        <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
+      {displayError && (
+        <p
+          className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          role="alert"
+        >
+          {displayError}
         </p>
       )}
 
@@ -260,7 +297,11 @@ export function LeerplanGroupsPage() {
           Geen topics die bij je zoekopdracht of filters passen.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border">
+        <div
+          className={`overflow-x-auto rounded-md border border-border ${
+            isRefreshing ? "opacity-60 transition-opacity" : ""
+          }`}
+        >
           <table className="w-full min-w-[52rem] text-left text-sm">
             <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
               <tr>
@@ -280,7 +321,9 @@ export function LeerplanGroupsPage() {
                 const { preview: tagsPreview, full: tagsFull } =
                   formatTagPreview(item.tagText);
                 const isActive = item.isActive ?? false;
-                const toggling = toggleActiveMutation.isPending;
+                const togglingThis =
+                  toggleActiveMutation.isPending &&
+                  toggleActiveMutation.variables?.name === item.name;
 
                 return (
                   <tr
@@ -320,14 +363,14 @@ export function LeerplanGroupsPage() {
                       <input
                         type="checkbox"
                         checked={isActive}
-                        disabled={toggling}
+                        disabled={togglingThis}
                         onChange={(e) =>
                           handleToggleActive(
                             item.name,
                             e.target.checked,
                           )
                         }
-                        className="size-4 rounded border-border accent-accent"
+                        className="size-4 rounded border-border accent-accent disabled:opacity-50"
                         aria-label={`${isActive ? "Deactiveer" : "Activeer"} topic ${item.name}`}
                       />
                     </td>

@@ -5,9 +5,7 @@ import { useEffect, useRef } from "react";
 type DeleteConfirmDialogProps = {
   open: boolean;
   count: number;
-  showAudioOption: boolean;
-  deleteAudio: boolean;
-  onDeleteAudioChange: (v: boolean) => void;
+  hasAudio: boolean;
   onCancel: () => void;
   onConfirm: () => void;
   deleting: boolean;
@@ -16,9 +14,7 @@ type DeleteConfirmDialogProps = {
 export function DeleteConfirmDialog({
   open,
   count,
-  showAudioOption,
-  deleteAudio,
-  onDeleteAudioChange,
+  hasAudio,
   onCancel,
   onConfirm,
   deleting,
@@ -43,22 +39,13 @@ export function DeleteConfirmDialog({
           <h2 className="text-base font-semibold">
             {count} oefening{count === 1 ? "" : "en"} verwijderen?
           </h2>
-          <p className="text-xs text-muted-foreground">
-            Dit kan niet ongedaan worden gemaakt.
+          <p className="text-sm text-muted-foreground">
+            {hasAudio
+              ? "Bijbehorende audiobestanden worden ook verwijderd. "
+              : ""}
+            Dit kun je niet ongedaan maken.
           </p>
         </header>
-
-        {showAudioOption && (
-          <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={deleteAudio}
-              onChange={(e) => onDeleteAudioChange(e.target.checked)}
-              className="h-4 w-4 rounded border-input"
-            />
-            Verwijder ook audio uit de Supabase-bucket
-          </label>
-        )}
 
         <footer className="flex items-center justify-end gap-2">
           <button
@@ -75,7 +62,7 @@ export function DeleteConfirmDialog({
             disabled={deleting}
             className="rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
           >
-            {deleting ? "Verwijderen..." : "Verwijderen"}
+            {deleting ? "Verwijderen…" : "Verwijderen"}
           </button>
         </footer>
       </div>
