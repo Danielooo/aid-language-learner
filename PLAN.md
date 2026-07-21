@@ -12,7 +12,7 @@ Bron van de eisen: `[EINDOPDRACHT.md](EINDOPDRACHT.md)` (alleen D1, D2 + relevan
 
 
 
-## Handoff (laatst bijgewerkt: 2026-07-19)
+## Handoff (laatst bijgewerkt: 2026-07-21)
 
 **Lees dit eerst** bij een nieuwe agentsessie. Werk stap voor stap met de developer: stap aankondigen → feedback → fix → pas door als de developer zegt dat de stap klaar is. Geen commits tenzij gevraagd. **NOOIT** `IDEEFASE.md` lezen of editen.
 
@@ -22,39 +22,78 @@ Bron van de eisen: `[EINDOPDRACHT.md](EINDOPDRACHT.md)` (alleen D1, D2 + relevan
 | --- | --- |
 | A Auth | Klaar |
 | B Leerplan | Klaar |
-| **C Community** | **Bezig — developer moet nog nagelopen / smoke afronden** |
-| D Leren | Volgende na Community OK |
-| E Exercises | — |
-| F Voortgang | — |
-| G Admin | — |
+| C Community | Klaar |
+| D Leren | Klaar |
+| E Exercises | Klaar |
+| F Voortgang | Klaar (fixes af; optionele her-smoke) |
+| **G Admin** | **Volgende — developer smoke** |
 | H Generator | — |
 
-### Community (C) — open voor developer-check
+### Voortgang (F) — afgerond
 
-Fixes al in code (zie §0.1 B7/B8), nog **niet** door developer bevestigd:
+Developer-fixes voor F zijn binnen (o.a. B33–B39, statuslabels weg uit de topic-lijst, cache-invalidate, modal-copy, error+retry). Productgedrag kort:
 
-- Bijdragen: één tabel + zoek/Status-filter (geen status-tabs/count-strip); terminologie Topic
-- Tabs: **Overnemen** eerst (default), Bijdragen via `?tab=bijdragen`; page-description over bewerkbare kopie
-- Overnemen: filter **In leerplan** + Filters wissen; opnieuw overnemen mogelijk; bij naamconflict modal met voorstel `naam (datum)` of eigen input
-- Migratie `0022_allow_multiple_community_copies` (unique op source-kopie weg)
+- `/voortgang`: Herhaalschema-% = deel nu bij; “Alles bij” / “X open” (evt. “later vandaag gepland”)
+- Per topic: alleen actieve topics met herhaalschema-progress; % = ladder tot 9×; **geen** statusbadge in de lijst (wel verdeling in modal)
+- Grafieken + tooltips; stats invalideren na oefenpogingen / SRS
+- Nice to have blijft: doorlink topic-detail → Oefenen (§ Nice to haves)
 
-Demo-data: community-topics `bibliotheek` / `park` voor Overnemen-testen.
+**Optioneel:** developer mag smoke-ronde F nog één keer dubbelchecken (checklist hieronder). Geen blockers bekend — **niet verplicht** vóór G.
+
+Optionele F-checklist:
+
+1. Nav → Voortgang → laadt zonder crash
+2. Herhaalschema: % bij + statusregel
+3. Topic-lijst zonder statuslabels; klik → modal met verdeling
+4. Beide grafieken (of nette empty)
+5. Na herhaalschema-sessie: soft-nav terug → verse cijfers
+6. API-fout → melding + Opnieuw proberen
+
+### Admin (G) — open voor developer-check
+
+Smoke van **Beheer** (admin-rol): gebruikers, review-queue, oefeningen/tatoeba waar relevant.
+
+Scope (geen nieuwe features):
+- Alleen als beheerder bereikbaar; niet-admin → nette deny/redirect
+- Gebruikerslijst (`/admin/gebruikers`): laden, zoeken/filteren indien aanwezig, rol/acties zonder stille fail
+- Review (`/admin/review`): pending submissions; goedkeuren/afwijzen/heropenen waar UI dat biedt
+- Overige admin-pagina’s die in nav staan (oefeningen, tatoeba-import): laden zonder crash; diepe Tatoeba-pipeline niet herontwerpen
+- Terminologie: Beheer, Gebruiker, Beheerder, Pending, Goedgekeurd, Afgekeurd
+
+Checklist voor smoke (G):
+
+1. Inloggen als beheerder → Beheer bereikbaar
+2. Niet-admin → geen toegang (of lege/forbidden state)
+3. Gebruikerspagina laadt; zichtbare actie faalt niet stil
+4. Review-queue: lijst + minstens één statuspad (approve/reject) of nette empty
+5. Foutpad/API: geen stille leegte
 
 ### Volgende actie
 
-1. Developer smoke **Community** (Overnemen + Bijdragen) en geeft feedback of “Community klaar”.
-2. Bij feedback → triage → fix → noteer in §0.1.
-3. Pas daarna ronde **D — Leren** (Flashcards / Typen / Sorteren + progress).
+1. **Default:** start smoke-ronde **G — Admin** (checklist hierboven).
+2. **Optioneel:** eerst F nog eens kort dubbelchecken; bij feedback → triage → fix → §0.1.
+3. Bij G-feedback → triage → fix → noteer in §0.1; pas daarna **H — Generator**.
 
 ### Startprompt (plakken in nieuwe chat)
 
-> Lees `PLAN.md` sectie **Handoff** en §0.1. Ga verder vanaf “Volgende actie”. Stap voor stap; geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`.
+> Lees `PLAN.md` sectie **Handoff** en §0.1. Ga verder vanaf “Volgende actie”. Default = smoke G Admin; F-hercheck is optioneel. Stap voor stap; geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`. **Scope-guard:** voer uit wat gevraagd wordt; noem achteraf kort als het een nieuwe/grote feature was buiten de afrond-focus.
 
 ### Regels (kort)
 
-- Canonieke NL UI (Topic, Leerplan, Gebruikersnaam, Herhaalschema, …); code-ids niet hernoemen om UI
+- Canonieke NL UI (Topic, Leerplan, Gebruikersnaam, Herhaalschema, Beheer, …); code-ids niet hernoemen om UI
 - Bugs bijhouden in §0.1 (B…, status fixed/open)
-- Nice to haves onderaan PLAN (o.a. twee zoekbalken Topics/Tags, OAuth terug, loading/skeleton) — niet nu tenzij gevraagd
+- Nice to haves onderaan PLAN — niet uit jezelf oppakken; wel noteren als iets daar thuishoort
+
+### Scope-guard — focus bewaken, niet blokkeren
+
+**Focus nu:** bestaande flows stabiel en afronden (smoke → bugs → volgende ronde).
+
+De agent moet **altijd uitvoeren wat de developer vraagt**. Geen weigering, geen “zal ik dit wel bouwen?”-gate vooraf.
+
+Wel **achteraf** (kort, na de fix/feature) aangeven als de vraag afwijkt van die focus — bv. een nieuwe of grote feature i.p.v. afronden/bugfix. Formuleer dan ongeveer: *“Dit was [X] — dat is eerder een nieuwe feature dan afrondwerk; focus blijft smoke/bugs/rondes. Staat (of zet) onder Nice to haves tenzij je hier bewust op door wilt.”*
+
+- Geen preek, geen discussie vooraf — eerst bouwen, dan één zin scope-check.
+- Bij opeenstapeling van zulke verzoeken: mag je dat in die nabeschouwing expliciet maken.
 
 ---
 
@@ -228,6 +267,36 @@ Korte startnotities — vul aan terwijl je de checklists afwerkt.
 | B1  |         |          | ja/nee           | blocker/high/medium/low | open   |
 | B7  | Community | Bijdragen: 4 status-tabs + count-strip i.p.v. één tabel met filter; Overnemen niet eerste tab; “Oefeningengroep” i.p.v. Topic | ja | high | fixed |
 | B8  | Community Overnemen | Geen dropdown-filters zoals Leerplan; opnieuw overnemen geblokkeerd als topic al in leerplan stond | ja | high | fixed |
+| B9  | Community Overnemen | Naamconflict-modal verscheen niet: sluiten groep-modal wiste `nameConflict` via `onClose`; bulk hernoemde stil | ja | high | fixed |
+| B10 | Community Bijdragen | Kolommen versprongen bij wisselen statusfilter (auto table layout) | ja | medium | fixed |
+| B11 | Community Bijdragen | Na aanbieden sprong statusfilter naar Pending; knop bleef bruikbaar in flow | ja | medium | fixed |
+| B12 | Community Bijdragen | “Filters wissen” overbodig naast Status→Alles | ja | low | fixed |
+| B13 | Community Bijdragen | Afgekeurd opnieuw aanbieden zonder wijziging; afkeurreden/historie onduidelijk | ja | high | fixed |
+| B14 | Leren Flashcards | Klik Topic → crash: `useState is not defined` in `useQuizSelectionMode` | ja | blocker | fixed |
+| B15 | Leren Flashcards | Shortcuts/header/score-UX: Enter flip, Ctrl+Alt grades, Reset score, overkill pills, geen vorige | ja | high | fixed |
+| B16 | Leren (alle modi) | Chrome inconsistent: Terug naar overzicht (Esc) alleen op playing-flashcards; Typen/Sorteren/topic-picker achter | ja | high | fixed |
+| B17 | Leren Flashcards | Shortcuts: Vorige=V, Goed=G; Overslaan weg (verstoort topic-voortgang) | ja | medium | fixed |
+| B18 | Leren (alle modi) | Esc mid-sessie: bevestigingsmodal; 2e Esc / “Toch verlaten” = echt weg | ja | medium | fixed |
+| B19 | Leren Typen | Look/feel anders dan Flashcards; Ctrl+Alt/F-keys onhandig; layout sprong na feedback | ja | medium | fixed |
+| B20 | Leren chat | Chat-styling week af; chat ontbrak bij Flashcards | ja | medium | fixed |
+| B21 | Leren | Test-plooien (OpenAI-debug, Recente pogingen) geen meerwaarde meer | ja | low | fixed |
+| B22 | Leren SRS | “Niet meer tonen” / suspend-UI+API-client verwijderd → nice to have | ja | low | fixed |
+| B23 | Leren Sorteren | Look/feel week af van Flashcards/Typen | ja | medium | fixed |
+| B24 | Leren Vorige | Bij herhaalschema (SRS) was Vorige altijd disabled; historie toegevoegd | ja | medium | fixed |
+| B26 | Exercises zoeken | Zoeken crashte: PostgREST parse-fout op `alternative_translations::text` in `.or()` | ja | high | fixed |
+| B27 | Exercises navigatie | “← Terug naar leerplan” week af van Oefenen-knopstijl | ja | low | fixed |
+| B28 | Exercises leeg topic | Alles-verwijderen vraagt meteen of oefeningen + topic weg mogen; lege staat: Topic verwijderen (geen Generator) | ja | medium | fixed |
+| B29 | Leerplan mutations | Actief/Verwijderen faalde stil; geen error-UI; checkbox snapte terug | ja | high | fixed |
+| B30 | Leerplan cache | Na oefening-CRUD bleef overzicht ~30s stale (counts/Bewerkt) | ja | high | fixed |
+| B31 | Exercises zoeken | Zoekveld vocht met browser Back (draft schreef URL terug) | ja | high | fixed |
+| B32 | Exercises paginering | Te hoge `?page=` toonde valse “Topic verwijderen”-empty | ja | high | fixed |
+| B33 | Voortgang topic-modal | Groot % (ladder) strookte niet met “X van Y beheerst” | ja | high | fixed |
+| B34 | Voortgang Herhaalschema | “Alles bij” botste met Vandaag-staaf (later vandaag) | ja | high | fixed |
+| B35 | Voortgang cache | Geen invalidate na oefenen → stale cijfers ~30s | ja | high | fixed |
+| B36 | Voortgang Per topic | Empty/tooltip suggereerde elke oefenvorm; alleen herhaalschema telt | ja | medium | fixed |
+| B37 | Voortgang gestart | Topic bleef verborgen na alleen foute SRS-antwoorden | ja | medium | fixed |
+| B38 | Voortgang error | “Dashboard…” zonder retry | ja | medium | fixed |
+| B39 | Voortgang status | Badge “Bezig” bij ~67% terwijl verdeling “Gevorderd” | ja | low | fixed |
 
 
 **Ernst:**
@@ -446,10 +515,13 @@ Pas aan op jouw deadline. Snijd Tier 3 in als tijd op is — Tier 1+2 + geen blo
 
 ## Nice to haves
 
-Geen assessment-eisen — pas doen als D1/D2 en blockers af zijn.
+Geen assessment-eisen — pas doen als D1/D2 en blockers af zijn. Agent pakt ze niet uit zichzelf op (zie Handoff → Scope-guard).
 
 - [ ] Loading state maken
 - [ ] Skeleton loader maken
 - [ ] Standaard verversknop-component (met loading state)
 - [ ] Community + Leerplan: twee zoekbalken (Topics en Tags gescheiden i.p.v. één gecombineerd veld)
 - [ ] OAuth (Google/GitHub) terug op login
+- [ ] Oefening uitsluiten van herhaalschema (“Niet meer tonen” / suspend) — bij voorkeur vanuit Leerplan of oefeningenbeheer, niet mid-sessie in Oefenen
+- [ ] Alternatieve vertalingen toevoegen tijdens het oefenen (bv. na feedback een geldig antwoord opslaan als alternatief)
+- [ ] Voortgang → topic-detail: doorlink naar Oefenen voor dat specifieke topic
