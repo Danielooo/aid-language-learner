@@ -74,25 +74,25 @@ export const ACCURACY_PERIOD_OPTIONS: ReadonlyArray<{
     value: "7d",
     label: "7 dagen",
     emptyTitle: "Geen pogingen in 7 dagen",
-    emptyMessage: "Er zijn geen quiz-pogingen in de laatste 7 dagen.",
+    emptyMessage: "Er zijn geen oefenpogingen in de laatste 7 dagen.",
   },
   {
     value: "30d",
     label: "30 dagen",
     emptyTitle: "Geen pogingen in 30 dagen",
-    emptyMessage: "Er zijn geen quiz-pogingen in de laatste 30 dagen.",
+    emptyMessage: "Er zijn geen oefenpogingen in de laatste 30 dagen.",
   },
   {
     value: "180d",
     label: "6 mnd",
     emptyTitle: "Geen pogingen in 6 maanden",
-    emptyMessage: "Er zijn geen quiz-pogingen in de laatste 6 maanden.",
+    emptyMessage: "Er zijn geen oefenpogingen in de laatste 6 maanden.",
   },
   {
     value: "all",
     label: "Altijd",
-    emptyTitle: "Nog geen quiz-pogingen",
-    emptyMessage: "Maak oefeningen om hier je accuraatheid te zien.",
+    emptyTitle: "Nog geen oefenpogingen",
+    emptyMessage: "Maak oefeningen om hier je nauwkeurigheid te zien.",
   },
 ];
 

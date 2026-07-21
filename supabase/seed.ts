@@ -6,7 +6,8 @@
 //   2. testuser1, testuser2 en testadmin worden aangemaakt (vast wachtwoord)
 //   3. global + personal oefeningengroepen + review-submissions (pending /
 //      approved / rejected) zodat de admin review-queue testbaar is
-//   4. testuser1 krijgt demo SRS/quiz-data
+//   4. testuser1 krijgt demo SRS/quiz-data op persoonlijke topics
+//      (reis, hotel, sport) voor Voortgang-grafieken
 //   5. CRED.md wordt geschreven met de testaccount-gegevens
 
 import { writeFileSync } from "node:fs";
@@ -58,6 +59,13 @@ const USERS: SeedUser[] = [
 ];
 
 const OWNED_TOPIC = "reis";
+
+/**
+ * Persoonlijke topics waarop Voortgang-demo (progress + pogingen) landt.
+ * Alleen oefeningen met `owner_id = testuser1` én deze topicnamen.
+ * reis = owned demo-groep; hotel = pending-bron; sport = rejected-bron.
+ */
+const VOORTGANG_DEMO_TOPICS = ["reis", "hotel", "sport"] as const;
 
 /** Goedgekeurde global groepen (2). */
 const APPROVED_GLOBAL_GROUPS: Array<{
@@ -209,49 +217,52 @@ type ProgressSpec = {
   is_suspended?: boolean;
 };
 
+/**
+ * SRS-kaarten voor Voortgang-demo: allemaal al gestart (rep ≥ 1),
+ * next_review verspreid over vandaag t/m ~5 dagen (Komende herhalingen).
+ */
 const PROGRESS_SPECS: ProgressSpec[] = [
   {
-    repetition_count: 0,
-    interval_days: 0,
+    repetition_count: 2,
+    interval_days: 1,
     next_review_offset_hours: -2,
-    last_reviewed_offset_hours: null,
+    last_reviewed_offset_hours: -24,
   },
   {
     repetition_count: 1,
     interval_days: 0,
-    next_review_offset_hours: -1,
-    last_reviewed_offset_hours: -3,
-  },
-  {
-    repetition_count: 2,
-    interval_days: 0,
     next_review_offset_hours: -0.5,
-    last_reviewed_offset_hours: -2,
-  },
-  {
-    repetition_count: 3,
-    interval_days: 1,
-    next_review_offset_hours: 24,
-    last_reviewed_offset_hours: -4,
-  },
-  {
-    repetition_count: 4,
-    interval_days: 3,
-    next_review_offset_hours: 72,
-    last_reviewed_offset_hours: -24,
+    last_reviewed_offset_hours: -3,
   },
   {
     repetition_count: 5,
     interval_days: 7,
-    next_review_offset_hours: 168,
+    next_review_offset_hours: 24,
     last_reviewed_offset_hours: -48,
   },
   {
-    repetition_count: 1,
-    interval_days: 0,
-    next_review_offset_hours: -1,
-    last_reviewed_offset_hours: -1,
-    is_suspended: true,
+    repetition_count: 3,
+    interval_days: 3,
+    next_review_offset_hours: 48,
+    last_reviewed_offset_hours: -12,
+  },
+  {
+    repetition_count: 7,
+    interval_days: 14,
+    next_review_offset_hours: 72,
+    last_reviewed_offset_hours: -36,
+  },
+  {
+    repetition_count: 4,
+    interval_days: 4,
+    next_review_offset_hours: 96,
+    last_reviewed_offset_hours: -18,
+  },
+  {
+    repetition_count: 9,
+    interval_days: 90,
+    next_review_offset_hours: 120,
+    last_reviewed_offset_hours: -72,
   },
 ];
 
@@ -506,11 +517,14 @@ async function seedRejectedGroups(
 }
 
 async function activateTopics(admin: AdminClient, userId: string): Promise<void> {
-  const topics = [
-    ...APPROVED_GLOBAL_GROUPS.map((g) => g.name),
-    ...PENDING_GROUPS.map((g) => g.name),
-    OWNED_TOPIC,
-  ];
+  const topics = Array.from(
+    new Set([
+      ...APPROVED_GLOBAL_GROUPS.map((g) => g.name),
+      ...PENDING_GROUPS.map((g) => g.name),
+      ...VOORTGANG_DEMO_TOPICS,
+      OWNED_TOPIC,
+    ]),
+  );
   const { error } = await admin.from("user_topic_preferences").upsert(
     topics.map((topic) => ({
       user_id: userId,
@@ -520,6 +534,52 @@ async function activateTopics(admin: AdminClient, userId: string): Promise<void>
     { onConflict: "user_id,topic" },
   );
   if (error) throw error;
+}
+
+/**
+ * Persoonlijke oefeningen van testuser1 voor de Voortgang-demo-topics.
+ * Geen global corpus — pogingen/progress horen bij bestaande leerplan-topics.
+ */
+async function loadVoortgangDemoExercises(
+  admin: AdminClient,
+  userId: string,
+): Promise<ExerciseRow[]> {
+  const { data, error } = await admin
+    .from("exercises")
+    .select("id, source_text, target_text, topic")
+    .eq("owner_id", userId)
+    .in("topic", [...VOORTGANG_DEMO_TOPICS])
+    .order("topic", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+
+  const rows = (data ?? [])
+    .filter(
+      (row): row is ExerciseRow & { topic: string } =>
+        typeof row.id === "string" &&
+        typeof row.source_text === "string" &&
+        typeof row.target_text === "string" &&
+        typeof row.topic === "string" &&
+        row.topic.trim().length > 0,
+    )
+    .map((row) => ({
+      id: row.id,
+      source_text: row.source_text,
+      target_text: row.target_text,
+      topic: row.topic,
+    }));
+
+  const topicsFound = new Set(rows.map((r) => r.topic));
+  for (const topic of VOORTGANG_DEMO_TOPICS) {
+    if (!topicsFound.has(topic)) {
+      throw new Error(
+        `Voortgang-demo mist persoonlijke oefeningen voor topic “${topic}”.`,
+      );
+    }
+  }
+
+  return rows;
 }
 
 async function insertOwnedReisGroup(
@@ -541,9 +601,10 @@ async function insertProgress(
   userId: string,
   exercises: ExerciseRow[],
 ): Promise<number> {
-  const targets = exercises.slice(0, PROGRESS_SPECS.length);
-  const rows = targets.map((exercise, index) => {
-    const spec = PROGRESS_SPECS[index];
+  if (exercises.length === 0) return 0;
+
+  const rows = exercises.map((exercise, index) => {
+    const spec = PROGRESS_SPECS[index % PROGRESS_SPECS.length]!;
     return {
       user_id: userId,
       exercise_id: exercise.id,
@@ -559,31 +620,43 @@ async function insertProgress(
     };
   });
 
-  if (rows.length === 0) return 0;
-
-  const { error } = await admin.from("exercise_progress").insert(rows);
+  const { error } = await admin.from("exercise_progress").upsert(rows, {
+    onConflict: "user_id,exercise_id",
+  });
   if (error) throw error;
   return rows.length;
 }
 
+/**
+ * Dummy quiz-pogingen over 14 dagen, uitsluitend op meegegeven oefeningen
+ * (die horen bij bestaande persoonlijke topics).
+ */
 function buildAttemptRows(
   userId: string,
   exercises: ExerciseRow[],
 ): Array<Record<string, unknown>> {
+  const linked = exercises.filter(
+    (exercise) =>
+      typeof exercise.topic === "string" && exercise.topic.trim().length > 0,
+  );
+  if (linked.length === 0) {
+    throw new Error(
+      "Geen oefeningen met topic voor demo-pogingen — koppel alleen bestaande topics.",
+    );
+  }
+
   const attempts: Array<Record<string, unknown>> = [];
   let attemptIndex = 0;
 
-  for (const exercise of exercises) {
-    const attemptCount = 2 + (attemptIndex % 2);
-    const correctRate = exercise.topic === "luchthaven" ? 0.4 : 0.75;
-
-    for (let i = 0; i < attemptCount; i++) {
-      const isCorrect = (attemptIndex + i) % 10 < correctRate * 10;
-      const daysAgo = (attemptIndex % 7) + i * 0.3;
+  for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
+    const perDay = 2 + (dayOffset % 3);
+    for (let slot = 0; slot < perDay; slot++) {
+      const exercise = linked[(dayOffset * 3 + slot) % linked.length]!;
+      const isCorrect = (dayOffset + slot) % 4 !== 0;
       const practiceType =
-        PRACTICE_TYPES[(attemptIndex + i) % PRACTICE_TYPES.length];
+        PRACTICE_TYPES[(dayOffset + slot) % PRACTICE_TYPES.length]!;
       const selectionMode =
-        SELECTION_MODES[(attemptIndex + i) % SELECTION_MODES.length];
+        SELECTION_MODES[(dayOffset + slot) % SELECTION_MODES.length]!;
       const isScheduledReview = selectionMode === "srs";
 
       attempts.push({
@@ -591,20 +664,20 @@ function buildAttemptRows(
         exercise_id: exercise.id,
         user_answer: isCorrect ? exercise.target_text : "ik weet het niet",
         is_correct: isCorrect,
-        created_at: hoursAgo(daysAgo * 24),
+        // Verspreid over kalenderdagen voor Oefenactiviteit-grafiek.
+        created_at: hoursAgo(dayOffset * 24 + slot),
         selection_mode: selectionMode,
         practice_type: practiceType,
-        direction: DIRECTIONS[(attemptIndex + i) % DIRECTIONS.length],
+        direction: DIRECTIONS[(dayOffset + slot) % DIRECTIONS.length]!,
         typing_mode: practiceType === "typing" ? "full" : null,
-        is_mistake_review: !isCorrect && i > 0,
-        response_time_ms: 2000 + ((attemptIndex + i) % 5) * 800,
-        interval_days_before: isScheduledReview ? attemptIndex % 4 : null,
+        is_mistake_review: !isCorrect && slot > 0,
+        response_time_ms: 1500 + slot * 400,
+        interval_days_before: isScheduledReview ? dayOffset % 4 : null,
         repetition_count_before: isScheduledReview ? attemptIndex % 3 : null,
         is_scheduled_review: isScheduledReview,
       });
+      attemptIndex += 1;
     }
-
-    attemptIndex += 1;
   }
 
   return attempts;
@@ -629,27 +702,26 @@ async function insertAttempts(
 async function seedDemoExerciseData(
   admin: AdminClient,
   userId: string,
-  publicExercises: ExerciseRow[],
 ): Promise<void> {
-  console.log("\nDemo-oefendata voor testuser1…");
+  console.log("\nDemo-oefendata voor testuser1 (Voortgang)…");
 
   await activateTopics(admin, userId);
+  await insertOwnedReisGroup(admin, userId);
 
-  const ownedExercises = await insertOwnedReisGroup(admin, userId);
-  const allExercises = [...publicExercises, ...ownedExercises];
+  // Alleen persoonlijke oefeningen van reis / hotel / sport — bestaande topics.
+  const demoExercises = await loadVoortgangDemoExercises(admin, userId);
 
-  const progressCount = await insertProgress(admin, userId, allExercises);
-  const attemptRows = buildAttemptRows(userId, allExercises);
+  const progressCount = await insertProgress(admin, userId, demoExercises);
+  const attemptRows = buildAttemptRows(userId, demoExercises);
   const attemptCount = await insertAttempts(admin, attemptRows);
 
+  const topicList = VOORTGANG_DEMO_TOPICS.join(", ");
+  console.log(`  [+] actieve Voortgang-topics: ${topicList}`);
   console.log(
-    `  [+] ${APPROVED_GLOBAL_GROUPS.length + PENDING_GROUPS.length + 1} actieve topics`,
-  );
-  console.log(
-    `  [+] ${ownedExercises.length} eigen oefeningen (groep: ${OWNED_TOPIC})`,
+    `  [+] ${demoExercises.length} persoonlijke oefeningen gekoppeld aan die topics`,
   );
   console.log(`  [+] ${progressCount} SRS-voortgangskaarten`);
-  console.log(`  [+] ${attemptCount} quiz-pogingen`);
+  console.log(`  [+] ${attemptCount} quiz-pogingen (14 dagen, topic-gekoppeld)`);
 }
 
 function writeCredMd(users: CredUser[]): void {
@@ -720,7 +792,7 @@ async function main() {
   }
 
   console.log("\nReview-seed: approved / pending / rejected groepen…");
-  const publicExercises = await seedApprovedGlobals(admin, testuser1.id);
+  await seedApprovedGlobals(admin, testuser1.id);
   await seedPendingGroups(admin, testuser1.id);
   await seedRejectedGroups(admin, testuser1.id);
   console.log(
@@ -728,9 +800,8 @@ async function main() {
   );
   console.log(`  [+] ${PENDING_GROUPS.length} pending aanbiedingen`);
   console.log(`  [+] ${REJECTED_GROUPS.length} afgewezen aanbiedingen`);
-  console.log(`  [+] ${publicExercises.length} global oefeningen`);
 
-  await seedDemoExerciseData(admin, testuser1.id, publicExercises);
+  await seedDemoExerciseData(admin, testuser1.id);
 
   console.log(
     "\nKlaar. Log in op /login met username + wachtwoord uit CRED.md.",

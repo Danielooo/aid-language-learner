@@ -1,19 +1,19 @@
 export const METRIC_TERMS = {
   "voortgang-samenvatting": {
-    label: "Samenvatting",
-    help: "Het percentage toont hoeveel oefeningen je 9× goed hebt gemaakt (beheerst / langetermijngeheugen). Aan de beurt zijn oefeningen die nu in je herhaalschema speelbaar zijn.",
+    label: "Herhaalschema",
+    help: "Hoeveel van je actieve oefeningen nu bij zijn (niet aan de beurt). 100% = alles bij. Later vandaag geplande herhalingen tellen hier nog niet als open.",
   },
   "voortgang-topics": {
     label: "Per topic",
-    help: "Klik op een topic voor detail. Status: Nog starten (0%), Bezig, Ver gevorderd (≥70%) of Beheerst (100%). Beheerst = 9× goed.",
+    help: "Alleen actieve topics uit je leerplan die je via het herhaalschema al hebt geoefend. Het % is hoe ver je bent tot alles beheerst is (9× goed per oefening). Topic oefenen zonder herhaalschema vult dit niet. Klik voor detail.",
   },
   "grafiek-komende-herhalingen": {
     label: "Komende herhalingen",
-    help: "Aantal oefeningen per dag in je herhaalschema voor de komende 7 dagen. Achterstallige oefeningen tellen mee bij vandaag.",
+    help: "Aantal oefeningen per dag in je herhaalschema voor de komende 7 dagen. Vandaag omvat achterstallig én later vandaag gepland. Dat kan hoger zijn dan ‘open’ bij Herhaalschema (alleen nu aan de beurt).",
   },
   "grafiek-activiteit": {
     label: "Oefenactiviteit",
-    help: "Aantal quiz-pogingen per dag over de laatste 14 dagen. Streak telt aaneengesloten dagen met minstens één poging.",
+    help: "Aantal oefenpogingen per dag over de laatste 14 dagen (alle oefenvormen). Streak telt aaneengesloten dagen met minstens één poging.",
   },
 } as const;
 

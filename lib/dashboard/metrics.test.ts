@@ -211,7 +211,9 @@ describe("computeTopicProgress", () => {
     assert.equal(topics[0]?.topic, "Beta");
     assert.equal(topics[0]?.masteredCount, 1);
     assert.equal(topics[0]?.totalCount, 3);
-    assert.equal(topics[0]?.percentMastered, 33);
+    // (9 + 2 + 0) / (3 × 9) = 41% — voortgang tot alles beheerst
+    assert.equal(topics[0]?.percentMastered, 41);
+    // 41% < 44% (4/9) → bezig
     assert.equal(topics[0]?.status, "bezig");
     assert.equal(topics[0]?.dueCount, 2);
     assert.deepEqual(topics[0]?.buckets, {
@@ -230,6 +232,61 @@ describe("computeTopicProgress", () => {
       gevorderd: 0,
       beheerst: 2,
     });
+  });
+
+  it("markeert topic als gestart bij progress-rij met 0× goed", () => {
+    const exercises: ExerciseTopicRow[] = [
+      { id: "x1", topic: "Xi" },
+      { id: "x2", topic: "Xi" },
+    ];
+    const rows: ProgressRow[] = [
+      makeRow({
+        exercise_id: "x1",
+        repetition_count: 0,
+        last_reviewed_at: "2026-07-09T11:00:00.000Z",
+        next_review_at: "2026-07-09T11:00:00.000Z",
+      }),
+    ];
+
+    const topics = computeTopicProgress(exercises, rows, NOW);
+    assert.equal(topics[0]?.status, "bezig");
+    assert.equal(topics[0]?.percentMastered, 0);
+    assert.deepEqual(topics[0]?.buckets, {
+      nogNiet: 2,
+      bezig: 0,
+      gevorderd: 0,
+      beheerst: 0,
+    });
+  });
+
+  it("gebruikt ver-gevorderd vanaf ~4× gemiddeld (bucket Gevorderd)", () => {
+    const exercises: ExerciseTopicRow[] = [
+      { id: "g1", topic: "Gamma" },
+      { id: "g2", topic: "Gamma" },
+      { id: "g3", topic: "Gamma" },
+    ];
+    // Alle 6× → 67% ≥ 44%
+    const rows: ProgressRow[] = [
+      makeRow({
+        exercise_id: "g1",
+        repetition_count: 6,
+        next_review_at: "2026-09-01T12:00:00.000Z",
+      }),
+      makeRow({
+        exercise_id: "g2",
+        repetition_count: 6,
+        next_review_at: "2026-09-01T12:00:00.000Z",
+      }),
+      makeRow({
+        exercise_id: "g3",
+        repetition_count: 6,
+        next_review_at: "2026-09-01T12:00:00.000Z",
+      }),
+    ];
+
+    const topics = computeTopicProgress(exercises, rows, NOW);
+    assert.equal(topics[0]?.percentMastered, 67);
+    assert.equal(topics[0]?.status, "ver-gevorderd");
   });
 });
 
@@ -265,5 +322,29 @@ describe("computeUpcomingByDay", () => {
     assert.ok(tomorrow);
     assert.equal(tomorrow.count, 1);
     assert.ok(upcoming.every((day) => typeof day.count === "number"));
+  });
+
+  it("telt later vandaag mee in Vandaag terwijl dueNow dat niet doet", () => {
+    const exercises: ExerciseTopicRow[] = [
+      { id: "later-today", topic: "A" },
+    ];
+    const rows: ProgressRow[] = [
+      makeRow({
+        exercise_id: "later-today",
+        repetition_count: 3,
+        interval_days: 1,
+        last_reviewed_at: "2026-07-09T10:00:00.000Z",
+        next_review_at: "2026-07-09T20:00:00.000Z",
+      }),
+    ];
+
+    const upcoming = computeUpcomingByDay(exercises, rows, NOW);
+    const today = upcoming.find((day) => day.label === "Vandaag");
+    assert.ok(today);
+    assert.equal(today.count, 1);
+
+    const stats = buildDashboardStats(rows, [], NOW, exercises);
+    assert.equal(stats.dueNowCount, 0);
+    assert.equal(stats.upcomingByDay[0]?.count, 1);
   });
 });

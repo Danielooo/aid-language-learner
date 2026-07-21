@@ -1,9 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef } from "react";
-
-import { APP_ROUTES } from "@/lib/routes";
 
 import type { TopicProgressRow, TopicProgressStatus } from "@/lib/dashboard/types";
 
@@ -94,8 +91,10 @@ export function TopicProgressModal({ topic, open, onClose }: TopicProgressModalP
             {topic.percentMastered}%
           </p>
           <p className="text-sm text-muted-foreground">
-            {topic.masteredCount.toLocaleString("nl-NL")} van{" "}
-            {topic.totalCount.toLocaleString("nl-NL")} beheerst
+            Voortgang tot alles beheerst (9× goed per oefening)
+            {topic.masteredCount > 0
+              ? ` · ${topic.masteredCount.toLocaleString("nl-NL")} van ${topic.totalCount.toLocaleString("nl-NL")} al op 9×+`
+              : null}
             {topic.dueCount > 0
               ? ` · ${topic.dueCount.toLocaleString("nl-NL")} aan de beurt`
               : null}
@@ -138,15 +137,6 @@ export function TopicProgressModal({ topic, open, onClose }: TopicProgressModalP
             })}
           </ul>
         </div>
-
-        <footer className="flex justify-end border-t border-border px-5 py-3">
-          <Link
-            href={APP_ROUTES.oefenen}
-            className="inline-flex min-h-10 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
-          >
-            Oefenen
-          </Link>
-        </footer>
       </div>
     </dialog>
   );

@@ -69,10 +69,18 @@ function formatSrsStepLabel(stepIndex: number): string {
   return `${stepIndex}× goed`;
 }
 
-function topicStatusFromPercent(percentMastered: number): TopicProgressStatus {
+/** Vanaf ~4× goed gemiddeld — sluit aan op bucket “Gevorderd”. */
+const VER_GEVORDERD_PERCENT = Math.round(
+  (4 / MASTERED_REPETITION_THRESHOLD) * 100,
+);
+
+function topicStatusFromPercent(
+  percentMastered: number,
+  hasStarted: boolean,
+): TopicProgressStatus {
   if (percentMastered >= 100) return "beheerst";
-  if (percentMastered >= 70) return "ver-gevorderd";
-  if (percentMastered > 0) return "bezig";
+  if (percentMastered >= VER_GEVORDERD_PERCENT) return "ver-gevorderd";
+  if (percentMastered > 0 || hasStarted) return "bezig";
   return "nog-starten";
 }
 
@@ -135,7 +143,7 @@ export function computeSrsStepDistribution(
   });
 }
 
-/** Voortgang per topic: klaar = 9× goed (beheerst). */
+/** Voortgang per topic: % tot alles beheerst (9× goed per oefening). */
 export function computeTopicProgress(
   exercises: ReadonlyArray<ExerciseTopicRow>,
   progressRows: ReadonlyArray<ProgressRow>,
@@ -151,6 +159,10 @@ export function computeTopicProgress(
       totalCount: number;
       masteredCount: number;
       dueCount: number;
+      /** True zodra er minstens één progress-rij is (ook bij alleen fouten). */
+      hasProgress: boolean;
+      /** Som van min(repetition, 9) — teller voor % tot beheersing. */
+      masteryProgressSum: number;
       buckets: TopicProgressBuckets;
     }
   >();
@@ -163,14 +175,21 @@ export function computeTopicProgress(
       totalCount: 0,
       masteredCount: 0,
       dueCount: 0,
+      hasProgress: false,
+      masteryProgressSum: 0,
       buckets: emptyBuckets(),
     };
     bucket.totalCount += 1;
 
     const repetitionCount = progress?.repetition_count ?? 0;
     bucket.buckets[bucketKeyForRepetition(repetitionCount)] += 1;
+    bucket.masteryProgressSum += Math.min(
+      repetitionCount,
+      MASTERED_REPETITION_THRESHOLD,
+    );
 
     if (progress) {
+      bucket.hasProgress = true;
       if (isMasteredRow(progress)) bucket.masteredCount += 1;
       if (isDueRow(progress, now)) bucket.dueCount += 1;
     } else {
@@ -183,17 +202,20 @@ export function computeTopicProgress(
 
   return Array.from(byTopic.entries())
     .map(([topic, bucket]) => {
+      const denom = bucket.totalCount * MASTERED_REPETITION_THRESHOLD;
       const percentMastered =
-        bucket.totalCount === 0
+        denom === 0
           ? 0
-          : Math.round((bucket.masteredCount / bucket.totalCount) * 100);
+          : Math.round((bucket.masteryProgressSum / denom) * 100);
+      const hasStarted =
+        bucket.hasProgress || bucket.buckets.nogNiet < bucket.totalCount;
       return {
         topic,
         totalCount: bucket.totalCount,
         masteredCount: bucket.masteredCount,
         dueCount: bucket.dueCount,
         percentMastered,
-        status: topicStatusFromPercent(percentMastered),
+        status: topicStatusFromPercent(percentMastered, hasStarted),
         buckets: bucket.buckets,
       };
     })
