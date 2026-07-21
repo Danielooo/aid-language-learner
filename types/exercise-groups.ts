@@ -35,6 +35,11 @@ export type ExerciseGroupListItem = {
   /** Community: afwijsreden van de laatste submission (alleen bij rejected). */
   rejectReason?: string | null;
   /**
+   * Community: live-inhoud wijkt af van de afgekeurde snapshot.
+   * Alleen gezet bij offerState === "rejected"; nodig om opnieuw te mogen aanbieden.
+   */
+  changedSinceReject?: boolean;
+  /**
    * Personal: bron-community-groep; null = zelf gemaakt (of legacy zonder link).
    */
   sourceGroupId?: string | null;
@@ -69,6 +74,8 @@ export type ExerciseGroupDetail = {
   copiedAt?: string | null;
   members: ExerciseGroupMember[];
   offerState?: GroupOfferState;
+  rejectReason?: string | null;
+  changedSinceReject?: boolean;
 };
 
 export type ExerciseGroupsListSuccess = {

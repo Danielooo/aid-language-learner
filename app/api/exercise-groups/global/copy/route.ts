@@ -48,20 +48,12 @@ export async function POST(req: Request): Promise<Response> {
   const errors: string[] = [];
 
   for (const groupId of parsed.data.group_ids) {
-    let result = await copyGlobalGroupToPersonal(
+    const result = await copyGlobalGroupToPersonal(
       access.supabase,
       access.userId,
       groupId,
     );
-    // Bij naamconflict: opnieuw met voorgestelde naam (datum).
-    if (!result.ok && result.code === "NAME_CONFLICT" && result.suggestedName) {
-      result = await copyGlobalGroupToPersonal(
-        access.supabase,
-        access.userId,
-        groupId,
-        { name: result.suggestedName },
-      );
-    }
+    // Geen stille hernoeming: naamconflict → skipped; client toont naammodal.
     if (result.ok) {
       copied += 1;
       continue;

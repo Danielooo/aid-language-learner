@@ -1,11 +1,18 @@
+import { buildExerciseGroupSnapshot } from "@/lib/exercises/build-exercise-group-snapshot";
+import { snapshotsContentEqual } from "@/lib/exercises/compare-exercise-group-snapshots";
 import { getExerciseUserAccess } from "@/lib/exercises/exercise-access";
 import {
   latestOfferByGroup,
   resolveGroupOfferState,
   type OfferSubmissionRow,
 } from "@/lib/exercises/resolve-group-offer-state";
+import {
+  EXERCISE_SELECT_COLUMNS,
+  type ExerciseDbRow,
+} from "@/lib/exercises/types";
 import { getActiveTopicsForUser } from "@/lib/topics/active-topics";
 
+import type { ExerciseGroupSnapshot } from "@/types/exercise-group-submission";
 import type {
   ExerciseGroupListItem,
   ExerciseGroupsFailure,
@@ -32,7 +39,7 @@ export async function GET(): Promise<Response> {
     access.supabase
       .from("exercise_group_submissions")
       .select(
-        "source_group_id, status, created_at, updated_at, reviewed_at, reject_reason",
+        "source_group_id, status, created_at, updated_at, reviewed_at, reject_reason, snapshot",
       )
       .eq("submitted_by", access.userId)
       .in("status", ["pending", "approved", "rejected"]),
@@ -60,7 +67,7 @@ export async function GET(): Promise<Response> {
 
   const groups = groupsRes.data ?? [];
   const groupIds = groups.map((g) => g.id as string);
-  const countByGroup = new Map<string, number>();
+  const exercisesByGroup = new Map<string, ExerciseDbRow[]>();
   const tagsByGroup = new Map<string, string>();
   const editedByGroup = new Map<string, boolean>();
   const hasAudioByGroup = new Map<string, boolean>();
@@ -68,9 +75,10 @@ export async function GET(): Promise<Response> {
   if (groupIds.length > 0) {
     const { data: exerciseRows, error: countError } = await access.supabase
       .from("exercises")
-      .select("group_id, tags, target_text_manually_edited, audio_path")
+      .select(EXERCISE_SELECT_COLUMNS)
       .in("group_id", groupIds)
-      .eq("owner_id", access.userId);
+      .eq("owner_id", access.userId)
+      .order("created_at", { ascending: true });
 
     if (countError) {
       return Response.json(
@@ -79,11 +87,13 @@ export async function GET(): Promise<Response> {
       );
     }
 
-    for (const row of exerciseRows ?? []) {
-      const gid = row.group_id as string;
-      countByGroup.set(gid, (countByGroup.get(gid) ?? 0) + 1);
+    for (const row of (exerciseRows ?? []) as ExerciseDbRow[]) {
+      const gid = row.group_id;
+      const list = exercisesByGroup.get(gid) ?? [];
+      list.push(row);
+      exercisesByGroup.set(gid, list);
 
-      const tags = ((row.tags as string) ?? "").trim();
+      const tags = (row.tags ?? "").trim();
       if (tags) {
         const prev = tagsByGroup.get(gid);
         tagsByGroup.set(gid, prev ? `${prev} ${tags}` : tags);
@@ -102,13 +112,23 @@ export async function GET(): Promise<Response> {
   const items: ExerciseGroupListItem[] = groups.map((g) => {
     const id = g.id as string;
     const name = (g.name as string).trim();
-    const exerciseCount = countByGroup.get(id) ?? 0;
+    const members = exercisesByGroup.get(id) ?? [];
+    const exerciseCount = members.length;
     const latest = offerByGroup.get(id);
     const { offerState, offerStatusAt } = resolveGroupOfferState(
       exerciseCount,
       latest,
     );
     const sourceGroupId = (g.source_group_id as string | null) ?? null;
+
+    let changedSinceReject: boolean | undefined;
+    if (offerState === "rejected" && latest?.snapshot) {
+      const current = buildExerciseGroupSnapshot(name, members);
+      changedSinceReject = !snapshotsContentEqual(
+        current,
+        latest.snapshot as ExerciseGroupSnapshot,
+      );
+    }
 
     return {
       id,
@@ -121,6 +141,7 @@ export async function GET(): Promise<Response> {
         latest?.status === "rejected"
           ? (latest.reject_reason ?? null)
           : null,
+      changedSinceReject,
       sourceGroupId,
       isEdited: editedByGroup.get(id) ?? false,
       hasAudio: hasAudioByGroup.get(id) ?? false,

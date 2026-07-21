@@ -1,9 +1,16 @@
+import { buildExerciseGroupSnapshot } from "@/lib/exercises/build-exercise-group-snapshot";
+import { snapshotsContentEqual } from "@/lib/exercises/compare-exercise-group-snapshots";
 import { getExerciseUserAccess } from "@/lib/exercises/exercise-access";
 import {
   resolveGroupOfferState,
   type OfferSubmissionRow,
 } from "@/lib/exercises/resolve-group-offer-state";
+import {
+  EXERCISE_SELECT_COLUMNS,
+  type ExerciseDbRow,
+} from "@/lib/exercises/types";
 
+import type { ExerciseGroupSnapshot } from "@/types/exercise-group-submission";
 import type {
   ExerciseGroupDetail,
   ExerciseGroupDetailSuccess,
@@ -56,13 +63,15 @@ export async function GET(
   const [membersRes, submissionsRes] = await Promise.all([
     access.supabase
       .from("exercises")
-      .select("id, source_text, target_text, tags, topic")
+      .select(EXERCISE_SELECT_COLUMNS)
       .eq("group_id", id)
       .eq("owner_id", access.userId)
       .order("created_at", { ascending: true }),
     access.supabase
       .from("exercise_group_submissions")
-      .select("source_group_id, status, created_at, updated_at, reviewed_at")
+      .select(
+        "source_group_id, status, created_at, updated_at, reviewed_at, reject_reason, snapshot",
+      )
       .eq("source_group_id", id)
       .eq("submitted_by", access.userId)
       .in("status", ["pending", "approved", "rejected"])
@@ -90,18 +99,28 @@ export async function GET(
     );
   }
 
-  const members: ExerciseGroupMember[] = (membersRes.data ?? []).map((row) => ({
-    id: row.id as string,
-    source_text: row.source_text as string,
-    target_text: row.target_text as string,
-    tags: (row.tags as string) ?? "",
-    topic: (row.topic as string | null) ?? null,
+  const rows = (membersRes.data ?? []) as ExerciseDbRow[];
+  const members: ExerciseGroupMember[] = rows.map((row) => ({
+    id: row.id,
+    source_text: row.source_text,
+    target_text: row.target_text,
+    tags: row.tags ?? "",
+    topic: row.topic ?? null,
   }));
 
   const latest = submissionsRes.data
     ? (submissionsRes.data as OfferSubmissionRow)
     : undefined;
   const { offerState } = resolveGroupOfferState(members.length, latest);
+
+  let changedSinceReject: boolean | undefined;
+  if (offerState === "rejected" && latest?.snapshot) {
+    const current = buildExerciseGroupSnapshot(groupName, rows);
+    changedSinceReject = !snapshotsContentEqual(
+      current,
+      latest.snapshot as ExerciseGroupSnapshot,
+    );
+  }
 
   const detail: ExerciseGroupDetail = {
     id: group.id as string,
@@ -110,6 +129,9 @@ export async function GET(
     alreadyCopied: true,
     members,
     offerState,
+    rejectReason:
+      latest?.status === "rejected" ? (latest.reject_reason ?? null) : null,
+    changedSinceReject,
   };
 
   return Response.json({

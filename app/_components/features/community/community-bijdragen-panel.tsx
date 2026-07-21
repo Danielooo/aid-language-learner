@@ -121,6 +121,7 @@ export function CommunityBijdragenPanel() {
   const [modalRejectReason, setModalRejectReason] = useState<string | null>(
     null,
   );
+  const [modalChangedSinceReject, setModalChangedSinceReject] = useState(false);
 
   const error = queryError
     ? queryError instanceof Error
@@ -139,8 +140,6 @@ export function CommunityBijdragenPanel() {
     });
   }, [groups, query, statusFilter]);
 
-  const hasActiveFilters = query.trim() !== "" || statusFilter !== "all";
-
   const offerMutation = useMutation({
     mutationFn: async (groupId: string) => {
       await fetchJson<ExerciseGroupSubmitSuccess>(
@@ -150,8 +149,8 @@ export function CommunityBijdragenPanel() {
     },
     onSuccess: () => {
       setMessage("Topic aangeboden aan de community.");
-      setStatusFilter("pending");
-      closeModal();
+      setModalOfferState("pending");
+      setModalChangedSinceReject(false);
       void queryClient.invalidateQueries({
         queryKey: queryKeys.learningTopics(),
       });
@@ -167,6 +166,7 @@ export function CommunityBijdragenPanel() {
     setModalMembers([]);
     setModalError(null);
     setModalRejectReason(null);
+    setModalChangedSinceReject(false);
   }
 
   async function openGroup(item: ExerciseGroupListItem) {
@@ -175,6 +175,7 @@ export function CommunityBijdragenPanel() {
     setModalMembers([]);
     setModalError(null);
     setModalRejectReason(item.rejectReason ?? null);
+    setModalChangedSinceReject(item.changedSinceReject ?? false);
     setModalLoading(true);
     setMessage(null);
 
@@ -184,16 +185,13 @@ export function CommunityBijdragenPanel() {
       );
       setModalMembers(membersFromLive(body.group.members));
       setModalOfferState(body.group.offerState ?? "available");
+      setModalRejectReason(body.group.rejectReason ?? null);
+      setModalChangedSinceReject(body.group.changedSinceReject ?? false);
     } catch (e) {
       setModalError(e instanceof Error ? e.message : "Kon topic niet laden.");
     } finally {
       setModalLoading(false);
     }
-  }
-
-  function clearFilters() {
-    setQuery("");
-    setStatusFilter("all");
   }
 
   const isRefreshing = isFetching && !loading;
@@ -226,15 +224,6 @@ export function CommunityBijdragenPanel() {
             <option value="rejected">Afgekeurd</option>
           </select>
         </label>
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-foreground"
-          >
-            Filters wissen
-          </button>
-        )}
         <button
           type="button"
           disabled={loading || offerBusy}
@@ -284,7 +273,14 @@ export function CommunityBijdragenPanel() {
           }
         >
           <div className="overflow-x-auto rounded-md border border-border">
-            <table className="w-full min-w-[44rem] text-left text-sm">
+            <table className="w-full min-w-[44rem] table-fixed text-left text-sm">
+              <colgroup>
+                <col className="w-[26%]" />
+                <col className="w-[24%]" />
+                <col className="w-[12%]" />
+                <col className="w-[22%]" />
+                <col className="w-[16%]" />
+              </colgroup>
               <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">Topic</th>
@@ -311,11 +307,11 @@ export function CommunityBijdragenPanel() {
                       }}
                       className="cursor-pointer border-b border-border/60 hover:bg-muted/40"
                     >
-                      <td className="px-3 py-2 font-medium text-foreground">
+                      <td className="truncate px-3 py-2 font-medium text-foreground">
                         {item.name}
                       </td>
                       <td
-                        className="max-w-[12rem] truncate px-3 py-2 text-muted-foreground"
+                        className="truncate px-3 py-2 text-muted-foreground"
                         title={tagsFull}
                       >
                         {tagsPreview}
@@ -323,7 +319,7 @@ export function CommunityBijdragenPanel() {
                       <td className="px-3 py-2 text-muted-foreground">
                         {item.exerciseCount}
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">
+                      <td className="truncate px-3 py-2 text-muted-foreground">
                         {!when || label === "—" || label === "Beschikbaar" || label === "Leeg" ? (
                           label
                         ) : (
@@ -336,11 +332,13 @@ export function CommunityBijdragenPanel() {
                           </span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">
+                      <td className="truncate px-3 py-2 text-muted-foreground">
                         {reason ? (
                           <span title={reason.length > 40 ? reason : undefined}>
                             {truncate(reason, 40)}
                           </span>
+                        ) : item.offerState === "rejected" ? (
+                          "Geen reden"
                         ) : (
                           "—"
                         )}
@@ -367,6 +365,7 @@ export function CommunityBijdragenPanel() {
         mode="offer"
         offerState={modalOfferState}
         rejectReason={modalRejectReason}
+        changedSinceReject={modalChangedSinceReject}
         onClose={closeModal}
         onOffer={() => {
           if (!modalGroup) return;

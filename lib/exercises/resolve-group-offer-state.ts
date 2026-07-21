@@ -1,3 +1,4 @@
+import type { ExerciseGroupSnapshot } from "@/types/exercise-group-submission";
 import type { GroupOfferState } from "@/types/exercise-groups";
 
 /** Submission-rij die we gebruiken voor de laatste community-status. */
@@ -8,6 +9,8 @@ export type OfferSubmissionRow = {
   updated_at: string;
   reviewed_at: string | null;
   reject_reason?: string | null;
+  /** Alleen nodig om wijziging sinds afkeuring te detecteren. */
+  snapshot?: ExerciseGroupSnapshot | null;
 };
 
 export type ResolvedGroupOffer = {

@@ -61,17 +61,22 @@ export async function GET(
       .eq("group_id", id)
       .is("owner_id", null)
       .order("created_at", { ascending: true }),
+    // Meerdere kopieën van dezelfde bron zijn toegestaan — pak de nieuwste.
     access.supabase
       .from("exercise_groups")
       .select("id, created_at")
       .eq("owner_id", access.userId)
       .eq("source_group_id", id)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle(),
     access.supabase
       .from("exercise_groups")
       .select("id, created_at")
       .eq("owner_id", access.userId)
       .eq("name", groupName)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle(),
   ]);
 

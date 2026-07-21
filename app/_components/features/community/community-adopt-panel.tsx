@@ -170,7 +170,7 @@ export function CommunityAdoptPanel() {
       groupId: string;
       name?: string;
     }) => postCopy(groupId, name),
-    onSuccess: (body) => {
+    onSuccess: (body, variables) => {
       invalidateLists();
       setMessage(`Topic “${body.name}” toegevoegd aan je leerplan.`);
       setNameConflict(null);
@@ -179,6 +179,12 @@ export function CommunityAdoptPanel() {
       setModalName(null);
       setModalDetail(null);
       setModalError(null);
+      setSelected((prev) => {
+        if (!prev.has(variables.groupId)) return prev;
+        const next = new Set(prev);
+        next.delete(variables.groupId);
+        return next;
+      });
     },
     onError: (err) => {
       const copyErr = err as CopyError;
@@ -301,7 +307,9 @@ export function CommunityAdoptPanel() {
     setModalName(null);
     setModalDetail(null);
     setModalError(null);
-    setNameConflict(null);
+    // nameConflict niet wissen: bij “opnieuw toevoegen” sluit deze modal
+    // programmatisch (open=false → dialog close → onClose) terwijl de
+    // naamkeuze-dialog juist open moet blijven.
   }
 
   function handleSingleCopy() {
@@ -322,6 +330,46 @@ export function CommunityAdoptPanel() {
     singleCopyMutation.mutate({ groupId: modalGroupId });
   }
 
+  function handleBulkCopy() {
+    if (selectedIds.length === 0) return;
+    setMessage(null);
+
+    const conflictIds = selectedIds.filter(
+      (id) => groups.find((g) => g.id === id)?.alreadyCopied,
+    );
+    const freshIds = selectedIds.filter((id) => !conflictIds.includes(id));
+
+    // Al in leerplan: naamkeuze i.p.v. stil overslaan/hernoemen.
+    if (conflictIds.length === 1 && freshIds.length === 0) {
+      const g = groups.find((x) => x.id === conflictIds[0]);
+      if (g) {
+        setNameConflict({
+          groupId: g.id,
+          baseName: g.name,
+          draftName: suggestedCommunityCopyName(g.name),
+        });
+      }
+      return;
+    }
+
+    if (conflictIds.length > 0 && freshIds.length === 0) {
+      setMessage(
+        "Topics die al in je leerplan staan: open ze één voor één om opnieuw over te nemen met een andere naam.",
+      );
+      return;
+    }
+
+    if (conflictIds.length > 0) {
+      setMessage(
+        `${conflictIds.length} al in leerplan overgeslagen — open die apart om opnieuw over te nemen.`,
+      );
+    }
+
+    if (freshIds.length > 0) {
+      bulkCopyMutation.mutate(freshIds);
+    }
+  }
+
   function confirmNameConflict() {
     if (!nameConflict) return;
     const name = nameConflict.draftName.trim();
@@ -330,12 +378,6 @@ export function CommunityAdoptPanel() {
       groupId: nameConflict.groupId,
       name,
     });
-  }
-
-  function handleBulkCopy() {
-    if (selectedIds.length === 0) return;
-    setMessage(null);
-    bulkCopyMutation.mutate(selectedIds);
   }
 
   const isRefreshing = isFetching && !loading;

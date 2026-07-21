@@ -23,6 +23,8 @@ type CommunityGroupModalProps = {
   mode: "offer" | "snapshot";
   offerState?: GroupOfferState;
   rejectReason?: string | null;
+  /** Alleen bij rejected: inhoud gewijzigd t.o.v. afgekeurde snapshot. */
+  changedSinceReject?: boolean;
   onClose: () => void;
   onOffer?: () => void;
 };
@@ -66,17 +68,30 @@ export function membersFromSnapshot(
   }));
 }
 
-function offerButtonLabel(state: GroupOfferState | undefined, busy: boolean) {
+function offerButtonLabel(
+  state: GroupOfferState | undefined,
+  busy: boolean,
+  changedSinceReject: boolean,
+) {
   if (busy) return "Bezig…";
-  if (state === "pending") return "Al aangeboden (pending)";
+  if (state === "pending") return "Al aangeboden (Pending)";
   if (state === "approved") return "Al goedgekeurd";
-  if (state === "empty") return "Lege groep";
-  // available + rejected: opnieuw / voor het eerst aanbieden
+  if (state === "empty") return "Leeg topic";
+  if (state === "rejected") {
+    return changedSinceReject
+      ? "Opnieuw aanbieden aan de community"
+      : "Eerst wijzigen in Leerplan";
+  }
   return "Aanbieden aan de community";
 }
 
-function canOfferWithState(state: GroupOfferState | undefined): boolean {
-  return state === "available" || state === "rejected";
+function canOfferWithState(
+  state: GroupOfferState | undefined,
+  changedSinceReject: boolean,
+): boolean {
+  if (state === "available") return true;
+  if (state === "rejected") return changedSinceReject;
+  return false;
 }
 
 /**
@@ -92,6 +107,7 @@ export function CommunityGroupModal({
   mode,
   offerState = "available",
   rejectReason,
+  changedSinceReject = false,
   onClose,
   onOffer,
 }: CommunityGroupModalProps) {
@@ -111,23 +127,46 @@ export function CommunityGroupModal({
 
   const canOffer =
     mode === "offer" &&
-    canOfferWithState(offerState) &&
+    canOfferWithState(offerState, changedSinceReject) &&
     !busy &&
     !loading &&
     members.length > 0;
 
+  const showRejectInfo =
+    mode === "offer" &&
+    (offerState === "rejected" || Boolean(rejectReason?.trim()));
+
   let footer: ReactNode = null;
   if (mode === "offer") {
     footer = (
-      <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-3">
-        <button
-          type="button"
-          disabled={!canOffer}
-          onClick={onOffer}
-          className="inline-flex min-h-10 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
-        >
-          {offerButtonLabel(offerState, busy)}
-        </button>
+      <footer className="space-y-3 border-t border-border px-5 py-3">
+        {showRejectInfo ? (
+          <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
+            <p className="text-xs font-medium text-foreground">
+              Eerder afgekeurd
+            </p>
+            <p className="mt-1 text-sm text-foreground">
+              {rejectReason?.trim()
+                ? rejectReason.trim()
+                : "Geen reden opgegeven."}
+            </p>
+            {offerState === "rejected" && !changedSinceReject ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Pas dit topic aan in je Leerplan om opnieuw aan te bieden.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            disabled={!canOffer}
+            onClick={onOffer}
+            className="inline-flex min-h-10 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+          >
+            {offerButtonLabel(offerState, busy, changedSinceReject)}
+          </button>
+        </div>
       </footer>
     );
   } else if (rejectReason?.trim()) {
