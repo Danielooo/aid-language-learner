@@ -51,22 +51,25 @@ Optionele F-checklist:
 
 ### Admin (G) — open voor developer-check
 
-Smoke van **Beheer** (admin-rol): gebruikers, review-queue, oefeningen/tatoeba waar relevant.
+Smoke van **Beheer** (admin-rol): gebruikers, Bijdragen beoordelen, oefeningen/tatoeba waar relevant.
+
+**Gebruikers beheren (B40–B43):** deactiveren trekt sessies in + proxy kick; login toont “gedeactiveerd”; Verwijderen wist account+data; rol-wissel weg; **Admin aanmaken** is aparte tab (`/admin/admin-aanmaken`).
 
 Scope (geen nieuwe features):
 - Alleen als beheerder bereikbaar; niet-admin → nette deny/redirect
 - Gebruikerslijst (`/admin/gebruikers`): laden, zoeken/filteren indien aanwezig, rol/acties zonder stille fail
-- Review (`/admin/review`): pending submissions; goedkeuren/afwijzen/heropenen waar UI dat biedt
+- Bijdragen beoordelen (`/admin/bijdragen`): pending submissions; goedkeuren/afwijzen/heropenen waar UI dat biedt
 - Overige admin-pagina’s die in nav staan (oefeningen, tatoeba-import): laden zonder crash; diepe Tatoeba-pipeline niet herontwerpen
-- Terminologie: Beheer, Gebruiker, Beheerder, Pending, Goedgekeurd, Afgekeurd
+- Terminologie: Beheer, Gebruiker, Admin, Pending, Goedgekeurd, Afgekeurd
 
 Checklist voor smoke (G):
 
 1. Inloggen als beheerder → Beheer bereikbaar
 2. Niet-admin → geen toegang (of lege/forbidden state)
-3. Gebruikerspagina laadt; zichtbare actie faalt niet stil
-4. Review-queue: lijst + minstens één statuspad (approve/reject) of nette empty
+3. Gebruikers beheren: laden; AI/deactiveren/verwijderen; Admin aanmaken-tab; acties falen niet stil
+4. Bijdragen beoordelen: lijst + minstens één statuspad (approve/reject) of nette empty
 5. Foutpad/API: geen stille leegte
+6. Deactiveren: andere tab/sessie van die user → uitgelogd; opnieuw inloggen → “gedeactiveerd”
 
 ### Volgende actie
 
@@ -297,6 +300,11 @@ Korte startnotities — vul aan terwijl je de checklists afwerkt.
 | B37 | Voortgang gestart | Topic bleef verborgen na alleen foute SRS-antwoorden | ja | medium | fixed |
 | B38 | Voortgang error | “Dashboard…” zonder retry | ja | medium | fixed |
 | B39 | Voortgang status | Badge “Bezig” bij ~67% terwijl verdeling “Gevorderd” | ja | low | fixed |
+| B40 | Admin Gebruikers | Na Deactiveer bleef bestaande sessie bruikbaar tot JWT-expiry | ja | high | fixed |
+| B41 | Admin Gebruikers | Login na deactivatie gaf generieke fout i.p.v. “gedeactiveerd” | ja | medium | fixed |
+| B42 | Admin Gebruikers | Geen Verwijderen-actie (account + data) | ja | high | fixed |
+| B43 | Admin Gebruikers | Rol wisselen (user↔admin) i.p.v. aparte Admin aanmaken | ja | medium | fixed |
+| B44 | Admin Deactiveren | PATCH /api/admin/users → 500 (thrown Response 401 + proxy getUser race) | ja | blocker | fixed |
 
 
 **Ernst:**
@@ -521,7 +529,7 @@ Geen assessment-eisen — pas doen als D1/D2 en blockers af zijn. Agent pakt ze 
 - [ ] Skeleton loader maken
 - [ ] Standaard verversknop-component (met loading state)
 - [ ] Community + Leerplan: twee zoekbalken (Topics en Tags gescheiden i.p.v. één gecombineerd veld)
-- [ ] OAuth (Google/GitHub) terug op login
+- [ ] OAuth (Google/GitHub) terug op login — knoppen + flow verwijderd (werkten niet); opnieuw inbouwen indien nodig
 - [ ] Oefening uitsluiten van herhaalschema (“Niet meer tonen” / suspend) — bij voorkeur vanuit Leerplan of oefeningenbeheer, niet mid-sessie in Oefenen
 - [ ] Alternatieve vertalingen toevoegen tijdens het oefenen (bv. na feedback een geldig antwoord opslaan als alternatief)
 - [ ] Voortgang → topic-detail: doorlink naar Oefenen voor dat specifieke topic
