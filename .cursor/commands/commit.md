@@ -37,7 +37,7 @@ Toon het voorstel aan de gebruiker:
 > Akkoord, of pas je 'm aan?
 
 Als er duidelijk meerdere logische gebeurtenissen open staan, stel kort
-groepering voor — maar default = één commit voor wat er klaar staat.
+groepering voor — Default is meerdere commits, maar stel ook een enkele commit voor
 
 ### 3. Commit
 
