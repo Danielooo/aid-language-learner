@@ -1,7 +1,10 @@
 import { z } from "zod";
 
-import { ADMIN_ROLE, isAdminUser } from "@/lib/auth/is-admin";
 import { assertAdmin } from "@/lib/auth/assert-admin";
+import { ADMIN_ROLE, isAdminUser } from "@/lib/auth/is-admin";
+import { getPasswordSchema } from "@/lib/auth/password-policy";
+import { revokeAllUserSessions } from "@/lib/auth/revoke-user-sessions";
+import { usernameToEmail } from "@/lib/auth/username";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -19,9 +22,18 @@ export type AdminUserRow = {
 
 export type UsersListSuccess = { ok: true; rows: AdminUserRow[] };
 export type UsersFailure = { ok: false; error: string };
+export type UsersCreateSuccess = { ok: true; user_id: string };
+
+const usernameSchema = z
+  .string()
+  .trim()
+  .min(2, "Minimaal 2 tekens")
+  .max(32, "Maximaal 32 tekens")
+  .regex(/^[a-zA-Z0-9_-]+$/, "Alleen letters, cijfers, _ en - toegestaan");
 
 export async function GET(): Promise<Response> {
-  await assertAdmin();
+  const auth = await assertAdmin();
+  if (!auth.ok) return auth.response;
   const admin = getSupabaseAdmin();
 
   const { data: profiles, error } = await admin
@@ -84,11 +96,6 @@ export async function GET(): Promise<Response> {
 
 const patchBodySchema = z.discriminatedUnion("action", [
   z.object({
-    action: z.literal("set_role"),
-    user_id: z.string().uuid(),
-    role: z.enum(["admin", "user"]),
-  }),
-  z.object({
     action: z.literal("set_ai_disabled"),
     user_id: z.string().uuid(),
     ai_disabled: z.boolean(),
@@ -101,7 +108,17 @@ const patchBodySchema = z.discriminatedUnion("action", [
     action: z.literal("unban"),
     user_id: z.string().uuid(),
   }),
+  z.object({
+    action: z.literal("delete"),
+    user_id: z.string().uuid(),
+  }),
 ]);
+
+const createAdminBodySchema = z.object({
+  action: z.literal("create_admin"),
+  username: usernameSchema,
+  password: getPasswordSchema(),
+});
 
 async function countAdmins(): Promise<number> {
   const admin = getSupabaseAdmin();
@@ -121,8 +138,75 @@ async function countAdmins(): Promise<number> {
   return count;
 }
 
+/** Verwijder persoonlijke topics/oefeningen vóór Auth-delete (SET NULL-edgecases). */
+async function deleteOwnedLearningData(userId: string): Promise<void> {
+  const admin = getSupabaseAdmin();
+  await admin.from("exercise_groups").delete().eq("owner_id", userId);
+  await admin.from("exercises").delete().eq("owner_id", userId);
+}
+
+export async function POST(req: Request): Promise<Response> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return auth.response;
+  const admin = getSupabaseAdmin();
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json(
+      { ok: false, error: "Body is geen geldige JSON." } satisfies UsersFailure,
+      { status: 400 },
+    );
+  }
+
+  const parse = createAdminBodySchema.safeParse(body);
+  if (!parse.success) {
+    const first = parse.error.issues[0];
+    return Response.json(
+      {
+        ok: false,
+        error: first?.message ?? "Validatie mislukt.",
+      } satisfies UsersFailure,
+      { status: 400 },
+    );
+  }
+
+  const { username, password } = parse.data;
+  const email = usernameToEmail(username);
+
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { username },
+    app_metadata: { role: ADMIN_ROLE },
+  });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    return Response.json(
+      {
+        ok: false,
+        error:
+          msg.includes("already") || msg.includes("registered")
+            ? "Deze gebruikersnaam is al in gebruik."
+            : error.message,
+      } satisfies UsersFailure,
+      { status: 400 },
+    );
+  }
+
+  return Response.json({
+    ok: true,
+    user_id: data.user.id,
+  } satisfies UsersCreateSuccess);
+}
+
 export async function PATCH(req: Request): Promise<Response> {
-  const actor = await assertAdmin();
+  const auth = await assertAdmin();
+  if (!auth.ok) return auth.response;
+  const actor = auth.user;
   const admin = getSupabaseAdmin();
 
   let body: unknown;
@@ -144,47 +228,6 @@ export async function PATCH(req: Request): Promise<Response> {
   }
 
   const action = parse.data;
-
-  if (action.action === "set_role") {
-    if (action.role === "user") {
-      const { data: targetData, error: getError } =
-        await admin.auth.admin.getUserById(action.user_id);
-      if (getError || !targetData.user) {
-        return Response.json(
-          {
-            ok: false,
-            error: getError?.message ?? "User niet gevonden.",
-          } satisfies UsersFailure,
-          { status: 404 },
-        );
-      }
-      if (isAdminUser(targetData.user)) {
-        const adminCount = await countAdmins();
-        if (adminCount <= 1) {
-          return Response.json(
-            {
-              ok: false,
-              error: "De laatste admin kan niet gedegradeerd worden.",
-            } satisfies UsersFailure,
-            { status: 400 },
-          );
-        }
-      }
-    }
-
-    const { error } = await admin.auth.admin.updateUserById(action.user_id, {
-      app_metadata: {
-        role: action.role === "admin" ? ADMIN_ROLE : null,
-      },
-    });
-    if (error) {
-      return Response.json(
-        { ok: false, error: error.message } satisfies UsersFailure,
-        { status: 500 },
-      );
-    }
-    return Response.json({ ok: true, rows: [] } satisfies UsersListSuccess);
-  }
 
   if (action.action === "set_ai_disabled") {
     const { error } = await admin
@@ -236,17 +279,71 @@ export async function PATCH(req: Request): Promise<Response> {
         { status: 500 },
       );
     }
+
+    await revokeAllUserSessions(action.user_id);
+
     return Response.json({ ok: true, rows: [] } satisfies UsersListSuccess);
   }
 
-  // unban
-  const { error: unbanError } = await admin.auth.admin.updateUserById(
-    action.user_id,
-    { ban_duration: "none" },
-  );
-  if (unbanError) {
+  if (action.action === "unban") {
+    const { error: unbanError } = await admin.auth.admin.updateUserById(
+      action.user_id,
+      { ban_duration: "none" },
+    );
+    if (unbanError) {
+      return Response.json(
+        { ok: false, error: unbanError.message } satisfies UsersFailure,
+        { status: 500 },
+      );
+    }
+    return Response.json({ ok: true, rows: [] } satisfies UsersListSuccess);
+  }
+
+  // delete
+  if (action.user_id === actor.id) {
     return Response.json(
-      { ok: false, error: unbanError.message } satisfies UsersFailure,
+      {
+        ok: false,
+        error: "Je kunt jezelf niet verwijderen.",
+      } satisfies UsersFailure,
+      { status: 400 },
+    );
+  }
+
+  const { data: targetData, error: getError } =
+    await admin.auth.admin.getUserById(action.user_id);
+  if (getError || !targetData.user) {
+    return Response.json(
+      {
+        ok: false,
+        error: getError?.message ?? "Gebruiker niet gevonden.",
+      } satisfies UsersFailure,
+      { status: 404 },
+    );
+  }
+
+  if (isAdminUser(targetData.user)) {
+    const adminCount = await countAdmins();
+    if (adminCount <= 1) {
+      return Response.json(
+        {
+          ok: false,
+          error: "De laatste admin kan niet verwijderd worden.",
+        } satisfies UsersFailure,
+        { status: 400 },
+      );
+    }
+  }
+
+  await revokeAllUserSessions(action.user_id);
+  await deleteOwnedLearningData(action.user_id);
+
+  const { error: deleteError } = await admin.auth.admin.deleteUser(
+    action.user_id,
+  );
+  if (deleteError) {
+    return Response.json(
+      { ok: false, error: deleteError.message } satisfies UsersFailure,
       { status: 500 },
     );
   }

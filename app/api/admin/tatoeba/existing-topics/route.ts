@@ -21,7 +21,8 @@ export type ExistingTopicsResponse =
   | ExistingTopicsFailure;
 
 export async function GET(): Promise<Response> {
-  await assertAdmin();
+  const auth = await assertAdmin();
+  if (!auth.ok) return auth.response;
   const supabase = getSupabaseAdmin();
 
   const { data, error } = await supabase

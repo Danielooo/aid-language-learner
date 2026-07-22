@@ -24,7 +24,8 @@ export type AudioStatsFailure = {
 export type AudioStatsResponse = AudioStatsSuccess | AudioStatsFailure;
 
 export async function GET(): Promise<Response> {
-  await assertAdmin();
+  const auth = await assertAdmin();
+  if (!auth.ok) return auth.response;
   const supabase = getSupabaseAdmin();
 
   // Supabase-js heeft geen group-by helper; we halen alleen de

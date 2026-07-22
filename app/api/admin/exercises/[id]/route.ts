@@ -39,7 +39,8 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
-  await assertAdmin();
+  const auth = await assertAdmin();
+  if (!auth.ok) return auth.response;
 
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) {

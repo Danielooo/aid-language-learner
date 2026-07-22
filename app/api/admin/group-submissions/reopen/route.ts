@@ -23,7 +23,9 @@ export type GroupReopenFailure = { ok: false; error: string };
  * daarna global groep hard verwijderen.
  */
 export async function POST(req: Request): Promise<Response> {
-  const adminUser = await assertAdmin();
+  const auth = await assertAdmin();
+  if (!auth.ok) return auth.response;
+  const adminUser = auth.user;
   const admin = getSupabaseAdmin();
 
   let body: unknown;

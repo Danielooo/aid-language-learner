@@ -1,49 +1,8 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 import { APP_ROUTES } from "@/lib/routes";
 
-import type { Metadata } from "next";
-
-export const metadata: Metadata = { title: "Beheer" };
-
-export const dynamic = "force-dynamic";
-
-const CARDS = [
-  {
-    href: APP_ROUTES.adminReview,
-    title: "Review-queue",
-    body: "Pending, goedgekeurde en afgekeurde groep-aanbiedingen beoordelen.",
-  },
-  {
-    href: APP_ROUTES.adminGebruikers,
-    title: "Gebruikers",
-    body: "Rollen, AI aan/uit, accounts deactiveren.",
-  },
-] as const;
-
+/** Hub-pagina is weg; Beheer opent standaard Bijdragen beoordelen. */
 export default function AdminHomePage() {
-  return (
-    <div className="space-y-6">
-      <AppPageHeader
-        title="Beheer"
-        description="Review-queue en platformbeheer volgens de rollen-requirements."
-      />
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {CARDS.map((card) => (
-          <li key={card.href}>
-            <Link
-              href={card.href}
-              className="block rounded-md border border-border bg-card px-4 py-3 transition-colors hover:border-accent/40 hover:bg-muted/40"
-            >
-              <h2 className="text-sm font-semibold text-foreground">
-                {card.title}
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">{card.body}</p>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+  redirect(APP_ROUTES.adminBijdragen);
 }

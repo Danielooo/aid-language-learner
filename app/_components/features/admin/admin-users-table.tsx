@@ -11,6 +11,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "@/lib/query-keys";
 import { fetchJson } from "@/lib/api/fetch-json";
+import { ConfirmDialog } from "@/app/_components/ui/confirm-dialog";
 
 import type { AdminUserRow } from "@/app/api/admin/users/route";
 import type { ReactNode } from "react";
@@ -23,6 +24,14 @@ type RoleFilter = "all" | "admin" | "user";
 type StatusFilter = "all" | "active" | "banned";
 type AiFilter = "all" | "on" | "off";
 type OpenFilter = "role" | "ai" | "status" | null;
+type PendingAction = {
+  type: "ban" | "delete";
+  row: AdminUserRow;
+};
+
+function accountLabel(row: AdminUserRow): string {
+  return row.display_name || row.username || row.id.slice(0, 8);
+}
 
 const filterControlClass =
   "rounded-md border border-input bg-background px-2 py-1.5 text-xs";
@@ -149,7 +158,7 @@ function ColumnFilterHeader<T extends string>({
 const ROLE_OPTIONS: FilterOption<RoleFilter>[] = [
   { value: "all", label: "Alles" },
   { value: "admin", label: "Admin" },
-  { value: "user", label: "User" },
+  { value: "user", label: "Gebruiker" },
 ];
 
 const AI_OPTIONS: FilterOption<AiFilter>[] = [
@@ -175,6 +184,7 @@ export function AdminUsersTable() {
     queryKey: queryKeys.adminUsers(),
     queryFn: async () => {
       const json = await fetchJson<ListResponse>("/api/admin/users");
+      if (!json.ok) throw new Error(json.error);
       return json.rows;
     },
   });
@@ -184,8 +194,11 @@ export function AdminUsersTable() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [aiFilter, setAiFilter] = useState<AiFilter>("all");
   const [openFilter, setOpenFilter] = useState<OpenFilter>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(
+    null,
+  );
 
-  const error = queryError
+  const listError = queryError
     ? queryError instanceof Error
       ? queryError.message
       : "Laden mislukt."
@@ -243,6 +256,7 @@ export function AdminUsersTable() {
       });
     },
     onSuccess: () => {
+      setPendingAction(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers() });
     },
   });
@@ -251,24 +265,75 @@ export function AdminUsersTable() {
     patchMutation.mutate(body);
   }
 
-  function confirmBan(row: AdminUserRow) {
-    const label = row.display_name || row.username || row.id.slice(0, 8);
-    const ok = window.confirm(
-      `Weet je zeker dat je "${label}" wilt deactiveren? Die gebruiker kan dan niet meer inloggen.`,
-    );
-    if (!ok) return;
-    patch({ action: "ban", user_id: row.id });
+  function runPendingAction() {
+    if (!pendingAction) return;
+    const { type, row } = pendingAction;
+    if (type === "ban") {
+      patch({ action: "ban", user_id: row.id });
+      return;
+    }
+    patch({ action: "delete", user_id: row.id });
   }
 
   function toggleFilter(key: Exclude<OpenFilter, null>) {
     setOpenFilter((prev) => (prev === key ? null : key));
   }
 
+  const actionError =
+    patchMutation.error instanceof Error
+      ? patchMutation.error.message
+      : null;
+
+  const busy = patchMutation.isPending;
+
+  const pendingLabel = pendingAction
+    ? accountLabel(pendingAction.row)
+    : "";
+
+  const confirmCopy =
+    pendingAction?.type === "ban"
+      ? {
+          title: "Account deactiveren?",
+          description: (
+            <>
+              Weet je zeker dat je “{pendingLabel}” wilt deactiveren? Een
+              nieuwe login wordt geblokkeerd. Een sessie die nu al openstaat
+              blijft bruikbaar tot die gebruiker opnieuw moet inloggen.
+            </>
+          ),
+          confirmLabel: "Deactiveren",
+          pendingLabel: "Deactiveren…",
+        }
+      : pendingAction?.type === "delete" && pendingAction.row.role === "admin"
+        ? {
+            title: "Admin verwijderen?",
+            description: (
+              <>
+                Weet je zeker dat je het admin-account “{pendingLabel}” wilt
+                verwijderen?
+              </>
+            ),
+            confirmLabel: "Verwijderen",
+            pendingLabel: "Verwijderen…",
+          }
+        : {
+            title: "Gebruiker verwijderen?",
+            description: (
+              <>
+                Weet je zeker dat je “{pendingLabel}” definitief wilt
+                verwijderen? Alle gegevens van deze gebruiker (oefeningen,
+                voortgang, inzendingen) gaan permanent verloren.
+              </>
+            ),
+            confirmLabel: "Verwijderen",
+            pendingLabel: "Verwijderen…",
+          };
+
   return (
     <div className="space-y-3">
-      {error && (
+      {(listError || actionError) && (
         <p className="text-sm text-destructive" role="alert">
-          {error}
+          {listError ?? actionError}
         </p>
       )}
 
@@ -375,105 +440,114 @@ export function AdminUsersTable() {
             )}
 
             {!loading &&
-              filtered.map((row) => {
-                const busy = patchMutation.isPending;
-                return (
-                  <tr
-                    key={row.id}
-                    className="border-b border-border/60 last:border-b-0"
-                  >
-                    <td className="px-3 py-2 font-medium">
-                      {row.username ? (
-                        <span>@{row.username}</span>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          {row.id.slice(0, 8)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      {row.display_name ? (
-                        row.display_name
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      <StatusBadge
-                        tone={row.role === "admin" ? "accent" : "muted"}
+              filtered.map((row) => (
+                <tr
+                  key={row.id}
+                  className="border-b border-border/60 last:border-b-0"
+                >
+                  <td className="px-3 py-2 font-medium">
+                    {row.username ? (
+                      <span>@{row.username}</span>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        {row.id.slice(0, 8)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {row.display_name ? (
+                      row.display_name
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    <StatusBadge
+                      tone={row.role === "admin" ? "accent" : "muted"}
+                    >
+                      {row.role === "admin" ? "Admin" : "Gebruiker"}
+                    </StatusBadge>
+                  </td>
+                  <td className="px-3 py-2">
+                    <StatusBadge tone={row.ai_disabled ? "danger" : "ok"}>
+                      {row.ai_disabled ? "Uit" : "Aan"}
+                    </StatusBadge>
+                  </td>
+                  <td className="px-3 py-2">
+                    <StatusBadge tone={row.banned ? "danger" : "ok"}>
+                      {row.banned ? "Gedeactiveerd" : "Actief"}
+                    </StatusBadge>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-nowrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className={actionBtnClass}
+                        onClick={() =>
+                          patch({
+                            action: "set_ai_disabled",
+                            user_id: row.id,
+                            ai_disabled: !row.ai_disabled,
+                          })
+                        }
                       >
-                        {row.role === "admin" ? "Admin" : "User"}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-3 py-2">
-                      <StatusBadge tone={row.ai_disabled ? "danger" : "ok"}>
-                        {row.ai_disabled ? "Uit" : "Aan"}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-3 py-2">
-                      <StatusBadge tone={row.banned ? "danger" : "ok"}>
-                        {row.banned ? "Gedeactiveerd" : "Actief"}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex flex-nowrap items-center gap-1.5">
+                        {row.ai_disabled ? "AI aan" : "AI uit"}
+                      </button>
+                      {row.banned ? (
                         <button
                           type="button"
                           disabled={busy}
                           className={actionBtnClass}
                           onClick={() =>
-                            patch({
-                              action: "set_role",
-                              user_id: row.id,
-                              role: row.role === "admin" ? "user" : "admin",
-                            })
+                            patch({ action: "unban", user_id: row.id })
                           }
                         >
-                          {row.role === "admin" ? "Maak user" : "Maak admin"}
+                          Reactiveer
                         </button>
+                      ) : (
                         <button
                           type="button"
                           disabled={busy}
-                          className={actionBtnClass}
+                          className={actionDangerClass}
                           onClick={() =>
-                            patch({
-                              action: "set_ai_disabled",
-                              user_id: row.id,
-                              ai_disabled: !row.ai_disabled,
-                            })
+                            setPendingAction({ type: "ban", row })
                           }
                         >
-                          {row.ai_disabled ? "AI aan" : "AI uit"}
+                          Deactiveer
                         </button>
-                        {row.banned ? (
-                          <button
-                            type="button"
-                            disabled={busy}
-                            className={actionBtnClass}
-                            onClick={() =>
-                              patch({ action: "unban", user_id: row.id })
-                            }
-                          >
-                            Reactiveer
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={busy}
-                            className={actionDangerClass}
-                            onClick={() => confirmBan(row)}
-                          >
-                            Deactiveer
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                      )}
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className={actionDangerClass}
+                        onClick={() =>
+                          setPendingAction({ type: "delete", row })
+                        }
+                      >
+                        Verwijderen
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        open={pendingAction !== null}
+        title={confirmCopy.title}
+        description={confirmCopy.description}
+        confirmLabel={confirmCopy.confirmLabel}
+        pendingLabel={confirmCopy.pendingLabel}
+        pending={busy}
+        tone="danger"
+        onCancel={() => {
+          if (!busy) setPendingAction(null);
+        }}
+        onConfirm={runPendingAction}
+      />
     </div>
   );
 }

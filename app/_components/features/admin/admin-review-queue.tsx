@@ -231,7 +231,7 @@ export function AdminReviewQueue() {
     <div className="space-y-4">
       <div
         role="tablist"
-        aria-label="Review-tabs"
+        aria-label="Bijdragen beoordelen-tabs"
         className="flex flex-wrap gap-2 border-b border-border pb-2"
       >
         <button
