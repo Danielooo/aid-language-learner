@@ -1,7 +1,11 @@
+import { redirect } from "next/navigation";
+
 import { Container } from "@/app/_components/ui/container";
 import { getDisplayLabel } from "@/lib/auth/display-label";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { isUserBanned } from "@/lib/auth/is-banned";
 import { isAdminUser } from "@/lib/auth/is-admin";
+import { APP_ROUTES } from "@/lib/routes";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 import { AppProfileProvider } from "./_components/app-profile-provider";
@@ -20,6 +24,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (isUserBanned(user)) {
+    await supabase.auth.signOut();
+    redirect(`${APP_ROUTES.login}?fout=deactivated`);
+  }
+
   const isAdmin = isAdminUser(user);
 
   const username = profileUsername ?? (isAuthenticated ? "jij" : "gast");

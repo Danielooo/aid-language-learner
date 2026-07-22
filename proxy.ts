@@ -7,12 +7,15 @@ import { APP_ROUTES } from "@/lib/routes";
 // Next.js 16 hernoemt `middleware.ts` → `proxy.ts` (zelfde semantiek,
 // nieuwe naam — zie docs/01-app/03-api-reference/03-file-conventions/proxy.md).
 //
-// Twee verantwoordelijkheden:
+// Verantwoordelijkheden:
 //   1. Auth-sessie refreshen op elke request → cookies blijven geldig.
-//      We gebruiken `getClaims()` (NIET `getSession()`) zodat de JWT
-//      lokaal tegen de project-JWKS wordt gevalideerd.
-//   2. Onauth'd users redirecten als ze een beschermde page-route
-//      bezoeken. API-routes valideren zelf en geven 401 terug.
+//      We gebruiken `getClaims()` (NIET `getUser()`) zodat de JWT
+//      lokaal tegen de project-JWKS wordt gevalideerd zonder parallelle
+//      refresh-races op API-requests.
+//   2. Onauth'd users redirecten op beschermde page-routes.
+//      API-routes valideren zelf (assertAdmin / getUser) en geven 401.
+//   3. Gedeactiveerde users: ban-check in assertAdmin + app-layout
+//      (niet hier — getUser in proxy veroorzaakte 401/500 op admin-API).
 
 const APP_PAGE_PREFIXES = [
   "/oefenen",
@@ -26,7 +29,6 @@ const APP_PAGE_PREFIXES = [
 
 const PROTECTED_PAGE_PREFIXES = [...APP_PAGE_PREFIXES];
 
-// Admin is beheer-only: deze leer-routes zijn niet toegankelijk voor admins.
 const LEARNER_ONLY_PREFIXES = [
   "/oefenen",
   "/generator",
@@ -75,7 +77,7 @@ export async function proxy(request: NextRequest) {
 
   if (isProtectedPagePath(pathname) && !claims) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/login";
+    redirectUrl.pathname = APP_ROUTES.login;
     redirectUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(redirectUrl);
   }
@@ -83,7 +85,7 @@ export async function proxy(request: NextRequest) {
   const isAdmin = claims?.app_metadata?.role === ADMIN_ROLE;
   if (isAdmin && isLearnerOnlyPath(pathname)) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = APP_ROUTES.admin;
+    redirectUrl.pathname = APP_ROUTES.adminBijdragen;
     redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }
