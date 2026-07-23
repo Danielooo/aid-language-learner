@@ -7,6 +7,7 @@ type ChatComposerProps = {
   onStop: () => void;
   isBusy: boolean;
   placeholder: string;
+  submitLabel?: string;
 };
 
 export function ChatComposer({
@@ -16,6 +17,7 @@ export function ChatComposer({
   onStop,
   isBusy,
   placeholder,
+  submitLabel = "Verstuur",
 }: ChatComposerProps) {
   return (
     <form onSubmit={onSubmit} className="flex gap-2">
@@ -46,7 +48,7 @@ export function ChatComposer({
           disabled={!input.trim()}
           className="cursor-pointer rounded-xl border border-accent/30 bg-accent px-4 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Verstuur
+          {submitLabel}
         </button>
       )}
     </form>

@@ -13,14 +13,40 @@ type ChatThreadProps = {
   messages: UIMessage[];
   status: ChatStatus;
   emptyState?: React.ReactNode;
+  getAssistantFallbackText?: (message: UIMessage) => string | null;
 };
 
-export function ChatThread({ messages, status, emptyState }: ChatThreadProps) {
+function resolveMessageText(
+  message: UIMessage,
+  getAssistantFallbackText?: (message: UIMessage) => string | null,
+): string | null {
+  let text: string | null = getMessageText(message);
+  if (!text && message.role === "assistant" && getAssistantFallbackText) {
+    text = getAssistantFallbackText(message);
+  }
+  return text;
+}
+
+export function ChatThread({
+  messages,
+  status,
+  emptyState,
+  getAssistantFallbackText,
+}: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isBusy = status === "submitted" || status === "streaming";
+  const lastMessage = messages[messages.length - 1];
+  const lastHasDisplayableText =
+    lastMessage != null &&
+    resolveMessageText(lastMessage, getAssistantFallbackText) != null;
+
+  // Typing blijft tot er displaybare bubbeltekst is (ook tijdens streaming
+  // met tool-only/lege assistant-messages).
   const showTypingIndicator =
-    status === "submitted" &&
-    (messages.length === 0 || messages[messages.length - 1]?.role === "user");
+    isBusy &&
+    (messages.length === 0 ||
+      lastMessage?.role === "user" ||
+      (lastMessage?.role === "assistant" && !lastHasDisplayableText));
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -42,8 +68,10 @@ export function ChatThread({ messages, status, emptyState }: ChatThreadProps) {
           return null;
         }
 
-        const text = getMessageText(message);
-        if (!text && message.role === "assistant" && isBusy) {
+        const text = resolveMessageText(message, getAssistantFallbackText);
+
+        // Geen lege assistant-bubbles; typing dekt de busy-gap.
+        if (!text) {
           return null;
         }
 
