@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getHomeRoute } from "@/lib/auth/home-route";
+import { isUserBanned } from "@/lib/auth/is-banned";
 import { getPasswordSchema } from "@/lib/auth/password-policy";
 import { usernameToEmail } from "@/lib/auth/username";
 import { APP_ROUTES } from "@/lib/routes";
@@ -132,51 +132,29 @@ export async function signIn(
   });
 
   if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes("ban") || msg.includes("deactivat")) {
+      return {
+        ok: false,
+        error: "Dit account is gedeactiveerd.",
+      };
+    }
     return {
       ok: false,
-      error: "Username of wachtwoord onjuist.",
+      error: "Gebruikersnaam of wachtwoord onjuist.",
+    };
+  }
+
+  if (isUserBanned(data.user)) {
+    await supabase.auth.signOut();
+    return {
+      ok: false,
+      error: "Dit account is gedeactiveerd.",
     };
   }
 
   revalidatePath("/", "layout");
   redirect(sanitizeNextPath(formData.get("next"), getHomeRoute(data.user)));
-}
-
-const oauthProviderSchema = z.enum(["google", "github"]);
-
-export type OAuthProvider = z.infer<typeof oauthProviderSchema>;
-
-/**
- * Start de OAuth-flow (PKCE) via Supabase. De SSR-client zet de
- * code-verifier-cookie; de provider stuurt de gebruiker terug naar
- * /auth/callback waar de code voor een sessie wordt ingewisseld.
- */
-export async function signInWithOAuthProvider(
-  formData: FormData,
-): Promise<void> {
-  const parsed = oauthProviderSchema.safeParse(formData.get("provider"));
-  if (!parsed.success) redirect(APP_ROUTES.login);
-
-  const next = sanitizeNextPath(formData.get("next"));
-
-  const headerStore = await headers();
-  const origin =
-    headerStore.get("origin") ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    "http://localhost:3000";
-
-  const supabase = await getSupabaseServerClient();
-  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: parsed.data,
-    options: { redirectTo },
-  });
-
-  if (error || !data.url) {
-    redirect(`${APP_ROUTES.login}?fout=oauth`);
-  }
-
-  redirect(data.url);
 }
 
 export async function signOut(): Promise<void> {

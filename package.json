@@ -10,7 +10,7 @@
     "test": "npx --yes tsx --test lib/srs/schedule.test.ts lib/dashboard/metrics.test.ts lib/dashboard/attempt-metrics.test.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "seed:users": "npx --yes tsx --env-file=.env.local supabase/seed.ts"
+    "seed:dummy": "npx --yes tsx --env-file=.env.local supabase/seed.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.66",
@@ -27,6 +27,8 @@
     "@nivo/pie": "^0.99.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
+    "@tanstack/react-query": "^5.101.2",
+    "@tanstack/react-query-devtools": "^5.101.2",
     "ai": "^6.0.191",
     "clsx": "^2.1.1",
     "gsap": "^3.15.0",

@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useAppProfile } from "@/app/(app)/_components/app-profile-provider";
 import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 
 import {
@@ -12,25 +11,27 @@ import {
   FLASHCARD_ANSWER_INCORRECT,
 } from "@/app/_components/features/quiz/constants";
 import { ExerciseErrorState } from "@/app/_components/features/quiz/exercise-error-state";
-import { HistoryList } from "@/app/_components/features/quiz/history-list";
-import { ScoreBar } from "@/app/_components/features/quiz/score-bar";
+import { ExerciseChat } from "@/app/_components/features/quiz/exercise-chat";
 import { useQuizStorage } from "@/app/_components/features/quiz/use-quiz-storage";
-import {
-  isQuizShortcut,
-  QUIZ_SHORTCUTS,
-} from "@/lib/keyboard/quiz-shortcuts";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
 import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
-import { useExerciseSummaryStats } from "@/lib/dashboard/use-exercise-summary-stats";
 
-import { ExercisePicker } from "./exercise-picker";
-import { QuizSubPageMeta } from "./quiz-sub-page-meta";
+import { QuizBackToOverviewButton } from "./quiz-back-to-overview-button";
+import { QuizLeaveSessionDialog } from "./quiz-leave-session-dialog";
+import {
+  QUIZ_PLAYING_DECK_CLASS,
+  QUIZ_PLAYING_DESCRIPTION_CLASS,
+  QUIZ_PLAYING_FORM_CLASS,
+  QUIZ_PLAYING_HEADER_CLASS,
+  QUIZ_PLAYING_SECTION_CLASS,
+  QUIZ_PLAYING_TITLE_CLASS,
+  QUIZ_PROMPT_SKELETON_CLASS,
+  useQuizScrollToTop,
+} from "./quiz-playing-layout";
+import { QuizQueueProgressBadge } from "./quiz-queue-progress-badge";
 import { ActiveTopicsEmptyBanner } from "./active-topics-empty-banner";
 import { animateCardExit, Flashcard } from "./flashcard";
-import {
-  QuizSelectionScreen,
-  useQuizSelectionMode,
-} from "./quiz-selection-screen";
+import { useQuizSelectionMode } from "./hooks/use-quiz-selection-mode";
 import {
   formatQueueProgressLabel,
   SessionCompleteState,
@@ -39,22 +40,15 @@ import { SrsCompleteState } from "./srs-complete-state";
 import { SrsTopicPickerSection } from "./srs-topic-picker-section";
 import { TopicPickerGrid } from "./topic-picker-grid";
 import { useQuizSession } from "./hooks/use-quiz-session";
+import { useQuizLeaveGuard } from "./hooks/use-quiz-leave-guard";
 import { useItemResponseTime } from "./hooks/use-item-response-time";
+import { useQuizTopics } from "./hooks/use-quiz-topics";
 
 import type { FlashcardPhase } from "./flashcard";
-import type {
-  TopicStat,
-  TopicsResponse,
-} from "@/types/quiz";
-import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
 
 const TOPIC_KEY = "aid:exercises-quiz-flashcards:topic";
 
-type DeckScreen =
-  | "selection"
-  | "topic-picker"
-  | "exercise-picker"
-  | "playing";
+type DeckScreen = "topic-picker" | "playing";
 
 function topicDisplayLabel(topic: string): string {
   return topic === ALL_TOPICS ? "Alle topics" : topic;
@@ -62,28 +56,22 @@ function topicDisplayLabel(topic: string): string {
 
 export function FlashcardDeck() {
   const router = useRouter();
-  const { displayLabel } = useAppProfile();
-  const { stats, loading: statsLoading } = useExerciseSummaryStats();
   const containerRef = useRef<HTMLDivElement>(null);
   const cardContainerRef = useRef<HTMLDivElement>(null);
 
-  const [screen, setScreen] = useState<DeckScreen>("selection");
+  const [screen, setScreen] = useState<DeckScreen>("topic-picker");
   const [phase, setPhase] = useState<FlashcardPhase>("front");
   const [animating, setAnimating] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
 
-  const [topicStats, setTopicStats] = useState<TopicStat[]>([]);
-  const [topicsLoading, setTopicsLoading] = useState(true);
+  const { data: topicsData, isPending: topicsLoading } = useQuizTopics();
+  const topicStats = topicsData?.stats ?? [];
   const [selectedTopic, setSelectedTopic] = useState<string>(ALL_TOPICS);
   const [topicHydrated, setTopicHydrated] = useState(false);
-  const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(
-    new Set(),
-  );
 
   const {
     mode: selectionMode,
-    setMode: setSelectionMode,
     hydrated: selectionHydrated,
+    fromQuery: selectionFromQuery,
   } = useQuizSelectionMode();
 
   const {
@@ -92,10 +80,8 @@ export function FlashcardDeck() {
     sessionLoading,
     error,
     errorStatus,
-    sessionComplete,
     srsComplete,
     sessionPhase,
-    queueRemaining,
     queueProgress,
     queueTotal,
     initialQueueTotal,
@@ -107,14 +93,12 @@ export function FlashcardDeck() {
     resetSession,
     fetchNext,
     recordAnswer,
-    recordSkip,
     startMistakeReview,
     finishSession,
     recordSrsReview,
-    suspendExercise,
   } = useQuizSession();
 
-  const { score, attempts, recordAttempt, reset, hydrated } = useQuizStorage();
+  const { recordAttempt } = useQuizStorage();
   const getResponseTimeMs = useItemResponseTime(item?.id);
 
   useEffect(() => {
@@ -130,30 +114,19 @@ export function FlashcardDeck() {
       }
     }
     setTopicHydrated(true);
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/quiz/topics", {
-          cache: "no-store",
-        });
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        const data = (await res.json()) as TopicsResponse;
-        if (!cancelled) setTopicStats(data.stats ?? []);
-      } catch {
-        if (!cancelled) setTopicStats([]);
-      } finally {
-        if (!cancelled) setTopicsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  // Zonder ?modus= vanaf de hub → terug naar overzicht.
+  useEffect(() => {
+    if (!selectionHydrated) return;
+    if (!selectionFromQuery) {
+      router.replace("/oefenen");
+    }
+  }, [selectionHydrated, selectionFromQuery, router]);
 
   useEffect(() => {
     if (screen === "playing" && !loading && item) {
-      containerRef.current?.focus();
+      containerRef.current?.focus({ preventScroll: true });
     }
   }, [screen, loading, item]);
 
@@ -168,53 +141,28 @@ export function FlashcardDeck() {
     }
   }
 
-  async function beginSession(
-    mode: typeof selectionMode,
-    topic: string,
-    customIds?: string[],
-  ) {
+  async function beginSession(topic: string, srsDueTotal?: number) {
     setPhase("front");
     setAnimating(false);
     setScreen("playing");
-    const ok = await startSession({
-      selectionMode: mode,
-      topic,
-      customExerciseIds: customIds,
-    });
+    const ok = await startSession(
+      {
+        selectionMode,
+        topic,
+      },
+      selectionMode === "srs" ? { srsDueTotal: srsDueTotal ?? 0 } : undefined,
+    );
     if (ok) void fetchNext();
   }
 
-  function handleSelectMode(mode: QuizSelectionMode) {
-    setSelectionMode(mode);
-    if (mode === "custom") {
-      setScreen("exercise-picker");
-      return;
-    }
-    setScreen("topic-picker");
-  }
-
-  function handleTopicSelect(topic: string) {
+  function handleTopicSelect(topic: string, srsDueTotal?: number) {
     persistTopic(topic);
-    beginSession(selectionMode, topic);
-  }
-
-  function handleCustomStart() {
-    if (selectedExerciseIds.size === 0) return;
-    beginSession(selectionMode, selectedTopic, [...selectedExerciseIds]);
-  }
-
-  function toggleExerciseId(id: string) {
-    setSelectedExerciseIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    void beginSession(topic, srsDueTotal);
   }
 
   const handleChangeSetup = useCallback(() => {
     resetSession();
-    setScreen("selection");
+    setScreen("topic-picker");
     setPhase("front");
     setAnimating(false);
   }, [resetSession]);
@@ -223,15 +171,6 @@ export function FlashcardDeck() {
     if (animating || loading) return;
     setPhase((p) => (p === "front" ? "back" : "front"));
   }, [animating, loading]);
-
-  const handleSkip = useCallback(() => {
-    if (animating || loading || !item) return;
-    if (selectionMode === "topic") {
-      recordSkip(item.id);
-    }
-    setPhase("front");
-    void fetchNext();
-  }, [animating, loading, item, selectionMode, recordSkip, fetchNext]);
 
   const handleGrade = useCallback(
     async (isCorrect: boolean) => {
@@ -264,7 +203,7 @@ export function FlashcardDeck() {
 
       recordAnswer(item.id, isCorrect);
 
-      if (selectionMode === "srs") {
+      if (selectionMode === "srs" && sessionPhase === "playing") {
         void recordSrsReview(item.id, isCorrect);
       }
 
@@ -287,15 +226,21 @@ export function FlashcardDeck() {
     ],
   );
 
-  const handleSuspend = useCallback(async () => {
-    if (!item) return;
-    if (!window.confirm("Deze oefening niet meer tonen in spaced repetition?")) {
-      return;
-    }
-    await suspendExercise(item.id);
-    setPhase("front");
-    void fetchNext();
-  }, [item, suspendExercise, fetchNext]);
+  const handleBackToOverview = useCallback(() => {
+    resetSession();
+    router.push("/oefenen");
+  }, [resetSession, router]);
+
+  const {
+    confirmOpen: leaveConfirmOpen,
+    requestLeave,
+    confirmLeave,
+    dismissLeave,
+    handleEscape,
+  } = useQuizLeaveGuard({
+    isMidSession: screen === "playing" && showPlayingUi,
+    onLeave: handleBackToOverview,
+  });
 
   const handleStartMistakeReview = useCallback(() => {
     startMistakeReview();
@@ -316,136 +261,80 @@ export function FlashcardDeck() {
   }, [sessionPhase, mistakeCount, finishSession, handleChangeSetup]);
 
   const progressLabel =
-    (selectionMode === "topic" || selectionMode === "custom") && queueTotal > 0
+    queueTotal > 0
       ? formatQueueProgressLabel(
-          queueProgress,
-          queueTotal,
-          sessionPhase === "review",
-        )
+        queueProgress,
+        queueTotal,
+        sessionPhase === "review",
+      )
       : null;
-
-  function handleReset() {
-    if (window.confirm("Score en geschiedenis echt wissen?")) reset();
-  }
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      const target = e.target;
-      const inInput =
-        target instanceof HTMLElement &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.tagName === "SELECT" ||
-          target.isContentEditable);
-
-      if (e.key === "Escape") {
-        e.preventDefault();
-        if (screen === "playing") {
-          handleChangeSetup();
-        } else if (screen === "topic-picker" || screen === "exercise-picker") {
-          setScreen("selection");
-        } else {
-          router.push("/oefenen");
-        }
-        return;
-      }
-
-      if (screen === "playing" && !loading && !animating && item) {
-        if (isQuizShortcut(e, QUIZ_SHORTCUTS.skip)) {
-          e.preventDefault();
-          handleSkip();
-          return;
-        }
-
-        if (phase === "back") {
-          if (isQuizShortcut(e, QUIZ_SHORTCUTS.gradeCorrect)) {
-            e.preventDefault();
-            void handleGrade(true);
-            return;
-          }
-
-          if (isQuizShortcut(e, QUIZ_SHORTCUTS.gradeIncorrect)) {
-            e.preventDefault();
-            void handleGrade(false);
-            return;
-          }
-        }
-      }
-
-      if (inInput) return;
-
-      if (screen !== "playing" || loading || animating) return;
-      if (!item) return;
-
-      if (e.key === " " || e.key === "Enter") {
-        e.preventDefault();
-        handleFlip();
-      }
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      handleEscape();
     }
 
     window.addEventListener("keydown", onKeyDown, { capture: true });
     return () =>
       window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, [
-    screen,
-    loading,
-    animating,
-    item,
-    phase,
-    router,
-    handleGrade,
-    handleFlip,
-    handleSkip,
-    handleChangeSetup,
-  ]);
+  }, [handleEscape]);
 
-  const escHint =
-    screen === "selection"
-      ? "Esc = terug naar overzicht"
-      : screen === "playing"
-        ? "Esc = wijzig instellingen"
-        : "Esc = terug naar moduskeuze";
+  const ready = selectionHydrated && selectionFromQuery;
+  const headerTitle =
+    screen === "playing" ? topicDisplayLabel(selectedTopic) : "Flashcards";
+
+  useQuizScrollToTop(screen === "playing", item?.id ?? null);
 
   return (
-    <div ref={containerRef} tabIndex={-1} className="space-y-6 outline-none">
+    <div
+      ref={containerRef}
+      tabIndex={-1}
+      className={
+        screen === "playing" ? QUIZ_PLAYING_DECK_CLASS : "space-y-6 outline-none"
+      }
+    >
       <AppPageHeader
-        eyebrow="Oefenen"
-        title="Flashcards"
-        accountLabel={displayLabel}
-        meta={<QuizSubPageMeta escHint={escHint} />}
+        title={headerTitle}
+        className={screen === "playing" ? QUIZ_PLAYING_HEADER_CLASS : undefined}
+        titleClassName={
+          screen === "playing" ? QUIZ_PLAYING_TITLE_CLASS : undefined
+        }
+        descriptionClassName={
+          screen === "playing" ? QUIZ_PLAYING_DESCRIPTION_CLASS : undefined
+        }
         description={
           screen === "playing"
             ? "Bekijk de Spaanse zin, draai de kaart om en beoordeel jezelf."
-            : "Kies hoe en welke oefeningen je wilt oefenen."
+            : "Kies een topic om te oefenen."
         }
-        stats={stats.map((stat) => ({ ...stat, loading: statsLoading }))}
-        hideStats={screen === "playing"}
+        actions={<QuizBackToOverviewButton onClick={requestLeave} />}
       />
 
-      {screen === "selection" && selectionHydrated && (
-        <QuizSelectionScreen
-          selectedMode={selectionMode}
-          onSelect={handleSelectMode}
-        />
-      )}
+      <QuizLeaveSessionDialog
+        open={leaveConfirmOpen}
+        onStay={dismissLeave}
+        onLeave={confirmLeave}
+      />
 
-      {screen === "topic-picker" && selectionMode === "srs" && (
+      {ready && screen === "topic-picker" && selectionMode === "srs" && (
         <div className="space-y-4">
           <ActiveTopicsEmptyBanner
             topicStats={topicStats}
             loading={!topicHydrated || topicsLoading}
           />
           <SrsTopicPickerSection
-          topicStats={topicStats}
-          topicsLoading={!topicHydrated || topicsLoading}
-          selectedTopic={selectedTopic}
-          onSelect={handleTopicSelect}
-          onBack={() => setScreen("selection")}
-        />
+            topicStats={topicStats}
+            topicsLoading={!topicHydrated || topicsLoading}
+            selectedTopic={selectedTopic}
+            onSelect={handleTopicSelect}
+            onBack={handleBackToOverview}
+          />
         </div>
       )}
 
-      {screen === "topic-picker" && selectionMode !== "srs" && (
+      {ready && screen === "topic-picker" && selectionMode === "topic" && (
         <section className="space-y-4 rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
           <div className="space-y-1">
             <h2 className="text-sm font-semibold text-foreground">
@@ -468,155 +357,80 @@ export function FlashcardDeck() {
         </section>
       )}
 
-      {screen === "exercise-picker" && (
-        <div className="space-y-4">
-          <ActiveTopicsEmptyBanner
-            topicStats={topicStats}
-            loading={!topicHydrated || topicsLoading}
-          />
-          <ExercisePicker
-          topicStats={topicStats}
-          topicsLoading={!topicHydrated || topicsLoading}
-          selectedTopic={selectedTopic}
-          onTopicChange={persistTopic}
-          selectedIds={selectedExerciseIds}
-          onToggle={toggleExerciseId}
-          onSelectAll={(ids) =>
-            setSelectedExerciseIds((prev) => new Set([...prev, ...ids]))
-          }
-          onClear={() => setSelectedExerciseIds(new Set())}
-          onStart={handleCustomStart}
-        />
-        </div>
-      )}
-
       {screen === "playing" && (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-medium text-accent">
-                {selectionModeLabel(selectionMode)}
-              </span>
-              {selectionMode !== "custom" && (
-                <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                  {topicDisplayLabel(selectedTopic)}
-                </span>
-              )}
-              {progressLabel && (
-                <span className="text-xs text-muted-foreground">
-                  {progressLabel}
-                </span>
-              )}
-              {selectionMode === "custom" && queueRemaining > 0 && !progressLabel && (
-                <span className="text-xs text-muted-foreground">
-                  Nog {queueRemaining} in wachtrij
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={handleChangeSetup}
-                className="cursor-pointer text-xs text-muted-foreground underline hover:text-foreground"
-              >
-                Wijzig instellingen
-              </button>
-            </div>
-            {selectionMode === "srs" && item && (
-              <button
-                type="button"
-                onClick={() => void handleSuspend()}
-                className="cursor-pointer text-xs text-muted-foreground underline hover:text-foreground"
-              >
-                Niet meer tonen
-              </button>
-            )}
-          </div>
-
-          <ScoreBar score={score} hydrated={hydrated} onReset={handleReset} />
-
-          <section className="rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
-            {sessionComplete && (
-              <div className="mx-auto max-w-lg space-y-4 text-center">
-                <p className="text-lg font-semibold text-foreground">
-                  Alle geselecteerde oefeningen voltooid!
-                </p>
-                <button
-                  type="button"
-                  onClick={handleChangeSetup}
-                  className="cursor-pointer rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground"
-                >
-                  Nieuwe sessie starten
-                </button>
-              </div>
-            )}
+          <section className={QUIZ_PLAYING_SECTION_CLASS}>
+            <QuizQueueProgressBadge label={progressLabel} />
             {(sessionPhase === "main-complete" ||
               sessionPhase === "all-complete") && (
-              <SessionCompleteState
-                phase={sessionPhase}
-                correctCount={correctCount}
-                totalCount={initialQueueTotal}
-                mistakeCount={mistakeCount}
-                skippedIneligible={skippedIneligible}
-                onStartMistakeReview={handleStartMistakeReview}
-                onFinish={handleFinishSession}
-              />
-            )}
+                <SessionCompleteState
+                  phase={sessionPhase}
+                  correctCount={correctCount}
+                  totalCount={initialQueueTotal}
+                  mistakeCount={mistakeCount}
+                  skippedIneligible={skippedIneligible}
+                  onStartMistakeReview={handleStartMistakeReview}
+                  onFinish={handleFinishSession}
+                />
+              )}
             {srsComplete && (
               <SrsCompleteState
                 topic={selectedTopic}
                 onBack={handleChangeSetup}
               />
             )}
-            {showPlayingUi && sessionLoading && <FlashcardSkeleton />}
-            {showPlayingUi && !sessionLoading && loading && <FlashcardSkeleton />}
-            {showPlayingUi && !sessionLoading && !loading && error && (
-              <ExerciseErrorState
-                message={error}
-                status={errorStatus}
-                onRetry={() => void fetchNext()}
-              />
-            )}
-            {showPlayingUi && !sessionLoading && !loading && !error && item && (
-              <div ref={cardContainerRef}>
-                <Flashcard
-                  item={item}
-                  phase={phase}
-                  onFlip={handleFlip}
-                  onGradeCorrect={() => void handleGrade(true)}
-                  onGradeIncorrect={() => void handleGrade(false)}
-                  onSkip={handleSkip}
-                  animating={animating}
-                />
+            {showPlayingUi && (
+              <div>
+                {sessionLoading && <FlashcardSkeleton />}
+                {!sessionLoading && loading && <FlashcardSkeleton />}
+                {!sessionLoading && !loading && error && (
+                  <ExerciseErrorState
+                    message={error}
+                    status={errorStatus}
+                    onRetry={() => void fetchNext()}
+                  />
+                )}
+                {!sessionLoading && !loading && !error && item && (
+                  <div ref={cardContainerRef}>
+                    <Flashcard
+                      item={item}
+                      phase={phase}
+                      onFlip={handleFlip}
+                      onGradeCorrect={() => void handleGrade(true)}
+                      onGradeIncorrect={() => void handleGrade(false)}
+                      animating={animating}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </section>
+
+          {showPlayingUi && !sessionLoading && !loading && !error && item && (
+            <ExerciseChat
+              key={item.id}
+              exercise={item}
+              // Na omdraaien mag de chat de vertaling gebruiken (zonder
+              // zelfbeoordeling — isCorrect blijft onbekend tot Goed/Fout).
+              feedback={
+                phase === "back"
+                  ? { correctAnswer: item.target_text }
+                  : null
+              }
+              userAnswer=""
+            />
+          )}
         </>
       )}
-
-      <details
-        className="rounded-md border border-border bg-card text-card-foreground"
-        open={showHistory}
-        onToggle={(e) => setShowHistory(e.currentTarget.open)}
-      >
-        <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-muted-foreground">
-          Recente pogingen ({attempts.length})
-        </summary>
-        <HistoryList
-          attempts={attempts}
-          emptyMessage="Nog geen pogingen — beoordeel een kaart om te beginnen."
-        />
-      </details>
     </div>
   );
 }
 
 function FlashcardSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-lg space-y-4">
-      <div className="h-64 animate-pulse rounded-2xl bg-muted/60 sm:h-72" />
-      <div className="grid grid-cols-2 gap-2">
-        <div className="h-12 animate-pulse rounded-xl bg-muted/60" />
-        <div className="h-12 animate-pulse rounded-xl bg-muted/60" />
-      </div>
+    <div className={QUIZ_PLAYING_FORM_CLASS}>
+      <div className={QUIZ_PROMPT_SKELETON_CLASS} />
+      <div className="mt-2 h-12 shrink-0 animate-pulse rounded-xl bg-muted/60" />
     </div>
   );
 }

@@ -6,28 +6,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ChatComposer } from "@/app/_components/features/chat/chat-composer";
 import { ChatThread } from "@/app/_components/features/chat/chat-thread";
-import {
-  EXERCISE_QUIZ_CHAT_MODEL,
-  buildQuizChatSystemPrompt,
-} from "@/lib/ai/exercise-quiz-chat-config";
 
 import type { ExerciseQuizItem } from "@/types/quiz";
 import type { QuizChatMode } from "@/lib/ai/exercise-quiz-chat-config";
 import type { UIMessage } from "ai";
 
-// Chat-paneel onder een actieve oefening tijdens quiz-sessies.
+// Chat-paneel onder een actieve oefening tijdens Leren-sessies.
 // Twee modes:
-//   - before: nog niet ingediend → AI mag GEEN volledige vertaling geven.
-//   - after:  ingediend → AI heeft target/userAnswer/isCorrect en mag uitleggen.
-//
-// Deze component wordt vanuit quiz.tsx gemount met `key={item.id}` zodat
-// 'ie unmount/remount bij elke nieuwe oefening (chat-historie schoon).
-// Mode-overgang binnen één oefening (before → after na "Controleren") gaat
-// via refs: de transport-body is een functie die altijd de actuele mode
-// uit refs leest. Zo blijft de transport stabiel maar is de body fris.
+//   - before: nog niet ingediend / kaart nog niet omgedraaid → geen volledige vertaling.
+//   - after:  antwoord gezien of ingediend → AI mag uitleggen.
 
 type Feedback = {
-  isCorrect: boolean;
+  isCorrect?: boolean;
   correctAnswer: string;
 };
 
@@ -40,13 +30,11 @@ type Props = {
 export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
   const [input, setInput] = useState("");
   const [open, setOpen] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
 
   const mode: QuizChatMode = feedback ? "after" : "before";
   const chatId = `quiz-chat-${exercise.id}`;
 
-  // Refs zodat de body-functie van de DefaultChatTransport altijd verse
-  // waarden ziet, ook als ze wijzigen tussen mount en send (bv. mode flipt
-  // van "before" naar "after" zodra de gebruiker "Controleren" klikt).
   const modeRef = useRef(mode);
   const userAnswerRef = useRef(userAnswer);
   const feedbackRef = useRef(feedback);
@@ -60,14 +48,6 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
     feedbackRef.current = feedback;
   }, [feedback]);
 
-  // Bouw één keer een transport met een body-fn die uit refs leest. Niet
-  // opnieuw memoizen op props — de hele component remount al via
-  // key={exercise.id} bij oefening-wissel.
-  //
-  // De `body`-callback wordt pas door de AI SDK aangeroepen op het moment
-  // dat een bericht wordt verstuurd, dus `.current` lezen is daar veilig.
-  // ESLint's `react-hooks/refs` ziet dat verschil niet en denkt dat we de
-  // ref tijdens render aanraken — vandaar de localized disable.
   /* eslint-disable react-hooks/refs */
   const transport = useMemo(() => {
     return new DefaultChatTransport<UIMessage>({
@@ -104,7 +84,26 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
 
   function applySuggestion(s: string) {
     setInput(s);
+    openChat();
+  }
+
+  function openChat() {
     setOpen(true);
+    // Na paint: toon dat chat onder de fold zit (document-scroll).
+    requestAnimationFrame(() => {
+      sectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+  }
+
+  function handleToggleOpen() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    openChat();
   }
 
   function handleClearConversation() {
@@ -113,86 +112,82 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
   }
 
   return (
-    <section className="space-y-3 rounded-lg border border-border bg-card p-4 text-card-foreground">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold">
-            {mode === "before" ? "Hulp bij deze zin" : "Uitleg over je antwoord"}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {mode === "before"
-              ? "Vraag woordbetekenis of grammatica — geen volledige vertaling."
-              : "Vraag uitleg, vervoegingen of of een alternatief ook geldig was."}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {messages.length > 0 && (
+    <section
+      ref={sectionRef}
+      className="rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-3 sm:p-4"
+    >
+      <div className="mx-auto w-full max-w-5xl space-y-3">
+        <header className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0 space-y-0.5">
+            <h3 className="text-sm font-semibold text-foreground">
+              {mode === "before" ? "Hulp bij deze zin" : "Uitleg over je antwoord"}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {mode === "before"
+                ? "Vraag woordbetekenis of grammatica — geen volledige vertaling."
+                : "Vraag uitleg, vervoegingen of of een alternatief ook geldig was."}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearConversation}
+                className="cursor-pointer rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                Gesprek wissen
+              </button>
+            )}
             <button
               type="button"
-              onClick={handleClearConversation}
-              className="cursor-pointer rounded-md border border-input bg-background px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={handleToggleOpen}
+              className="cursor-pointer rounded-lg border border-accent/30 bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90"
             >
-              Gesprek wissen
+              {open ? "Verberg chat" : "Open chat"}
             </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="cursor-pointer rounded-md border border-input bg-background px-3 py-1.5 text-xs hover:bg-muted"
-          >
-            {open ? "Verberg chat" : "Open chat"}
-          </button>
-        </div>
-      </header>
+          </div>
+        </header>
 
-      {open && (
-        <>
-          <Suggestions mode={mode} onPick={applySuggestion} />
+        {open && (
+          <div className="space-y-2.5">
+            <Suggestions mode={mode} onPick={applySuggestion} />
 
-          <ChatThread
-            messages={messages}
-            status={status}
-            emptyState={
-              <p className="text-xs text-muted-foreground">
-                Nog geen berichten. Stel een vraag of klik een suggestie.
-              </p>
-            }
-          />
+            <ChatThread
+              messages={messages}
+              status={status}
+              className="min-h-[3.5rem] max-h-[min(12rem,30vh)] px-4 py-2.5"
+              emptyState={
+                <p className="text-xs text-muted-foreground">
+                  Nog geen berichten. Stel een vraag of klik een suggestie.
+                </p>
+              }
+            />
 
-          {error && (
-            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
-              <p className="font-medium">Fout in chat-request</p>
-              <pre className="mt-1 font-mono">{error.message}</pre>
-            </div>
-          )}
+            {error && (
+              <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
+                <p className="font-medium">Fout in chat-request</p>
+                <pre className="mt-1 font-mono">{error.message}</pre>
+              </div>
+            )}
 
-          <ChatComposer
-            input={input}
-            onInputChange={setInput}
-            onSubmit={handleSubmit}
-            onStop={stop}
-            isBusy={isBusy}
-            placeholder={
-              mode === "before"
-                ? "bv. Wat betekent het woord 'coche' letterlijk?"
-                : "bv. Is 'auto' ook een geldig alternatief?"
-            }
-          />
-
-          <DebugPanels
-            exercise={exercise}
-            mode={mode}
-            userAnswer={userAnswer}
-            feedback={feedback}
-            messages={messages}
-          />
-        </>
-      )}
+            <ChatComposer
+              input={input}
+              onInputChange={setInput}
+              onSubmit={handleSubmit}
+              onStop={stop}
+              isBusy={isBusy}
+              placeholder={
+                mode === "before"
+                  ? "bv. Wat betekent het woord 'coche' letterlijk?"
+                  : "bv. Is 'auto' ook een geldig alternatief?"
+              }
+            />
+          </div>
+        )}
+      </div>
     </section>
   );
 }
-
-// Helpers —————————————————————————————————————————————
 
 function Suggestions({
   mode,
@@ -220,106 +215,12 @@ function Suggestions({
           <button
             type="button"
             onClick={() => onPick(s)}
-            className="cursor-pointer rounded border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="cursor-pointer rounded-xl border border-border/60 bg-background/80 px-2.5 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             {s}
           </button>
         </li>
       ))}
     </ul>
-  );
-}
-
-function DebugPanels({
-  exercise,
-  mode,
-  userAnswer,
-  feedback,
-  messages,
-}: {
-  exercise: ExerciseQuizItem;
-  mode: QuizChatMode;
-  userAnswer: string;
-  feedback: Feedback | null;
-  messages: UIMessage[];
-}) {
-  // Het system-prompt dat de server bouwt is een pure functie van mode +
-  // exercise + userAnswer + isCorrect. We roepen dezelfde functie hier aan
-  // zodat het paneel exact toont wat de LLM ziet — met één expliciete
-  // afwijking: bij "before" laten we target_text WEL zien in de exercise-
-  // input van het paneel (developer mag spieken), maar de prompt-bouwer
-  // krijgt 'm niet binnen — net als de server.
-  const systemPrompt = buildQuizChatSystemPrompt({
-    mode,
-    exercise:
-      mode === "before"
-        ? { source_text: exercise.source_text, topic: exercise.topic }
-        : {
-            source_text: exercise.source_text,
-            target_text: exercise.target_text,
-            topic: exercise.topic,
-          },
-    userAnswer,
-    isCorrect: feedback?.isCorrect,
-  });
-
-  const requestBody = {
-    mode,
-    exercise: {
-      source_text: exercise.source_text,
-      target_text: exercise.target_text,
-      topic: exercise.topic,
-    },
-    userAnswer,
-    isCorrect: feedback?.isCorrect,
-  };
-
-  const openAiInput = {
-    model: EXERCISE_QUIZ_CHAT_MODEL,
-    system: systemPrompt,
-    messages,
-    requestBody,
-  };
-
-  return (
-    <div className="space-y-2 pt-1">
-      <DetailsPanel title="Verzonden naar OpenAI (system + messages + body)">
-        <JsonBlock data={openAiInput} />
-      </DetailsPanel>
-      <DetailsPanel title="Ontvangen van OpenAI (useChat messages-state)">
-        {messages.length > 0 ? (
-          <JsonBlock data={messages} />
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Nog geen messages. Verstuur eerst een vraag.
-          </p>
-        )}
-      </DetailsPanel>
-    </div>
-  );
-}
-
-function DetailsPanel({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <details className="rounded-md border border-border bg-card text-card-foreground">
-      <summary className="cursor-pointer px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
-        {title}
-      </summary>
-      <div className="px-3 pb-3">{children}</div>
-    </details>
-  );
-}
-
-function JsonBlock({ data }: { data: unknown }) {
-  return (
-    <pre className="overflow-x-auto rounded bg-muted/40 p-2 font-mono text-[11px]">
-      {JSON.stringify(data, null, 2)}
-    </pre>
   );
 }

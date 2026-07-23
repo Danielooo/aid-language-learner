@@ -1,20 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { fetchJson } from "@/lib/api/fetch-json";
+import { queryKeys } from "@/lib/query-keys";
 
 import type { AudioStatsResponse } from "@/app/api/admin/tatoeba/audio-stats/route";
 
 // Klein dashboard-paneel onderaan Tatoeba-import. Telt
 // hoeveel exercises-rijen een audio_path hebben, gegroepeerd per
 // source_lang. Bron is /api/admin/tatoeba/audio-stats.
-//
-// Bewust een client-component met een uitklapbaar <details>: de
-// hoofdpagina is verder server-rendered, en we willen niet bij elke
-// render een DB-call doen. De parent kan via `refreshKey` een refresh
-// triggeren na een succesvolle persist (state-bump → effect re-fetcht).
-
 type AudioStatsPanelProps = {
-  // Wijzig deze waarde om een refresh te forceren (bv. na persist).
   refreshKey?: number;
 };
 
@@ -27,54 +24,28 @@ const LANG_LABELS: Record<string, string> = {
   unknown: "Onbekend",
 };
 
-type LoadState =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "loaded"; data: AudioStatsResponse }
-  | { status: "error"; error: string };
-
 export function AudioStatsPanel({ refreshKey = 0 }: AudioStatsPanelProps) {
   const [open, setOpen] = useState(false);
-  const [load, setLoad] = useState<LoadState>({ status: "idle" });
+  const queryClient = useQueryClient();
 
-  const fetchStats = useCallback(async () => {
-    setLoad({ status: "loading" });
-    try {
-      const res = await fetch("/api/admin/tatoeba/audio-stats", {
-        cache: "no-store",
-      });
-      const json = (await res.json()) as AudioStatsResponse;
-      if (!res.ok || !json.ok) {
-        const err = json.ok ? `HTTP ${res.status}` : json.error;
-        setLoad({ status: "error", error: err });
-        return;
+  const { data, isPending, isError, error, refetch } = useQuery({
+    queryKey: [...queryKeys.tatoebaAudioStats(), refreshKey],
+    queryFn: async () => {
+      const json = await fetchJson<AudioStatsResponse>(
+        "/api/admin/tatoeba/audio-stats",
+      );
+      if (!json.ok) {
+        throw new Error(json.error);
       }
-      setLoad({ status: "loaded", data: json });
-    } catch (e) {
-      setLoad({
-        status: "error",
-        error: e instanceof Error ? e.message : "Onbekende fout.",
-      });
-    }
-  }, []);
+      return json;
+    },
+    enabled: open,
+  });
 
-  // Eerst laden zodra de user de details opent. Daarna re-fetchen bij
-  // elke refreshKey-bump (typisch na een succesvolle persist-call).
-  useEffect(() => {
-    if (!open) return;
-    // fetchStats zet synchroon loading-state; acceptabel voor dev-tool.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchStats();
-  }, [open, fetchStats, refreshKey]);
-
-  // Highlight-tellers voor de samenvatting (zichtbaar zelfs als de
-  // details dichtgeklapt zijn, zodat het dashboard altijd iets toont).
-  const spaCount =
-    load.status === "loaded" && load.data.ok
-      ? (load.data.lang_counts["spa"] ?? 0)
-      : null;
-  const total =
-    load.status === "loaded" && load.data.ok ? load.data.total_with_audio : null;
+  const spaCount = data?.ok ? (data.lang_counts["spa"] ?? 0) : null;
+  const total = data?.ok ? data.total_with_audio : null;
+  const errorMessage =
+    error instanceof Error ? error.message : "Onbekende fout.";
 
   return (
     <details
@@ -103,16 +74,16 @@ export function AudioStatsPanel({ refreshKey = 0 }: AudioStatsPanelProps) {
       </summary>
 
       <div className="space-y-3 border-t border-border px-5 py-3">
-        {load.status === "loading" && (
-          <p className="text-xs text-muted-foreground">Tellers ophalen...</p>
+        {isPending && (
+          <p className="text-xs text-muted-foreground">Tellers ophalen…</p>
         )}
 
-        {load.status === "error" && (
+        {isError && (
           <div className="flex items-center justify-between gap-2 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            <span>{load.error}</span>
+            <span>{errorMessage}</span>
             <button
               type="button"
-              onClick={fetchStats}
+              onClick={() => void refetch()}
               className="rounded border border-destructive/40 px-2 py-0.5 text-[10px] hover:bg-destructive/20"
             >
               Opnieuw
@@ -120,24 +91,24 @@ export function AudioStatsPanel({ refreshKey = 0 }: AudioStatsPanelProps) {
           </div>
         )}
 
-        {load.status === "loaded" && load.data.ok && (
+        {data?.ok && (
           <>
             <div className="rounded-md border border-accent/40 bg-accent/5 px-3 py-2">
               <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 Spaanse oefeningen met audio
               </div>
               <div className="text-2xl font-semibold tabular-nums text-foreground">
-                {load.data.lang_counts["spa"] ?? 0}
+                {data.lang_counts["spa"] ?? 0}
               </div>
             </div>
 
-            {Object.keys(load.data.lang_counts).length > 1 && (
+            {Object.keys(data.lang_counts).length > 1 && (
               <div className="rounded-md border border-border bg-background/40 p-2">
                 <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   Per taal
                 </div>
                 <ul className="grid grid-cols-2 gap-1 text-xs sm:grid-cols-3">
-                  {Object.entries(load.data.lang_counts)
+                  {Object.entries(data.lang_counts)
                     .sort((a, b) => b[1] - a[1])
                     .map(([lang, count]) => (
                       <li
@@ -161,12 +132,16 @@ export function AudioStatsPanel({ refreshKey = 0 }: AudioStatsPanelProps) {
 
             <div className="flex items-center justify-between text-[10px] text-muted-foreground">
               <span>
-                Totaal: {load.data.total_with_audio} · laatst opgehaald{" "}
-                {new Date(load.data.fetched_at).toLocaleTimeString("nl-NL")}
+                Totaal: {data.total_with_audio} · laatst opgehaald{" "}
+                {new Date(data.fetched_at).toLocaleTimeString("nl-NL")}
               </span>
               <button
                 type="button"
-                onClick={fetchStats}
+                onClick={() => {
+                  void queryClient.invalidateQueries({
+                    queryKey: queryKeys.tatoebaAudioStats(),
+                  });
+                }}
                 className="underline hover:text-foreground"
               >
                 Verversen

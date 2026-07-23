@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { cn } from "@/lib/utils";
+
 import { ChatBubble, ChatTypingIndicator } from "./chat-bubble";
 import { getMessageText } from "./message-text";
 
@@ -13,14 +15,42 @@ type ChatThreadProps = {
   messages: UIMessage[];
   status: ChatStatus;
   emptyState?: React.ReactNode;
+  getAssistantFallbackText?: (message: UIMessage) => string | null;
+  className?: string;
 };
 
-export function ChatThread({ messages, status, emptyState }: ChatThreadProps) {
+function resolveMessageText(
+  message: UIMessage,
+  getAssistantFallbackText?: (message: UIMessage) => string | null,
+): string | null {
+  let text: string | null = getMessageText(message);
+  if (!text && message.role === "assistant" && getAssistantFallbackText) {
+    text = getAssistantFallbackText(message);
+  }
+  return text;
+}
+
+export function ChatThread({
+  messages,
+  status,
+  emptyState,
+  getAssistantFallbackText,
+  className,
+}: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isBusy = status === "submitted" || status === "streaming";
+  const lastMessage = messages[messages.length - 1];
+  const lastHasDisplayableText =
+    lastMessage != null &&
+    resolveMessageText(lastMessage, getAssistantFallbackText) != null;
+
+  // Typing blijft tot er displaybare bubbeltekst is (ook tijdens streaming
+  // met tool-only/lege assistant-messages).
   const showTypingIndicator =
-    status === "submitted" &&
-    (messages.length === 0 || messages[messages.length - 1]?.role === "user");
+    isBusy &&
+    (messages.length === 0 ||
+      lastMessage?.role === "user" ||
+      (lastMessage?.role === "assistant" && !lastHasDisplayableText));
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -31,7 +61,10 @@ export function ChatThread({ messages, status, emptyState }: ChatThreadProps) {
   return (
     <div
       ref={scrollRef}
-      className="min-h-[4.5rem] max-h-[min(16rem,40vh)] space-y-2 overflow-y-auto rounded-lg bg-chat-thread-bg px-7 py-3"
+      className={cn(
+        "min-h-[4.5rem] max-h-[min(16rem,40vh)] space-y-2 overflow-y-auto rounded-xl bg-chat-thread-bg px-7 py-3",
+        className,
+      )}
       aria-live="polite"
       aria-busy={isBusy}
     >
@@ -42,8 +75,10 @@ export function ChatThread({ messages, status, emptyState }: ChatThreadProps) {
           return null;
         }
 
-        const text = getMessageText(message);
-        if (!text && message.role === "assistant" && isBusy) {
+        const text = resolveMessageText(message, getAssistantFallbackText);
+
+        // Geen lege assistant-bubbles; typing dekt de busy-gap.
+        if (!text) {
           return null;
         }
 

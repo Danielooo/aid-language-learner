@@ -30,8 +30,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       action={signIn}
       next={next}
       externalError={
-        fout === "oauth"
-          ? "Inloggen via de provider is niet gelukt. Probeer opnieuw of log in met je username."
+        fout === "deactivated"
+          ? "Dit account is gedeactiveerd."
           : undefined
       }
     />

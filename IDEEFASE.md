@@ -52,83 +52,27 @@ Kernfunctionaliteiten uitbouwen (Must haves)
 
 
 
-## TODO
-
-**Vooraf ophalen en verrijken audio oefeningen**
-
-- ~~Alle audio file metadata ophalen en in een filterbare tabel zet in de UI~~  
-- ~~Bij de oefening de auteur + bron + license vermelden~~  
-- ~~Mogelijk om audio files in Bucket van Supabase te zetten?~~  
-- ~~Mogelijk om altijd te refereren naar directe url?~~  
-- ~~AI moet ook topic en tags toevoegen~~
-
-**Zelf oefeningen toevoegen**
-
-- ~~Layout tekst-only oefeningen vergelijkbaar met AudioResultTable~~
-- ~~Zelf kunnen aanpassen~~
-
-**Taaloefeningen kunnen maken**
-
-- ~~Flashcards~~ 
-- ~~Typen~~
-- ~~Sorteren~~
-- ~~Als er audio bij zit dan een icon die de audio afspeelt~~
-- ~~Kunnen aanvinken uitvinken welke oefeningen ik actief oefen in spaced repetition~~
-
-**Oefeningen herhalen met eerder zwak resultaat**
-
-- ~~Spaced repetition (regels voor goede en foute antwoorden)~~
-
-**Fix**
-
-- ~~SRS, direct na toevoegen oefeningen in leerplan > verschijnen in SRS~~
-
-**Voortgangsdashboard**
-
-- ~~Dashboard met metrics en visuals~~
-  - ~~Hoeveel oefeningen heb ik gehaald per interval?~~
-  - ~~Hoeveel oefeningen doe ik per dag, week, maand?~~
 
 
 
-**Registreren en inloggen**
-
-- ~~Supabase Auth (geimplementeerd > nog testen)~~
-- ~~Creer profiel~~
-- ~~Mogelijkheid tot profiel aanpassen~~
-- ~~Rechten user / admin implementeren~~
-
-**Admin beheer**
-- Goedkeuren en afkeuren van voorgestelde global oefeningen (Review queue)
-- In seed script voorstellen voor global oefeningen toevoegen zodat reviewen getest kan worden in het adminpanel
-- Global oefeningen beheer (admin kan in later stadium alsnog deactiveren of afkeuren)
-
-
-**Global oefeningen**
-- User kan global oefeningengroep losgekoppelde kopie krijgen in eigen account
-- Users global aangeboden oefeningengroep afgewezen. In aparte tab (Aangeboden aan community) een status panel. (Ter beoordeling, afgekeurd, goedgekeurd)
-
-
-
-
-
-
-========================================================
+====================================================
 
 **Global**
 
 - loading state maken
 - skeleton loader maken
+- standaard verversknop component (met loading state)
+- Audio oefeningen moeten door de hele app een tag krijgen (Audio) of kolom Audio > Ja/Nee
+- Zoeken binnen data gebeurt overal zonder onderscheid in caps of met leestekens
+
 
 
 
 ## Nice to haves
 
-- markAsAlsoCorrect functie binnen quiz. Alternatieve vertalingen
 - Inloggen met SSO 
  (Login knop met Google, of Github). 
  (Kan ook EU: Zitadel of LogTo)
 - Eigen api key toevoegen
-- Hoeveel oefeningen moet ik per komende periode maken (spaced repetition)
 - Grammatica theorie en oefeningen
 

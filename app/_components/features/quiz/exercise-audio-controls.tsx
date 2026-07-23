@@ -1,13 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
-
-import { useExerciseAudio } from "@/app/_components/features/quiz/hooks/use-exercise-audio";
 import {
-  QUIZ_SHORTCUTS,
-  formatQuizShortcut,
-  isQuizShortcut,
-} from "@/lib/keyboard/quiz-shortcuts";
+  PauseIcon,
+  SpeakerIcon,
+} from "@/app/_components/ui/audio-icons";
+import { useExerciseAudio } from "@/app/_components/features/quiz/hooks/use-exercise-audio";
 
 type ExerciseAudioControlsProps = {
   mp3Url: string;
@@ -16,32 +13,6 @@ type ExerciseAudioControlsProps = {
   className?: string;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 };
-
-function PlayIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      className={className ?? "size-3.5"}
-    >
-      <path d="M4 2.5v11l9-5.5-9-5.5z" />
-    </svg>
-  );
-}
-
-function PauseIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      className={className ?? "size-3.5"}
-    >
-      <path d="M3.5 2h2.5v12H3.5V2zm6.5 0H12.5v12H10V2z" />
-    </svg>
-  );
-}
 
 const variantClasses = {
   compact:
@@ -58,22 +29,7 @@ export function ExerciseAudioControls({
   onClick,
 }: ExerciseAudioControlsProps) {
   const { playing, toggle } = useExerciseAudio(mp3Url, { autoplay });
-  const shortcutLabel = formatQuizShortcut(QUIZ_SHORTCUTS.playAudio);
   const iconClassName = variant === "large" ? "size-8" : "size-3.5";
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (!isQuizShortcut(e, QUIZ_SHORTCUTS.playAudio)) return;
-      e.preventDefault();
-      e.stopPropagation();
-      toggle();
-    }
-
-    window.addEventListener("keydown", onKeyDown, { capture: true });
-    return () => {
-      window.removeEventListener("keydown", onKeyDown, { capture: true });
-    };
-  }, [toggle]);
 
   function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
@@ -85,27 +41,14 @@ export function ExerciseAudioControls({
     <button
       type="button"
       onClick={handleClick}
-      aria-label={
-        playing
-          ? `Pauzeer audio (${shortcutLabel})`
-          : `Speel audio af (${shortcutLabel})`
-      }
-      title={
-        playing
-          ? `Pauzeer (${shortcutLabel})`
-          : `Speel audio af (${shortcutLabel})`
-      }
+      aria-label={playing ? "Pauzeer audio" : "Speel audio af"}
+      title={playing ? "Pauzeer" : "Speel audio af"}
       className={className ?? variantClasses[variant]}
     >
       {playing ? (
         <PauseIcon className={iconClassName} />
       ) : (
-        <PlayIcon className={iconClassName} />
-      )}
-      {variant === "large" && (
-        <span className="text-[10px] font-normal text-muted-foreground/70">
-          {shortcutLabel}
-        </span>
+        <SpeakerIcon className={iconClassName} />
       )}
     </button>
   );

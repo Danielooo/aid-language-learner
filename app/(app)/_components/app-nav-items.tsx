@@ -17,15 +17,6 @@ function CardsIcon() {
   );
 }
 
-function BookIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-    </svg>
-  );
-}
-
 function CompassIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
@@ -86,16 +77,15 @@ function UsersIcon() {
 
 const BASE_NAV_ITEMS: AppNavItem[] = [
   { href: APP_ROUTES.oefenen, label: "Oefenen", icon: <CardsIcon /> },
-  { href: APP_ROUTES.oefeningen, label: "Oefeningen", icon: <BookIcon /> },
-  { href: APP_ROUTES.generator, label: "Generator", icon: <SparklesIcon /> },
   { href: APP_ROUTES.leerplan, label: "Leerplan", icon: <CompassIcon /> },
+  { href: APP_ROUTES.generator, label: "Generator", icon: <SparklesIcon /> },
   { href: APP_ROUTES.community, label: "Community", icon: <UsersIcon /> },
   { href: APP_ROUTES.voortgang, label: "Voortgang", icon: <ChartIcon /> },
   { href: APP_ROUTES.profiel, label: "Profiel", icon: <UserIcon /> },
 ];
 
-// Admin is beheer-only: geen leer-tabs (Oefenen/Oefeningen/Generator/
-// Leerplan/Community/Voortgang), alleen Beheer + Profiel.
+// Admin is beheer-only: geen leer-tabs (Oefenen/Leerplan/Generator/
+// Community/Voortgang), alleen Beheer + Profiel.
 const ADMIN_NAV_ITEMS: AppNavItem[] = [
   { href: APP_ROUTES.admin, label: "Beheer", icon: <ShieldIcon /> },
   { href: APP_ROUTES.profiel, label: "Profiel", icon: <UserIcon /> },

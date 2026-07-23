@@ -70,16 +70,20 @@ export function LeerplanGroupModal({
       <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-3">
         {alreadyCopied ? (
           <p className="mr-auto text-sm text-muted-foreground">
-            Al in je leerplan
+            Al in je leerplan — opnieuw toevoegen vraagt om een andere naam.
           </p>
         ) : null}
         <button
           type="button"
-          disabled={busy || alreadyCopied || loading || members.length === 0}
+          disabled={busy || loading || members.length === 0}
           onClick={onCopy}
           className="inline-flex min-h-10 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
         >
-          {busy ? "Bezig…" : "Toevoegen aan mijn leerplan"}
+          {busy
+            ? "Bezig…"
+            : alreadyCopied
+              ? "Opnieuw toevoegen…"
+              : "Toevoegen aan mijn leerplan"}
         </button>
       </footer>
     );
@@ -97,7 +101,7 @@ export function LeerplanGroupModal({
           <p className="text-xs text-muted-foreground">
             {loading
               ? "Laden…"
-              : `${members.length} oefening${members.length === 1 ? "" : "en"} in deze groep`}
+              : `${members.length} oefening${members.length === 1 ? "" : "en"} in dit topic`}
           </p>
           <button
             type="button"
@@ -128,7 +132,7 @@ export function LeerplanGroupModal({
             </div>
           ) : members.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Geen oefeningen in deze groep.
+              Geen oefeningen in dit topic.
             </p>
           ) : (
             members.map((ex) => (

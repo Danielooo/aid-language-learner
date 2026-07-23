@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AdminReviewGroupModal } from "@/app/_components/features/admin/admin-review-group-modal";
+import { fetchJson } from "@/lib/api/fetch-json";
+import { queryKeys } from "@/lib/query-keys";
 
 import type {
   ExerciseGroupSnapshot,
@@ -20,6 +23,12 @@ type QueueResponse =
   | { ok: true; rows: QueueRow[] }
   | { ok: false; error: string };
 
+type ActionResult = {
+  ok: boolean;
+  message: string;
+  error?: string;
+};
+
 function truncate(text: string, max: number): string {
   if (text.length <= max) return text;
   return `${text.slice(0, max - 1)}…`;
@@ -29,56 +38,98 @@ function snapshotOf(row: QueueRow): ExerciseGroupSnapshot {
   return row.snapshot;
 }
 
+async function fetchStatusRows(status: TabId): Promise<QueueRow[]> {
+  const json = await fetchJson<QueueResponse>(
+    `/api/admin/group-submissions?status=${status}`,
+  );
+  if (!json.ok) throw new Error(json.error);
+  return json.rows;
+}
+
+function useStatusQuery(status: TabId) {
+  return useQuery({
+    queryKey: queryKeys.adminReviews(status),
+    queryFn: () => fetchStatusRows(status),
+  });
+}
+
 export function AdminReviewQueue() {
+  const queryClient = useQueryClient();
+
   const [tab, setTab] = useState<TabId>("pending");
-  const [pendingRows, setPendingRows] = useState<QueueRow[]>([]);
-  const [approvedRows, setApprovedRows] = useState<QueueRow[]>([]);
-  const [rejectedRows, setRejectedRows] = useState<QueueRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [rejectReason, setRejectReason] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [modalRow, setModalRow] = useState<QueueRow | null>(null);
 
-  const loadStatus = useCallback(async (status: TabId) => {
-    const res = await fetch(
-      `/api/admin/group-submissions?status=${status}`,
-      { cache: "no-store" },
-    );
-    const json = (await res.json()) as QueueResponse;
-    if (!json.ok) {
-      throw new Error(json.error);
-    }
-    return json.rows;
-  }, []);
+  const pendingQuery = useStatusQuery("pending");
+  const approvedQuery = useStatusQuery("approved");
+  const rejectedQuery = useStatusQuery("rejected");
 
-  const reload = useCallback(async () => {
-    setError(null);
-    const [pending, approved, rejected] = await Promise.all([
-      loadStatus("pending"),
-      loadStatus("approved"),
-      loadStatus("rejected"),
-    ]);
-    setPendingRows(pending);
-    setApprovedRows(approved);
-    setRejectedRows(rejected);
-    setSelected(new Set());
-  }, [loadStatus]);
+  const pendingRows = pendingQuery.data ?? [];
+  const approvedRows = approvedQuery.data ?? [];
+  const rejectedRows = rejectedQuery.data ?? [];
 
-  useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      try {
-        await reload();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Laden mislukt.");
-      } finally {
-        setLoading(false);
+  const loading =
+    pendingQuery.isLoading ||
+    approvedQuery.isLoading ||
+    rejectedQuery.isLoading;
+
+  const isFetching =
+    pendingQuery.isFetching ||
+    approvedQuery.isFetching ||
+    rejectedQuery.isFetching;
+
+  const queryError =
+    pendingQuery.error ?? approvedQuery.error ?? rejectedQuery.error;
+
+  const listError = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Laden mislukt."
+    : null;
+
+  const error = actionError ?? listError;
+
+  function invalidateReviews() {
+    void queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.communityGroups(),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.learningTopics(),
+    });
+  }
+
+  function refetchAll() {
+    setActionError(null);
+    void pendingQuery.refetch();
+    void approvedQuery.refetch();
+    void rejectedQuery.refetch();
+  }
+
+  const actionMutation = useMutation({
+    mutationFn: async (fn: () => Promise<ActionResult>) => fn(),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setActionError(result.error ?? "Actie mislukt.");
+        return;
       }
-    })();
-  }, [reload]);
+      setMessage(result.message);
+      setRejectReason("");
+      setModalRow(null);
+      setSelected(new Set());
+      setActionError(null);
+      invalidateReviews();
+    },
+    onError: (e) => {
+      setActionError(e instanceof Error ? e.message : "Onbekende fout.");
+    },
+  });
+
+  const busy = actionMutation.isPending;
+  const isRefreshing = isFetching && !loading;
 
   const activeRows =
     tab === "pending"
@@ -97,7 +148,7 @@ export function AdminReviewQueue() {
     setSelected(new Set());
     setRejectReason("");
     setMessage(null);
-    setError(null);
+    setActionError(null);
     setModalRow(null);
   }
 
@@ -115,44 +166,25 @@ export function AdminReviewQueue() {
     else setSelected(new Set(activeRows.map((r) => r.id)));
   }
 
-  async function runAction(
-    label: string,
-    fn: () => Promise<{ ok: boolean; message: string; error?: string }>,
-  ) {
-    setBusy(true);
-    setError(null);
+  function runAction(fn: () => Promise<ActionResult>) {
+    setActionError(null);
     setMessage(null);
-    try {
-      const result = await fn();
-      if (!result.ok) {
-        setError(result.error ?? `${label} mislukt.`);
-        return;
-      }
-      setMessage(result.message);
-      setRejectReason("");
-      setModalRow(null);
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout.");
-    } finally {
-      setBusy(false);
-    }
+    actionMutation.mutate(fn);
   }
 
-  async function approveIds(ids: string[]) {
+  function approveIds(ids: string[]) {
     if (ids.length === 0) return;
-    await runAction("Goedkeuren", async () => {
-      const res = await fetch("/api/admin/group-submissions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ submission_ids: ids }),
-      });
-      const json = (await res.json()) as {
+    runAction(async () => {
+      const json = await fetchJson<{
         ok: boolean;
         approved?: number;
         errors?: string[];
         error?: string;
-      };
+      }>("/api/admin/group-submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submission_ids: ids }),
+      });
       if (!json.ok) {
         return { ok: false, message: "", error: json.error };
       }
@@ -165,10 +197,15 @@ export function AdminReviewQueue() {
     });
   }
 
-  async function rejectIds(ids: string[], reason: string) {
+  function rejectIds(ids: string[], reason: string) {
     if (ids.length === 0) return;
-    await runAction("Afkeuren", async () => {
-      const res = await fetch("/api/admin/group-submissions/reject", {
+    runAction(async () => {
+      const json = await fetchJson<{
+        ok: boolean;
+        rejected?: number;
+        errors?: string[];
+        error?: string;
+      }>("/api/admin/group-submissions/reject", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -176,12 +213,6 @@ export function AdminReviewQueue() {
           reason: reason.trim() || undefined,
         }),
       });
-      const json = (await res.json()) as {
-        ok: boolean;
-        rejected?: number;
-        errors?: string[];
-        error?: string;
-      };
       if (!json.ok) {
         return { ok: false, message: "", error: json.error };
       }
@@ -194,20 +225,19 @@ export function AdminReviewQueue() {
     });
   }
 
-  async function reopenIds(ids: string[]) {
+  function reopenIds(ids: string[]) {
     if (ids.length === 0) return;
-    await runAction("Terugzetten", async () => {
-      const res = await fetch("/api/admin/group-submissions/reopen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ submission_ids: ids }),
-      });
-      const json = (await res.json()) as {
+    runAction(async () => {
+      const json = await fetchJson<{
         ok: boolean;
         reopened?: number;
         errors?: string[];
         error?: string;
-      };
+      }>("/api/admin/group-submissions/reopen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submission_ids: ids }),
+      });
       if (!json.ok) {
         return { ok: false, message: "", error: json.error };
       }
@@ -221,17 +251,16 @@ export function AdminReviewQueue() {
   }
 
   const tabButtonClass = (id: TabId) =>
-    `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-      tab === id
-        ? "bg-muted text-foreground"
-        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+    `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === id
+      ? "bg-muted text-foreground"
+      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
     }`;
 
   return (
     <div className="space-y-4">
       <div
         role="tablist"
-        aria-label="Review-tabs"
+        aria-label="Bijdragen beoordelen-tabs"
         className="flex flex-wrap gap-2 border-b border-border pb-2"
       >
         <button
@@ -269,15 +298,27 @@ export function AdminReviewQueue() {
         selectedCount={selected.size}
         rejectReason={rejectReason}
         onRejectReasonChange={setRejectReason}
-        onApprove={() => void approveIds([...selected])}
-        onReject={() => void rejectIds([...selected], rejectReason)}
-        onReopen={() => void reopenIds([...selected])}
-        onReload={() => void reload()}
+        onApprove={() => approveIds([...selected])}
+        onReject={() => rejectIds([...selected], rejectReason)}
+        onReopen={() => reopenIds([...selected])}
+        onReload={refetchAll}
       />
 
       {error && (
         <p className="text-sm text-destructive" role="alert">
           {error}
+          {listError && !actionError ? (
+            <>
+              {" "}
+              <button
+                type="button"
+                onClick={refetchAll}
+                className="underline"
+              >
+                Opnieuw
+              </button>
+            </>
+          ) : null}
         </p>
       )}
       {message && <p className="text-sm text-muted-foreground">{message}</p>}
@@ -293,16 +334,21 @@ export function AdminReviewQueue() {
               : "Geen afgekeurde groep-aanbiedingen."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border">
+        <div
+          className={`overflow-x-auto rounded-md border border-border ${
+            isRefreshing ? "opacity-60 transition-opacity" : ""
+          }`}
+        >
           <table className="w-full min-w-[40rem] text-left text-sm">
             <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
               <tr>
-                <th className="px-3 py-2">
+                <th className="w-10 px-3 py-2 align-middle">
                   <input
                     type="checkbox"
                     checked={allSelected}
                     onChange={toggleAll}
                     aria-label="Alles selecteren"
+                    className="size-4 rounded border-border accent-accent"
                   />
                 </th>
                 <th className="px-3 py-2">Groep</th>
@@ -327,7 +373,7 @@ export function AdminReviewQueue() {
                     className="cursor-pointer border-b border-border/60 hover:bg-muted/40"
                   >
                     <td
-                      className="px-3 py-2"
+                      className="px-3 py-2 align-middle"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <input
@@ -335,6 +381,7 @@ export function AdminReviewQueue() {
                         checked={selected.has(row.id)}
                         onChange={() => toggle(row.id)}
                         aria-label={`Selecteer ${snap.name}`}
+                        className="size-4 rounded border-border accent-accent"
                       />
                     </td>
                     <td className="px-3 py-2 font-medium text-foreground">
@@ -380,15 +427,15 @@ export function AdminReviewQueue() {
         onClose={() => setModalRow(null)}
         onApprove={() => {
           if (!modalRow) return;
-          void approveIds([modalRow.id]);
+          approveIds([modalRow.id]);
         }}
         onReject={(reason) => {
           if (!modalRow) return;
-          void rejectIds([modalRow.id], reason);
+          rejectIds([modalRow.id], reason);
         }}
         onReopen={() => {
           if (!modalRow) return;
-          void reopenIds([modalRow.id]);
+          reopenIds([modalRow.id]);
         }}
       />
     </div>

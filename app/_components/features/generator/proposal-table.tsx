@@ -1,14 +1,22 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 import {
   AudioResultTable,
   type ColumnKey,
 } from "@/app/_components/features/exercises/audio-result-table";
+import {
+  ExerciseEditModal,
+  type ExerciseEditValues,
+} from "@/app/_components/features/exercises/exercise-edit-modal";
 import type { AudioRow } from "@/types/tatoeba";
 import { useTranslationCache } from "@/lib/hooks/use-translation-cache";
 
+import {
+  ProposalTopicDestination,
+  type TopicDestinationMode,
+} from "./proposal-topic-destination";
 import {
   getLastBatchExerciseCount,
   mapBatchToRows,
@@ -29,7 +37,12 @@ const DEFAULT_HIDDEN_COLUMNS: ColumnKey[] = [
   "reason",
 ];
 
-const EXCLUDED_COLUMNS: ColumnKey[] = ["audio_id", "sentence_id"];
+const EXCLUDED_COLUMNS: ColumnKey[] = [
+  "audio_id",
+  "sentence_id",
+  "topic",
+  "edited",
+];
 
 type PersistState = {
   status: "idle" | "saving" | "success" | "error";
@@ -39,38 +52,68 @@ type PersistState = {
 
 type ProposalTableProps = {
   batches: ProposalBatch[];
-  proposal: ProposeExercisesOutput;
-  canUndo: boolean;
-  onUndo: () => void;
+  proposal: ProposeExercisesOutput | null;
   persistState: PersistState;
   onSave: (body: ExercisesPersistBody) => void;
+  /** Herstelde selectie uit localStorage-draft. */
+  initialSelectedIds?: number[];
+  /** Hersteld onderwerp uit localStorage-draft. */
+  initialTopic?: string;
+  destinationMode: TopicDestinationMode;
+  onDestinationModeChange: (mode: TopicDestinationMode) => void;
+  onRemoveAudioIds?: (audioIds: number[]) => void;
+  onUpdateExercise?: (
+    audioId: number,
+    values: ExerciseEditValues,
+  ) => void;
+  /** Melden van selectie/topic-wijzigingen voor draft-persist. */
+  onDraftMetaChange?: (meta: {
+    selectedAudioIds: number[];
+    topic: string;
+  }) => void;
 };
+
+const EMPTY_TABLE_MESSAGE =
+  "Nog geen oefeningen — genereer via chat hierboven.";
 
 export function ProposalTable({
   batches,
   proposal,
-  canUndo,
-  onUndo,
   persistState,
   onSave,
+  initialSelectedIds,
+  initialTopic,
+  destinationMode,
+  onDestinationModeChange,
+  onRemoveAudioIds,
+  onUpdateExercise,
+  onDraftMetaChange,
 }: ProposalTableProps) {
   const translationLookup = useTranslationCache();
   const translationRef = useRef(translationLookup);
-  // Layout-effect (niet gewone effect): het batches-effect hieronder leest
-  // deze ref en moet de verse lookup zien binnen dezelfde commit.
   useLayoutEffect(() => {
     translationRef.current = translationLookup;
   }, [translationLookup]);
 
   const [rows, setRows] = useState<AudioRow[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(
+    () => new Set(initialSelectedIds ?? []),
+  );
+  const [topic, setTopic] = useState(
+    () => initialTopic?.trim() || proposal?.topic || "",
+  );
+  const topicInitializedRef = useRef(Boolean(initialTopic?.trim()));
+  const topicRef = useRef(topic);
+  topicRef.current = topic;
+  const didApplyInitialSelectionRef = useRef(false);
 
   const prevBatchCountRef = useRef(0);
   const prevBatchesRef = useRef<ProposalBatch[]>([]);
+  const draftMetaRef = useRef(onDraftMetaChange);
+  useLayoutEffect(() => {
+    draftMetaRef.current = onDraftMetaChange;
+  }, [onDraftMetaChange]);
 
-  // Batches → rijen synchroniseren kan niet als pure afleiding: het seedt
-  // ook de gedeelde vertaal-cache (extern systeem). De sync setState hier
-  // is bewust en begrensd (alleen bij batch-mutaties).
   /* eslint-disable react-hooks/set-state-in-effect */
   useLayoutEffect(() => {
     const prevCount = prevBatchCountRef.current;
@@ -79,9 +122,24 @@ export function ProposalTable({
     if (nextCount === 0) {
       setRows([]);
       setSelectedIds(new Set());
+      didApplyInitialSelectionRef.current = false;
+      if (prevCount > 0) {
+        setTopic("");
+        topicInitializedRef.current = false;
+      } else if (initialTopic?.trim() && !topicInitializedRef.current) {
+        setTopic(initialTopic.trim());
+        topicInitializedRef.current = true;
+      }
       prevBatchCountRef.current = 0;
       prevBatchesRef.current = [];
       return;
+    }
+
+    if (!topicInitializedRef.current) {
+      if (!topicRef.current.trim()) {
+        setTopic(initialTopic?.trim() || proposal?.topic || "");
+      }
+      topicInitializedRef.current = true;
     }
 
     if (nextCount > prevCount) {
@@ -91,14 +149,15 @@ export function ProposalTable({
         0,
       );
 
-      const appendedRows = newBatches.flatMap((batch) => {
+      const batchRowGroups = newBatches.map((batch) => {
         const batchRows = mapBatchToRows(batch, startIndex);
         seedTranslationCache(translationRef.current, batchRows, batch.proposal);
         startIndex += batch.proposal.exercises.length;
         return batchRows;
       });
+      const newRows = batchRowGroups.toReversed().flat();
 
-      setRows((prev) => [...prev, ...appendedRows]);
+      setRows((prev) => [...newRows, ...prev]);
     } else if (nextCount < prevCount) {
       const removedCount = getLastBatchExerciseCount(prevBatchesRef.current);
       if (removedCount > 0) {
@@ -110,7 +169,7 @@ export function ProposalTable({
         );
 
         translationRef.current.removeByAudioIds(removedIds);
-        setRows((prev) => prev.slice(0, -removedCount));
+        setRows((prev) => prev.slice(removedCount));
         setSelectedIds((prev) => {
           const next = new Set(prev);
           for (const id of removedIds) next.delete(id);
@@ -121,128 +180,252 @@ export function ProposalTable({
 
     prevBatchCountRef.current = nextCount;
     prevBatchesRef.current = batches;
-  }, [batches]);
+  }, [batches, proposal?.topic, initialTopic]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const persistMode = useMemo(
-    () => ({
-      getExerciseId: (row: AudioRow) => String(row.audio_id),
-      onPatchRow: async () => {
-        // Lokale draft: cellen updaten de translation-cache zelf.
-      },
-    }),
-    [],
-  );
-
-  const handlePatchSourceText = useCallback((row: AudioRow, text: string) => {
-    setRows((prev) =>
-      prev.map((r) =>
-        r.audio_id === row.audio_id ? { ...r, sentence_text: text } : r,
-      ),
+  // Eenmalig draft-selectie toepassen nadat rijen bestaan.
+  useLayoutEffect(() => {
+    if (didApplyInitialSelectionRef.current) return;
+    if (!initialSelectedIds?.length || rows.length === 0) return;
+    const valid = initialSelectedIds.filter((id) =>
+      rows.some((row) => row.audio_id === id),
     );
+    if (valid.length === 0) return;
+    setSelectedIds(new Set(valid));
+    didApplyInitialSelectionRef.current = true;
+  }, [initialSelectedIds, rows]);
+
+  useLayoutEffect(() => {
+    draftMetaRef.current?.({
+      selectedAudioIds: Array.from(selectedIds),
+      topic,
+    });
+  }, [selectedIds, topic]);
+
+  const [editRow, setEditRow] = useState<AudioRow | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    translationRef.current.removeByAudioIds(ids);
+    setRows((prev) => prev.filter((row) => !selectedIds.has(row.audio_id)));
+    setSelectedIds(new Set());
+    onRemoveAudioIds?.(ids);
+  }, [selectedIds, onRemoveAudioIds]);
+
+  const handleRowDoubleClick = useCallback((row: AudioRow) => {
+    setEditError(null);
+    setEditRow(row);
   }, []);
 
+  const handleModalSave = useCallback(
+    async (values: ExerciseEditValues) => {
+      if (!editRow) return;
+      const cached = translationRef.current.get(
+        editRow.audio_id,
+        editRow.sentence_text,
+      );
+      if (cached) {
+        translationRef.current.set(editRow.audio_id, {
+          ...cached,
+          source_text: values.sourceText,
+          translation: values.targetText,
+          tags: values.tags,
+          alternatives: values.alternatives,
+          manually_edited:
+            values.targetText.trim() !== cached.translation.trim()
+              ? true
+              : cached.manually_edited,
+        });
+      }
+      setRows((prev) =>
+        prev.map((r) =>
+          r.audio_id === editRow.audio_id
+            ? { ...r, sentence_text: values.sourceText }
+            : r,
+        ),
+      );
+      onUpdateExercise?.(editRow.audio_id, values);
+      setEditRow(null);
+      setEditError(null);
+    },
+    [editRow, onUpdateExercise],
+  );
+
   const handleSave = useCallback(() => {
-    if (!proposal.topic.trim()) return;
+    const trimmedTopic = topic.trim();
+    if (!trimmedTopic) return;
     const body = rowsToExercisesPayload(
       rows,
       translationLookup,
       selectedIds,
-      proposal.topic,
+      trimmedTopic,
     );
-    if (body.exercises.length === 0 || !body.topic.trim()) return;
+    body.topic = trimmedTopic;
+    if (body.exercises.length === 0) return;
     onSave(body);
-  }, [onSave, proposal.topic, rows, selectedIds, translationLookup]);
+  }, [onSave, topic, rows, selectedIds, translationLookup]);
 
   const selectedCount = selectedIds.size;
-  const saveLabel =
-    selectedCount > 0
-      ? `Opslaan (${selectedCount} geselecteerd)`
-      : "Opslaan in Supabase";
+
+  const countLabel = `${rows.length} oefening${rows.length === 1 ? "" : "en"}${selectedCount > 0 ? ` · ${selectedCount} geselecteerd` : ""
+    }${batches.length > 1 ? ` · ${batches.length} batches` : ""}`;
 
   return (
-    <section className="space-y-3 rounded-lg border border-border bg-card p-5 text-card-foreground">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div className="space-y-0.5">
-          <h2 className="text-sm font-semibold">
-            Voorstel: {proposal.exercises.length} oefening
-            {proposal.exercises.length === 1 ? "" : "en"}
-            {batches.length > 1 && (
-              <span className="font-normal text-muted-foreground">
-                {" "}
-                ({batches.length} batches)
-              </span>
-            )}
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Onderwerp:{" "}
-            <code className="font-mono text-foreground">{proposal.topic}</code>
-            {selectedCount > 0 && (
-              <span className="ml-2 text-muted-foreground">
-                · {selectedCount} geselecteerd
-              </span>
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {canUndo && (
-            <button
-              type="button"
-              onClick={onUndo}
-              className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted"
-            >
-              ← Terug
-            </button>
-          )}
-          <SaveButton
-            persistState={persistState}
-            onSave={handleSave}
-            label={saveLabel}
-            disabled={rows.length === 0}
-          />
-        </div>
-      </header>
+    <section className="space-y-4">
+      <ProposalTopicDestination
+        suggestedTopic={proposal?.topic ?? ""}
+        topic={topic}
+        onTopicChange={setTopic}
+        mode={destinationMode}
+        onModeChange={onDestinationModeChange}
+        actions={({ blocked, existingTopicName }) => {
+          const saveLabel = existingTopicName
+            ? selectedCount > 0
+              ? `Toevoegen aan “${existingTopicName}” (${selectedCount} geselecteerd)`
+              : `Toevoegen aan “${existingTopicName}”`
+            : selectedCount > 0
+              ? `Topic opslaan (${selectedCount} geselecteerd)`
+              : "Topic opslaan";
+          return (
+            <>
+              <button
+                type="button"
+                onClick={handleDeleteSelected}
+                disabled={selectedCount === 0}
+                className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-foreground disabled:opacity-50"
+              >
+                Verwijder geselecteerd
+              </button>
+              <SaveButton
+                persistState={persistState}
+                onSave={handleSave}
+                label={saveLabel}
+                disabled={blocked || rows.length === 0}
+              />
+            </>
+          );
+        }}
+      />
 
-      <AudioResultTable
-        rows={rows}
-        translation={{
-          cache: translationLookup,
-          state: {},
-          onTranslateRow: () => {},
+      <p className="text-xs text-muted-foreground">{countLabel}</p>
+
+      {rows.length === 0 ? (
+        <EmptyProposalTableChrome
+          message={EMPTY_TABLE_MESSAGE}
+          showMp3={false}
+        />
+      ) : (
+        <AudioResultTable
+          rows={rows}
+          translation={{
+            cache: translationLookup,
+            state: {},
+            onTranslateRow: () => { },
+          }}
+          selection={{
+            selectedIds,
+            onToggle: (audioId) => {
+              setSelectedIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(audioId)) next.delete(audioId);
+                else next.add(audioId);
+                return next;
+              });
+            },
+            onToggleAllVisible: (visibleIds) => {
+              setSelectedIds((prev) => {
+                const allSelected = visibleIds.every((id) => prev.has(id));
+                const next = new Set(prev);
+                if (allSelected) {
+                  for (const id of visibleIds) next.delete(id);
+                } else {
+                  for (const id of visibleIds) next.add(id);
+                }
+                return next;
+              });
+            },
+          }}
+          tableScope="exercise-generator"
+          defaultHiddenColumns={DEFAULT_HIDDEN_COLUMNS}
+          excludedColumns={EXCLUDED_COLUMNS}
+          hideMp3Column
+          hideEnrichActions
+          showFilterBar={false}
+          showColumnMenu={false}
+          serverSorted
+          onRowDoubleClick={handleRowDoubleClick}
+          density="list"
+          hideRowCount
+        />
+      )}
+
+      <ExerciseEditModal
+        open={editRow !== null}
+        initial={
+          editRow
+            ? (() => {
+              const cached = translationLookup.get(
+                editRow.audio_id,
+                editRow.sentence_text,
+              );
+              return {
+                sourceText: editRow.sentence_text,
+                targetText: cached?.translation ?? "",
+                tags: cached?.tags ?? [],
+                alternatives: cached?.alternatives ?? [],
+              };
+            })()
+            : null
+        }
+        saving={false}
+        error={editError}
+        onClose={() => {
+          setEditRow(null);
+          setEditError(null);
         }}
-        selection={{
-          selectedIds,
-          onToggle: (audioId) => {
-            setSelectedIds((prev) => {
-              const next = new Set(prev);
-              if (next.has(audioId)) next.delete(audioId);
-              else next.add(audioId);
-              return next;
-            });
-          },
-          onToggleAllVisible: (visibleIds) => {
-            setSelectedIds((prev) => {
-              const allSelected = visibleIds.every((id) => prev.has(id));
-              const next = new Set(prev);
-              if (allSelected) {
-                for (const id of visibleIds) next.delete(id);
-              } else {
-                for (const id of visibleIds) next.add(id);
-              }
-              return next;
-            });
-          },
-        }}
-        persistMode={persistMode}
-        tableScope="exercise-generator"
-        defaultHiddenColumns={DEFAULT_HIDDEN_COLUMNS}
-        excludedColumns={EXCLUDED_COLUMNS}
-        hideMp3Column
-        hideEnrichActions
-        editableSourceText
-        onPatchSourceText={handlePatchSourceText}
+        onSave={handleModalSave}
       />
     </section>
+  );
+}
+
+function EmptyProposalTableChrome({
+  message,
+  showMp3,
+}: {
+  message: string;
+  showMp3: boolean;
+}) {
+  const colSpan = showMp3 ? 6 : 5;
+  return (
+    <div className="overflow-auto rounded-md border border-border">
+      <table className="w-full border-collapse text-left text-sm">
+        <thead className="sticky top-0 border-b bg-muted/40 text-sm text-muted-foreground">
+          <tr>
+            <th className="w-10 px-3 py-2" aria-label="Selectie" />
+            {showMp3 && (
+              <th className="px-3 py-2 font-semibold" aria-label="Audio" />
+            )}
+            <th className="px-3 py-2 font-semibold">Brontaal (SPA)</th>
+            <th className="px-3 py-2 font-semibold">Vertaling (NL)</th>
+            <th className="px-3 py-2 font-semibold">alternatieven</th>
+            <th className="px-3 py-2 font-semibold">tags</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td
+              colSpan={colSpan}
+              className="px-3 py-8 text-center text-sm text-muted-foreground"
+            >
+              {message}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -266,7 +449,8 @@ function SaveButton({
         <button
           type="button"
           onClick={onSave}
-          className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+          disabled={disabled}
+          className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
         >
           Opnieuw proberen
         </button>
@@ -279,9 +463,9 @@ function SaveButton({
       type="button"
       onClick={onSave}
       disabled={disabled || persistState.status === "saving"}
-      className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+      className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
     >
-      {persistState.status === "saving" ? "Opslaan..." : label}
+      {persistState.status === "saving" ? "Opslaan…" : label}
     </button>
   );
 }

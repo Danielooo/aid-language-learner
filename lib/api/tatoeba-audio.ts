@@ -116,6 +116,13 @@ export interface SentenceWithAudioParams {
   transLang?: string;
   limit?: number;
   sort?: TatoebaSort;
+  /** Keyword-zoekterm voor Tatoeba (`q=`). */
+  q?: string;
+  /**
+   * Als `transLang` gezet is: eist dat de vertaling ook audio heeft.
+   * Default true (oude admin-gedrag). Zet false voor NL-tekst zonder audio.
+   */
+  transHasAudio?: boolean;
   /** Filter `is_native=yes` op de bron-zinnen (= moedertaalspreker). */
   nativeOnly?: boolean;
 }
@@ -130,9 +137,16 @@ export function buildSentenceWithAudioUrl(
   url.searchParams.set("sort", params.sort ?? "random");
   url.searchParams.set("limit", String(params.limit ?? 20));
 
+  const q = params.q?.trim();
+  if (q) {
+    url.searchParams.set("q", q);
+  }
+
   if (params.transLang) {
     url.searchParams.set("trans:lang", params.transLang);
-    url.searchParams.set("trans:has_audio", "yes");
+    if (params.transHasAudio !== false) {
+      url.searchParams.set("trans:has_audio", "yes");
+    }
     url.searchParams.set("showtrans:lang", params.transLang);
   }
   if (params.nativeOnly) {

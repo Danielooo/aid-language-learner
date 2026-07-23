@@ -4,14 +4,21 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { ExerciseAudioAttribution } from "@/app/_components/features/quiz/exercise-audio-attribution";
 import { ExerciseAudioControls } from "@/app/_components/features/quiz/exercise-audio-controls";
-import {
-  QUIZ_SHORTCUTS,
-  formatQuizShortcut,
-} from "@/lib/keyboard/quiz-shortcuts";
 import { shuffleAnagram } from "@/lib/quiz/anagram";
 import { pickBlankWord } from "@/lib/quiz/blank-word";
 import { isAnswerCorrect, normalizeForCompare } from "@/lib/quiz/compare";
 import { getPromptAndAnswer } from "@/lib/quiz/typing-config";
+
+import { FlashcardActionButton } from "./flashcard-action-button";
+import {
+  QUIZ_FEEDBACK_SLOT_CLASS,
+  QUIZ_PLAYING_FORM_CLASS,
+  QUIZ_PLAYING_MIDDLE_CLASS,
+  QUIZ_PROMPT_CARD_MIN_CLASS,
+  QUIZ_PROMPT_SKELETON_CLASS,
+  QUIZ_PROMPT_TEXT_CLASS,
+  QUIZ_SHORT_HIDE_CLASS,
+} from "./quiz-playing-layout";
 
 import type { ExerciseQuizItem } from "@/types/quiz";
 import type {
@@ -33,7 +40,6 @@ type TypingExerciseProps = {
   hintVisible: boolean;
   onAnswerChange: (value: string) => void;
   onSubmit: () => void;
-  onSkip: () => void;
   onNext: () => void;
   onShowHint: () => void;
 };
@@ -47,7 +53,6 @@ export function TypingExercise({
   hintVisible,
   onAnswerChange,
   onSubmit,
-  onSkip,
   onNext,
   onShowHint,
 }: TypingExerciseProps) {
@@ -69,87 +74,88 @@ export function TypingExercise({
 
   useEffect(() => {
     if (!feedback) {
-      inputRef.current?.focus();
+      inputRef.current?.focus({ preventScroll: true });
     }
   }, [feedback, item.id]);
 
   function handleFormSubmit(e: React.FormEvent<HTMLFormElement>) {
+    // Geen Enter-submit: controleren/volgende alleen via knoppen.
     e.preventDefault();
-    if (feedback) {
-      onNext();
-      return;
-    }
-    onSubmit();
   }
 
+  const canCheck = answer.trim().length > 0;
+  const hasFeedback = feedback !== null;
+
   return (
-    <form onSubmit={handleFormSubmit} className="space-y-4">
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    <form onSubmit={handleFormSubmit} className={QUIZ_PLAYING_FORM_CLASS}>
+      <div className={QUIZ_PROMPT_CARD_MIN_CLASS}>
+        <div className="flex w-full flex-col items-center gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {promptAndAnswer.promptLabel}
-          </p>
-          {item.topic && (
-            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              {item.topic}
-            </span>
+          </span>
+          <p className={QUIZ_PROMPT_TEXT_CLASS}>{promptAndAnswer.prompt}</p>
+          {item.mp3_url && (
+            <ExerciseAudioControls mp3Url={item.mp3_url} variant="compact" />
+          )}
+          {item.mp3_url && (
+            <div className={QUIZ_SHORT_HIDE_CLASS}>
+              <ExerciseAudioAttribution
+                author={item.tatoeba_author}
+                license={item.tatoeba_license}
+                attributionUrl={item.tatoeba_attribution_url}
+              />
+            </div>
           )}
         </div>
-        <p className="text-xl font-medium leading-snug text-foreground">
-          {promptAndAnswer.prompt}
-        </p>
-        {item.mp3_url && (
-          <ExerciseAudioControls mp3Url={item.mp3_url} variant="large" />
-        )}
-        {item.mp3_url && (
-          <ExerciseAudioAttribution
-            author={item.tatoeba_author}
-            license={item.tatoeba_license}
-            attributionUrl={item.tatoeba_attribution_url}
-          />
-        )}
-        <p className="font-mono text-[10px] text-muted-foreground/70">
-          #{item.id.slice(0, 8)}
+        <p
+          className={`absolute bottom-2 text-[11px] text-muted-foreground/80 ${QUIZ_SHORT_HIDE_CLASS}`}
+        >
+          {mode === "blank"
+            ? "Vul het ontbrekende woord in"
+            : "Typ de vertaling hieronder"}
         </p>
       </div>
 
-      {mode === "blank" && blank && (
-        <div className="space-y-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {promptAndAnswer.answerLabel} — vul het ontbrekende woord in
-          </p>
-          <p className="text-lg font-medium leading-snug text-foreground">
-            {blank.display}
-          </p>
-          {hintVisible && (
-            <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-              Hint (anagram):{" "}
-              <span className="font-mono font-medium tracking-widest text-foreground">
-                {anagramHint}
-              </span>
+      <div className={QUIZ_PLAYING_MIDDLE_CLASS}>
+        {mode === "blank" && blank && (
+          <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-center">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {promptAndAnswer.answerLabel}
             </p>
-          )}
-        </div>
-      )}
+            <p className="text-xl font-semibold leading-snug text-foreground sm:text-2xl">
+              {blank.display}
+            </p>
+            {/* Vaste hint-hoogte zodat layout niet verspringt bij tonen */}
+            <div className="min-h-[2.75rem]">
+              {hintVisible ? (
+                <p className="rounded-md border border-border bg-background/80 px-3 py-2 text-sm text-muted-foreground">
+                  Hint (anagram):{" "}
+                  <span className="font-mono font-medium tracking-widest text-foreground">
+                    {anagramHint}
+                  </span>
+                </p>
+              ) : null}
+            </div>
+          </div>
+        )}
 
-      <label htmlFor="typing-answer" className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {mode === "full"
-            ? `Jouw ${promptAndAnswer.answerLabel.toLowerCase()}e vertaling`
-            : "Ontbrekend woord"}
-        </span>
         {mode === "full" ? (
-          <textarea
-            id="typing-answer"
-            ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-            name="answer"
-            value={answer}
-            onChange={(e) => onAnswerChange(e.target.value)}
-            disabled={feedback !== null}
-            rows={2}
-            placeholder="Typ hier je vertaling..."
-            className="w-full resize-none rounded-md border border-input bg-background px-3 py-2.5 text-base disabled:opacity-70 sm:text-sm"
-          />
+          <label htmlFor="typing-answer" className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {`Jouw antwoord (${promptAndAnswer.answerLabel})`}
+            </span>
+            <textarea
+              id="typing-answer"
+              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+              name="answer"
+              value={answer}
+              onChange={(e) => onAnswerChange(e.target.value)}
+              disabled={hasFeedback}
+              rows={2}
+              placeholder="Typ hier je vertaling…"
+              className="w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-base shadow-sm disabled:opacity-70"
+            />
+          </label>
         ) : (
           <input
             id="typing-answer"
@@ -158,51 +164,47 @@ export function TypingExercise({
             type="text"
             value={answer}
             onChange={(e) => onAnswerChange(e.target.value)}
-            disabled={feedback !== null}
-            placeholder="Typ het ontbrekende woord..."
-            className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-base disabled:opacity-70 sm:text-sm"
+            disabled={hasFeedback}
+            placeholder="Typ het ontbrekende woord…"
+            aria-label="Ontbrekend woord"
+            className="w-full rounded-xl border border-input bg-background px-4 py-3 text-center text-lg font-medium shadow-sm disabled:opacity-70"
             autoComplete="off"
           />
         )}
-      </label>
+      </div>
 
-      {feedback && <FeedbackBanner feedback={feedback} />}
+      {feedback ? (
+        <div className={QUIZ_FEEDBACK_SLOT_CLASS}>
+          <FeedbackBanner feedback={feedback} />
+        </div>
+      ) : null}
 
-      <div className="flex flex-wrap gap-2">
-        {!feedback && (
-          <>
-            <button
-              type="submit"
-              disabled={answer.trim().length === 0}
-              className="inline-flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-10 sm:flex-initial"
-            >
-              Controleren
-            </button>
-            {mode === "blank" && (
-              <button
-                type="button"
-                onClick={onShowHint}
-                className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-4 text-sm hover:bg-muted sm:min-h-10"
-              >
-                Hint ({formatQuizShortcut(QUIZ_SHORTCUTS.hint)})
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onSkip}
-              className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-4 text-sm hover:bg-muted sm:min-h-10"
-            >
-              Skip ({formatQuizShortcut(QUIZ_SHORTCUTS.skip)})
-            </button>
-          </>
+      <div
+        className={`mt-2 grid shrink-0 gap-2 ${mode === "blank"
+          ? "grid-cols-1 sm:grid-cols-2"
+          : "grid-cols-1"
+          }`}
+      >
+        {hasFeedback ? (
+          <FlashcardActionButton
+            label="Volgende oefening"
+            onClick={onNext}
+            variant="accent"
+          />
+        ) : (
+          <FlashcardActionButton
+            label="Controleren"
+            onClick={onSubmit}
+            disabled={!canCheck}
+            variant="accent"
+          />
         )}
-        {feedback && (
-          <button
-            type="submit"
-            className="inline-flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 sm:min-h-10 sm:flex-initial"
-          >
-            Volgende oefening (Enter)
-          </button>
+        {mode === "blank" && (
+          <FlashcardActionButton
+            label="Hint"
+            onClick={onShowHint}
+            disabled={hasFeedback || hintVisible}
+          />
         )}
       </div>
     </form>
@@ -238,7 +240,7 @@ export function evaluateTypingAnswer(
 function FeedbackBanner({ feedback }: { feedback: TypingFeedback }) {
   if (feedback.isCorrect) {
     return (
-      <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">
+      <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-center text-sm text-emerald-700 dark:text-emerald-300">
         <p className="font-medium">Goed!</p>
         <p className="mt-1 text-xs opacity-80">
           Antwoord:{" "}
@@ -249,7 +251,7 @@ function FeedbackBanner({ feedback }: { feedback: TypingFeedback }) {
   }
 
   return (
-    <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+    <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-center text-sm text-destructive">
       <p className="font-medium">Niet goed.</p>
       <p className="mt-1 text-xs">
         Geldig antwoord:{" "}
@@ -261,10 +263,12 @@ function FeedbackBanner({ feedback }: { feedback: TypingFeedback }) {
 
 export function TypingExerciseSkeleton() {
   return (
-    <div className="space-y-3">
-      <div className="h-3 w-16 animate-pulse rounded bg-muted" />
-      <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
-      <div className="h-10 w-full animate-pulse rounded bg-muted" />
+    <div className={QUIZ_PLAYING_FORM_CLASS}>
+      <div className={QUIZ_PROMPT_SKELETON_CLASS} />
+      <div className={QUIZ_PLAYING_MIDDLE_CLASS}>
+        <div className="h-12 animate-pulse rounded-xl bg-muted/60" />
+      </div>
+      <div className="mt-2 h-12 shrink-0 animate-pulse rounded-xl bg-muted/60" />
     </div>
   );
 }

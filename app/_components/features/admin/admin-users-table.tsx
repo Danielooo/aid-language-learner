@@ -1,13 +1,17 @@
 "use client";
 
 import {
-  useCallback,
   useEffect,
   useEffectEvent,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { queryKeys } from "@/lib/query-keys";
+import { fetchJson } from "@/lib/api/fetch-json";
+import { ConfirmDialog } from "@/app/_components/ui/confirm-dialog";
 
 import type { AdminUserRow } from "@/app/api/admin/users/route";
 import type { ReactNode } from "react";
@@ -20,6 +24,14 @@ type RoleFilter = "all" | "admin" | "user";
 type StatusFilter = "all" | "active" | "banned";
 type AiFilter = "all" | "on" | "off";
 type OpenFilter = "role" | "ai" | "status" | null;
+type PendingAction = {
+  type: "ban" | "delete";
+  row: AdminUserRow;
+};
+
+function accountLabel(row: AdminUserRow): string {
+  return row.display_name || row.username || row.id.slice(0, 8);
+}
 
 const filterControlClass =
   "rounded-md border border-input bg-background px-2 py-1.5 text-xs";
@@ -99,9 +111,8 @@ function ColumnFilterHeader<T extends string>({
         onClick={onToggle}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className={`inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-left hover:bg-muted/80 ${
-          active ? "text-accent" : "text-muted-foreground"
-        }`}
+        className={`inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-left hover:bg-muted/80 ${active ? "text-accent" : "text-muted-foreground"
+          }`}
       >
         <span>
           {label}
@@ -128,9 +139,8 @@ function ColumnFilterHeader<T extends string>({
                 type="button"
                 role="option"
                 aria-selected={selected}
-                className={`flex w-full px-3 py-1.5 text-left text-xs hover:bg-muted ${
-                  selected ? "font-medium text-accent" : "text-foreground"
-                }`}
+                className={`flex w-full px-3 py-1.5 text-left text-xs hover:bg-muted ${selected ? "font-medium text-accent" : "text-foreground"
+                  }`}
                 onClick={() => onSelect(opt.value)}
               >
                 {opt.label}
@@ -146,7 +156,7 @@ function ColumnFilterHeader<T extends string>({
 const ROLE_OPTIONS: FilterOption<RoleFilter>[] = [
   { value: "all", label: "Alles" },
   { value: "admin", label: "Admin" },
-  { value: "user", label: "User" },
+  { value: "user", label: "Gebruiker" },
 ];
 
 const AI_OPTIONS: FilterOption<AiFilter>[] = [
@@ -162,16 +172,35 @@ const STATUS_OPTIONS: FilterOption<StatusFilter>[] = [
 ];
 
 export function AdminUsersTable() {
-  const [rows, setRows] = useState<AdminUserRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const {
+    data: rows = [],
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: queryKeys.adminUsers(),
+    queryFn: async () => {
+      const json = await fetchJson<ListResponse>("/api/admin/users");
+      if (!json.ok) throw new Error(json.error);
+      return json.rows;
+    },
+  });
 
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [aiFilter, setAiFilter] = useState<AiFilter>("all");
   const [openFilter, setOpenFilter] = useState<OpenFilter>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(
+    null,
+  );
+
+  const listError = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Laden mislukt."
+    : null;
 
   const tableHeadRef = useRef<HTMLTableSectionElement>(null);
 
@@ -201,28 +230,6 @@ export function AdminUsersTable() {
     };
   }, [openFilter]);
 
-  const reload = useCallback(async () => {
-    setError(null);
-    const res = await fetch("/api/admin/users", { cache: "no-store" });
-    const json = (await res.json()) as ListResponse;
-    if (!json.ok) {
-      setError(json.error);
-      return;
-    }
-    setRows(json.rows);
-  }, []);
-
-  useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      try {
-        await reload();
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [reload]);
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((row) => {
@@ -238,46 +245,93 @@ export function AdminUsersTable() {
     });
   }, [rows, search, roleFilter, statusFilter, aiFilter]);
 
-  async function patch(body: Record<string, unknown>, userId: string) {
-    setBusyId(userId);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/users", {
+  const patchMutation = useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      await fetchJson("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const json = (await res.json()) as { ok: boolean; error?: string };
-      if (!json.ok) {
-        setError(json.error ?? "Actie mislukt.");
-        return;
-      }
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout.");
-    } finally {
-      setBusyId(null);
-    }
+    },
+    onSuccess: () => {
+      setPendingAction(null);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers() });
+    },
+  });
+
+  function patch(body: Record<string, unknown>) {
+    patchMutation.mutate(body);
   }
 
-  function confirmBan(row: AdminUserRow) {
-    const label = row.display_name || row.username || row.id.slice(0, 8);
-    const ok = window.confirm(
-      `Weet je zeker dat je “${label}” wilt deactiveren? Die gebruiker kan dan niet meer inloggen.`,
-    );
-    if (!ok) return;
-    void patch({ action: "ban", user_id: row.id }, row.id);
+  function runPendingAction() {
+    if (!pendingAction) return;
+    const { type, row } = pendingAction;
+    if (type === "ban") {
+      patch({ action: "ban", user_id: row.id });
+      return;
+    }
+    patch({ action: "delete", user_id: row.id });
   }
 
   function toggleFilter(key: Exclude<OpenFilter, null>) {
     setOpenFilter((prev) => (prev === key ? null : key));
   }
 
+  const actionError =
+    patchMutation.error instanceof Error
+      ? patchMutation.error.message
+      : null;
+
+  const busy = patchMutation.isPending;
+
+  const pendingLabel = pendingAction
+    ? accountLabel(pendingAction.row)
+    : "";
+
+  const confirmCopy =
+    pendingAction?.type === "ban"
+      ? {
+        title: "Account deactiveren?",
+        description: (
+          <>
+            Weet je zeker dat je “{pendingLabel}” wilt deactiveren? Een
+            nieuwe login wordt geblokkeerd. Een sessie die nu al openstaat
+            wordt meteen onbruikbaar.
+          </>
+        ),
+        confirmLabel: "Deactiveren",
+        pendingLabel: "Deactiveren…",
+      }
+      : pendingAction?.type === "delete" && pendingAction.row.role === "admin"
+        ? {
+          title: "Admin verwijderen?",
+          description: (
+            <>
+              Weet je zeker dat je het admin-account “{pendingLabel}” wilt
+              verwijderen?
+            </>
+          ),
+          confirmLabel: "Verwijderen",
+          pendingLabel: "Verwijderen…",
+        }
+        : {
+          title: "Gebruiker verwijderen?",
+          description: (
+            <>
+              Weet je zeker dat je “{pendingLabel}” definitief wilt
+              verwijderen? Alle gegevens van deze gebruiker (oefeningen,
+              voortgang, inzendingen) gaan permanent verloren.
+            </>
+          ),
+          confirmLabel: "Verwijderen",
+          pendingLabel: "Verwijderen…",
+        };
+
   return (
     <div className="space-y-3">
-      {error && (
+      {(listError || actionError) && (
         <p className="text-sm text-destructive" role="alert">
-          {error}
+          {listError ?? actionError}
         </p>
       )}
 
@@ -384,114 +438,114 @@ export function AdminUsersTable() {
             )}
 
             {!loading &&
-              filtered.map((row) => {
-                const busy = busyId === row.id;
-                return (
-                  <tr
-                    key={row.id}
-                    className="border-b border-border/60 last:border-b-0"
-                  >
-                    <td className="px-3 py-2 font-medium">
-                      {row.username ? (
-                        <span>@{row.username}</span>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          {row.id.slice(0, 8)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      {row.display_name ? (
-                        row.display_name
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      <StatusBadge
-                        tone={row.role === "admin" ? "accent" : "muted"}
+              filtered.map((row) => (
+                <tr
+                  key={row.id}
+                  className="border-b border-border/60 last:border-b-0"
+                >
+                  <td className="px-3 py-2 font-medium">
+                    {row.username ? (
+                      <span>@{row.username}</span>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        {row.id.slice(0, 8)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {row.display_name ? (
+                      row.display_name
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    <StatusBadge
+                      tone={row.role === "admin" ? "accent" : "muted"}
+                    >
+                      {row.role === "admin" ? "Admin" : "Gebruiker"}
+                    </StatusBadge>
+                  </td>
+                  <td className="px-3 py-2">
+                    <StatusBadge tone={row.ai_disabled ? "danger" : "ok"}>
+                      {row.ai_disabled ? "Uit" : "Aan"}
+                    </StatusBadge>
+                  </td>
+                  <td className="px-3 py-2">
+                    <StatusBadge tone={row.banned ? "danger" : "ok"}>
+                      {row.banned ? "Gedeactiveerd" : "Actief"}
+                    </StatusBadge>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-nowrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className={actionBtnClass}
+                        onClick={() =>
+                          patch({
+                            action: "set_ai_disabled",
+                            user_id: row.id,
+                            ai_disabled: !row.ai_disabled,
+                          })
+                        }
                       >
-                        {row.role === "admin" ? "Admin" : "User"}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-3 py-2">
-                      <StatusBadge tone={row.ai_disabled ? "danger" : "ok"}>
-                        {row.ai_disabled ? "Uit" : "Aan"}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-3 py-2">
-                      <StatusBadge tone={row.banned ? "danger" : "ok"}>
-                        {row.banned ? "Gedeactiveerd" : "Actief"}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex flex-nowrap items-center gap-1.5">
+                        {row.ai_disabled ? "AI aan" : "AI uit"}
+                      </button>
+                      {row.banned ? (
                         <button
                           type="button"
                           disabled={busy}
                           className={actionBtnClass}
                           onClick={() =>
-                            void patch(
-                              {
-                                action: "set_role",
-                                user_id: row.id,
-                                role: row.role === "admin" ? "user" : "admin",
-                              },
-                              row.id,
-                            )
+                            patch({ action: "unban", user_id: row.id })
                           }
                         >
-                          {row.role === "admin" ? "Maak user" : "Maak admin"}
+                          Reactiveer
                         </button>
+                      ) : (
                         <button
                           type="button"
                           disabled={busy}
-                          className={actionBtnClass}
+                          className={actionDangerClass}
                           onClick={() =>
-                            void patch(
-                              {
-                                action: "set_ai_disabled",
-                                user_id: row.id,
-                                ai_disabled: !row.ai_disabled,
-                              },
-                              row.id,
-                            )
+                            setPendingAction({ type: "ban", row })
                           }
                         >
-                          {row.ai_disabled ? "AI aan" : "AI uit"}
+                          Deactiveer
                         </button>
-                        {row.banned ? (
-                          <button
-                            type="button"
-                            disabled={busy}
-                            className={actionBtnClass}
-                            onClick={() =>
-                              void patch(
-                                { action: "unban", user_id: row.id },
-                                row.id,
-                              )
-                            }
-                          >
-                            Reactiveer
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={busy}
-                            className={actionDangerClass}
-                            onClick={() => confirmBan(row)}
-                          >
-                            Deactiveer
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                      )}
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className={actionDangerClass}
+                        onClick={() =>
+                          setPendingAction({ type: "delete", row })
+                        }
+                      >
+                        Verwijderen
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        open={pendingAction !== null}
+        title={confirmCopy.title}
+        description={confirmCopy.description}
+        confirmLabel={confirmCopy.confirmLabel}
+        pendingLabel={confirmCopy.pendingLabel}
+        pending={busy}
+        tone="danger"
+        onCancel={() => {
+          if (!busy) setPendingAction(null);
+        }}
+        onConfirm={runPendingAction}
+      />
     </div>
   );
 }

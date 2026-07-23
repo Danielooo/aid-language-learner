@@ -8,7 +8,7 @@ export type RoleCapabilities = {
   /** Eigen account verwijderen via UI (admins mogen dit niet). */
   canDeleteAccount: boolean;
   /**
-   * AI-generatie starten. Limiet (10/dag) en ai_disabled worden apart
+   * AI-generatie starten. Limiet (USER_AI_REQUESTS_PER_DAY) en ai_disabled worden apart
    * server-side afgedwongen; dit is alleen de rol-basis.
    */
   canGenerateAiByRole: boolean;

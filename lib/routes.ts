@@ -7,17 +7,22 @@ export const APP_ROUTES = {
   sorteren: "/oefenen/sorteren",
   leerplan: "/leerplan",
   community: "/community",
-  oefeningen: "/oefeningen",
   generator: "/generator",
   voortgang: "/voortgang",
   profiel: "/profiel",
   admin: "/admin",
   adminOefeningen: "/admin/oefeningen",
-  adminReview: "/admin/review",
+  adminBijdragen: "/admin/bijdragen",
   adminGebruikers: "/admin/gebruikers",
+  adminAanmaken: "/admin/admin-aanmaken",
   adminTatoebaImport: "/admin/tatoeba-import",
   login: "/login",
   register: "/register",
 } as const;
 
 export type AppRoute = (typeof APP_ROUTES)[keyof typeof APP_ROUTES];
+
+/** Bewerkpagina van een persoonlijke oefeningengroep. */
+export function leerplanGroupPath(groupId: string): string {
+  return `${APP_ROUTES.leerplan}/${groupId}`;
+}

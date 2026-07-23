@@ -35,7 +35,7 @@ export default async function Home() {
             </h1>
             <p className="text-base text-muted-foreground sm:text-lg">
               Genereer oefenzinnen met AI voor jouw situaties — het restaurant,
-              de garage, het station. Oefen met flashcards, typen en sorteren,
+              de garage, het station. Oefen met flashcards, sorteren en typen,
               en onthoud alles dankzij spaced repetition.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
@@ -61,7 +61,7 @@ export default async function Home() {
             />
             <FeatureCard
               title="Drie oefenvormen"
-              description="Flashcards om te herkennen, typen om actief te produceren en sorteren om zinsbouw te trainen — elk traint een andere vaardigheid."
+              description="Flashcards om te herkennen, sorteren om zinsbouw te trainen en typen om actief te produceren — elk traint een andere vaardigheid."
             />
             <FeatureCard
               title="Spaced repetition"
@@ -83,7 +83,7 @@ export default async function Home() {
                 boodschappen doen tot een sollicitatiegesprek.
               </StepItem>
               <StepItem index={2}>
-                Oefen de zinnen met flashcards, typen of sorteren. Audio van
+                Oefen de zinnen met flashcards, sorteren of typen. Audio van
                 moedertaalsprekers helpt met uitspraak.
               </StepItem>
               <StepItem index={3}>

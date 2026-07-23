@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { PauseIcon, SpeakerIcon } from "@/app/_components/ui/audio-icons";
 import type { ExercisePatchFields } from "@/lib/exercises/types";
 import type { AudioRow } from "@/types/tatoeba";
 import type { useTranslationCache } from "@/lib/hooks/use-translation-cache";
@@ -127,6 +128,8 @@ export type AudioResultTableProps = {
   // Default true. Search-page kan FilterBar uitzetten als de chat
   // al filter-genoeg is. Voor nu staat 'ie overal aan.
   showFilterBar?: boolean;
+  /** Kolommen-menu; default true. Generator zet uit. */
+  showColumnMenu?: boolean;
   // Optioneel: enable per-rij checkboxes. Parent bezit de selectie-set
   // zodat een persist-knop buiten de tabel kan reageren.
   selection?: AudioResultTableSelection;
@@ -143,6 +146,15 @@ export type AudioResultTableProps = {
   persistMode?: AudioResultTablePersistMode;
   // Verberg mp3-kolom (o.a. exercise-generator zonder audio).
   hideMp3Column?: boolean;
+  /**
+   * Plaatsing van de mp3/speaker-kolom.
+   * `after-selection` = direct na checkbox, vóór sentence_text.
+   */
+  mp3ColumnPlacement?: "end" | "after-selection";
+  /** Compacte speaker-knop zonder URL-link (generator-audio-tab). */
+  compactMp3Controls?: boolean;
+  /** Rijen met deze audio_id's krijgen een highlight-achtergrond. */
+  highlightAudioIds?: Set<number>;
   // Verberg Verrijk/↻/＋ in TranslationCell (LLM levert al vertaling).
   hideEnrichActions?: boolean;
   // Inline bewerken van de bron-zin (sentence_text).
@@ -155,6 +167,14 @@ export type AudioResultTableProps = {
   sortDir?: SortDir;
   onSortChange?: (key: SortKey, dir: SortDir) => void;
   serverSorted?: boolean;
+  /** Rij-dubbelklik (o.a. Generator / modal-edit). */
+  onRowDoubleClick?: (row: AudioRow) => void;
+  /** Density mode: "compact" (default) of "list" (like Leerplan styling) */
+  density?: "compact" | "list";
+  /** Hide row count display at bottom */
+  hideRowCount?: boolean;
+  /** Lege-staat tekst (default: “Geen rijen om te tonen.”) */
+  emptyMessage?: string;
 };
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -213,12 +233,16 @@ export function AudioResultTable({
   translation,
   searchEnrichments,
   showFilterBar = true,
+  showColumnMenu = true,
   selection,
   tableScope,
   defaultHiddenColumns,
   readOnly = false,
   persistMode,
   hideMp3Column = false,
+  mp3ColumnPlacement = "end",
+  compactMp3Controls = false,
+  highlightAudioIds,
   hideEnrichActions = false,
   editableSourceText = false,
   onPatchSourceText,
@@ -227,6 +251,10 @@ export function AudioResultTable({
   sortDir: controlledSortDir,
   onSortChange,
   serverSorted = false,
+  onRowDoubleClick,
+  density = "compact",
+  hideRowCount = false,
+  emptyMessage,
 }: AudioResultTableProps) {
   const [licenseFilter, setLicenseFilter] = useState<string>(LICENSE_FILTER_ALL);
   const [authorQuery, setAuthorQuery] = useState<string>("");
@@ -237,6 +265,12 @@ export function AudioResultTable({
   const sortKey = controlledSortKey ?? internalSortKey;
   const sortDir = controlledSortDir ?? internalSortDir;
   const [showMp3Url, setShowMp3Url] = useState<boolean>(false);
+  // Modal-edit: geen inline tags/alts/bron-edit; alleen dubbelklik.
+  const modalEditMode = Boolean(onRowDoubleClick);
+  const effectivePersistMode = modalEditMode ? undefined : persistMode;
+  const effectiveEditableSource =
+    !modalEditMode && editableSourceText;
+  const alternativesReadOnly = readOnly || modalEditMode;
 
   // Kolom-zichtbaarheid. Init met de defaults om hydration-mismatch
   // te vermijden; in een effect na mount mergen we de localStorage-
@@ -442,6 +476,10 @@ export function AudioResultTable({
     isColumnAvailable("cosine") && hasCosine && !isHidden("cosine");
   const showReason =
     isColumnAvailable("reason") && hasReason && !isHidden("reason");
+  const showMp3 = !hideMp3Column;
+  const showMp3AfterSelection =
+    showMp3 && mp3ColumnPlacement === "after-selection";
+  const showMp3AtEnd = showMp3 && mp3ColumnPlacement === "end";
 
   // Lijst voor het kolommen-menu: alleen kolommen waarvoor het toggle
   // ook zin heeft. Op de playground-pagina verschijnen `cosine`/`reden`
@@ -487,37 +525,42 @@ export function AudioResultTable({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {showFilterBar ? (
-          <FilterToggle
-            activeCount={activeFilterCount}
-            authorQuery={authorQuery}
-            onAuthorChange={setAuthorQuery}
-            textQuery={textQuery}
-            onTextChange={setTextQuery}
-            reusableOnly={reusableOnly}
-            onReusableOnlyChange={setReusableOnly}
-          />
-        ) : (
-          <span />
-        )}
-        <ColumnVisibilityMenu
-          columns={menuColumns}
-          hiddenColumns={hiddenColumns}
-          onToggle={toggleColumn}
-        />
-      </div>
+      {(showFilterBar || showColumnMenu) && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {showFilterBar ? (
+            <FilterToggle
+              activeCount={activeFilterCount}
+              authorQuery={authorQuery}
+              onAuthorChange={setAuthorQuery}
+              textQuery={textQuery}
+              onTextChange={setTextQuery}
+              reusableOnly={reusableOnly}
+              onReusableOnlyChange={setReusableOnly}
+            />
+          ) : (
+            <span />
+          )}
+          {showColumnMenu && (
+            <ColumnVisibilityMenu
+              columns={menuColumns}
+              hiddenColumns={hiddenColumns}
+              onToggle={toggleColumn}
+            />
+          )}
+        </div>
+      )}
 
       {sortedRows.length === 0 ? (
         <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-4 text-center text-xs text-muted-foreground">
-          {rows.length === 0
-            ? "Geen rijen om te tonen."
-            : "Geen rijen voor deze filtercombinatie."}
+          {emptyMessage ??
+            (rows.length === 0
+              ? "Geen rijen om te tonen."
+              : "Geen rijen voor deze filtercombinatie.")}
         </p>
       ) : (
         <div className="overflow-auto rounded-md border border-border">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead className="sticky top-0 bg-muted/60 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <table className={`w-full border-collapse text-left ${density === "list" ? "text-sm" : "text-xs"}`}>
+            <thead className={`sticky top-0 ${density === "list" ? "border-b bg-muted/40 text-sm" : "bg-muted/60 text-[10px] uppercase tracking-wide"} text-muted-foreground`}>
               <tr>
                 {selection && (
                   <SelectAllHeader
@@ -525,6 +568,13 @@ export function AudioResultTable({
                     indeterminate={someVisibleSelected}
                     onToggle={() => selection.onToggleAllVisible(visibleIds)}
                     visibleCount={visibleIds.length}
+                  />
+                )}
+                {showMp3AfterSelection && (
+                  <Mp3ColumnHeader
+                    compact={compactMp3Controls}
+                    showMp3Url={showMp3Url}
+                    onToggleUrl={() => setShowMp3Url((v) => !v)}
                   />
                 )}
                 {showAudioId && (
@@ -545,12 +595,12 @@ export function AudioResultTable({
                     onSort={toggleSort}
                   />
                 )}
-                <th className="px-3 py-2 font-semibold">sentence_text</th>
+                <th className="px-3 py-2 font-semibold">Brontaal (SPA)</th>
                 <th
                   className="px-3 py-2 font-semibold"
                   title="Dubbelklik op de tekst om handmatig aan te passen. + om alternatieve vertalingen toe te voegen."
                 >
-                  vertaling (NL)
+                  Vertaling (NL)
                 </th>
                 {showEdited && (
                   <th
@@ -605,24 +655,12 @@ export function AudioResultTable({
                 {showReason && (
                   <th className="px-3 py-2 font-semibold">reden</th>
                 )}
-                {!hideMp3Column && (
-                  <th className="px-3 py-2 font-semibold">
-                    <div className="flex items-center gap-2">
-                      <span>mp3</span>
-                      <button
-                        type="button"
-                        onClick={() => setShowMp3Url((v) => !v)}
-                        title={
-                          showMp3Url
-                            ? "Toon link-tekst i.p.v. de volledige URL"
-                            : "Toon de volledige URL i.p.v. de link-tekst"
-                        }
-                        className="rounded border border-border bg-background px-1.5 py-0.5 text-[9px] font-medium normal-case tracking-normal text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        {showMp3Url ? "link" : "url"}
-                      </button>
-                    </div>
-                  </th>
+                {showMp3AtEnd && (
+                  <Mp3ColumnHeader
+                    compact={compactMp3Controls}
+                    showMp3Url={showMp3Url}
+                    onToggleUrl={() => setShowMp3Url((v) => !v)}
+                  />
                 )}
               </tr>
             </thead>
@@ -631,53 +669,92 @@ export function AudioResultTable({
                 const cosine = searchEnrichments?.cosineById[row.audio_id];
                 const reason = searchEnrichments?.reasonsById[row.audio_id];
                 const isSelected = selection?.selectedIds.has(row.audio_id);
+                const isHighlighted = highlightAudioIds?.has(row.audio_id);
+                const cellPad = modalEditMode
+                  ? "px-3 py-2 align-middle"
+                  : "px-3 py-2";
+                const cellClasses = density === "list" && modalEditMode ? "px-3 py-2" : cellPad;
+                const maxWClasses = density === "list" && modalEditMode ? "" : " max-w-[14rem]";
                 return (
                   <tr
                     key={row.audio_id}
-                    className={`border-t border-border align-top hover:bg-muted/30 ${
-                      isSelected ? "bg-accent/5" : ""
-                    }`}
+                    onDoubleClick={
+                      onRowDoubleClick
+                        ? () => onRowDoubleClick(row)
+                        : undefined
+                    }
+                    title={
+                      onRowDoubleClick
+                        ? "Dubbelklik om te bewerken"
+                        : undefined
+                    }
+                    className={`border-t border-border hover:bg-muted/30 ${modalEditMode ? "align-middle" : "align-top"
+                      } ${onRowDoubleClick ? "cursor-pointer" : ""} ${isHighlighted
+                        ? "bg-accent/15"
+                        : isSelected
+                          ? "bg-accent/5"
+                          : ""
+                      }`}
                   >
                     {selection && (
-                      <td className="px-3 py-2">
+                      <td
+                        className="px-3 py-2 align-middle"
+                        onClick={(e) => e.stopPropagation()}
+                        onDoubleClick={(e) => e.stopPropagation()}
+                      >
                         <input
                           type="checkbox"
                           checked={!!isSelected}
                           onChange={() => selection.onToggle(row.audio_id)}
-                          className="h-4 w-4 rounded border-input"
+                          className="size-4 rounded border-border accent-accent"
                           aria-label={`Selecteer audio ${row.audio_id}`}
                         />
                       </td>
                     )}
+                    {showMp3AfterSelection && (
+                      <Mp3ColumnCell
+                        row={row}
+                        playing={playingAudioId === row.audio_id}
+                        compact={compactMp3Controls}
+                        showMp3Url={showMp3Url}
+                        onPlayToggle={handlePlayToggle}
+                      />
+                    )}
                     {showAudioId && (
-                      <td className="px-3 py-2 font-mono">{row.audio_id}</td>
+                      <td className={`${cellClasses} font-mono`}>{row.audio_id}</td>
                     )}
                     {showSentenceId && (
-                      <td className="px-3 py-2 font-mono">
+                      <td className={`${cellClasses} font-mono`}>
                         {row.sentence_id}
                       </td>
                     )}
-                    <td className="px-3 py-2">
+                    <td
+                      className={`${cellClasses}${maxWClasses}`}
+                    >
                       <SourceTextCell
                         row={row}
-                        editable={editableSourceText}
+                        editable={effectiveEditableSource}
                         onPatchSourceText={onPatchSourceText}
                         translationCache={translation.cache}
+                        compact={modalEditMode}
                       />
                     </td>
-                    <td className="px-3 py-2">
+                    <td
+                      className={`${cellClasses}${maxWClasses}`}
+                    >
                       <TranslationCell
                         row={row}
                         translationCache={translation.cache}
                         state={translation.state[row.audio_id]}
                         onTranslate={translation.onTranslateRow}
-                        readOnly={readOnly}
-                        persistMode={persistMode}
+                        readOnly={readOnly || modalEditMode}
+                        persistMode={effectivePersistMode}
                         hideEnrichActions={hideEnrichActions}
+                        compact={modalEditMode}
                       />
                     </td>
                     {showEdited && (
-                      <td className="px-3 py-2">
+                      <td className={cellClasses}>
                         <EditedBadgeCell
                           row={row}
                           translationCache={translation.cache}
@@ -685,100 +762,86 @@ export function AudioResultTable({
                       </td>
                     )}
                     {showAlternatives && (
-                      <td className="px-3 py-2">
+                      <td
+                        className={`${cellClasses}${density === "list" && modalEditMode ? "" : modalEditMode ? " max-w-[12rem]" : ""}`}
+                      >
                         <AlternativesCell
                           row={row}
                           translationCache={translation.cache}
-                          readOnly={readOnly}
-                          persistMode={persistMode}
+                          readOnly={alternativesReadOnly}
+                          persistMode={effectivePersistMode}
+                          compact={modalEditMode}
                         />
                       </td>
                     )}
                     {showTopic && (
-                      <td className="px-3 py-2">
+                      <td
+                        className={`${cellClasses}${density === "list" && modalEditMode ? "" : modalEditMode ? " max-w-[10rem]" : ""}`}
+                      >
                         <TopicCell
                           row={row}
                           translationCache={translation.cache}
-                          persistMode={persistMode}
+                          persistMode={effectivePersistMode}
+                          compact={modalEditMode}
                         />
                       </td>
                     )}
                     {showTags && (
-                      <td className="px-3 py-2">
+                      <td
+                        className={`${cellClasses}${density === "list" && modalEditMode ? "" : modalEditMode ? " max-w-[12rem]" : ""}`}
+                      >
                         <TagsCell
                           row={row}
                           translationCache={translation.cache}
-                          persistMode={persistMode}
+                          persistMode={effectivePersistMode}
+                          compact={modalEditMode}
                         />
                       </td>
                     )}
                     {showLang && (
-                      <td className="px-3 py-2 font-mono uppercase">
+                      <td className={`${cellClasses} font-mono uppercase`}>
                         {row.lang}
                       </td>
                     )}
                     {showAuthor && (
-                      <td className="px-3 py-2">{row.author}</td>
+                      <td
+                        className={`${cellClasses}${density === "list" && modalEditMode ? "" : modalEditMode ? " max-w-[10rem] truncate" : ""}`}
+                        title={modalEditMode ? row.author : undefined}
+                      >
+                        {row.author}
+                      </td>
                     )}
                     {showLicense && (
-                      <td className="px-3 py-2 font-mono text-[10px]">
+                      <td className={`${cellClasses} font-mono text-[10px]`}>
                         {licenseDisplay(row.license)}
                       </td>
                     )}
                     {showCreated && (
-                      <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
+                      <td className={`${cellClasses} font-mono text-[10px] text-muted-foreground`}>
                         {row.created ?? "—"}
                       </td>
                     )}
                     {showCosine && (
-                      <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
+                      <td className={`${cellClasses} font-mono text-[10px] text-muted-foreground`}>
                         {cosine !== undefined ? cosine.toFixed(3) : "—"}
                       </td>
                     )}
                     {showReason && (
-                      <td className="px-3 py-2 text-[11px] text-muted-foreground">
+                      <td
+                        className={`${cellClasses} text-[11px] text-muted-foreground${density === "list" && modalEditMode ? "" : modalEditMode ? " max-w-[12rem] truncate" : ""}`}
+                        title={modalEditMode ? (reason ?? undefined) : undefined}
+                      >
                         {reason ?? "—"}
                       </td>
                     )}
-                    {!hideMp3Column && (
-                      <td className="px-3 py-2">
-                        {row.mp3_url ? (
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handlePlayToggle(row.audio_id, row.mp3_url)
-                              }
-                              aria-label={
-                                playingAudioId === row.audio_id
-                                  ? "Pauzeer audio"
-                                  : "Speel audio af"
-                              }
-                              title={
-                                playingAudioId === row.audio_id
-                                  ? "Pauzeer"
-                                  : "Direct afspelen in de tabel"
-                              }
-                              className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 text-[11px] hover:bg-accent hover:text-accent-foreground"
-                            >
-                              {playingAudioId === row.audio_id ? "⏸" : "▶"}
-                            </button>
-                            <a
-                              href={row.mp3_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-mono text-[10px] break-all text-accent underline-offset-2 hover:underline"
-                              title={row.mp3_url}
-                            >
-                              {showMp3Url ? row.mp3_url : "open"}
-                            </a>
-                          </div>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground/70">
-                            —
-                          </span>
-                        )}
-                      </td>
+                    {showMp3AtEnd && (
+                      <Mp3ColumnCell
+                        row={row}
+                        playing={playingAudioId === row.audio_id}
+                        compact={compactMp3Controls}
+                        showMp3Url={showMp3Url}
+                        onPlayToggle={handlePlayToggle}
+                      />
                     )}
                   </tr>
                 );
@@ -803,7 +866,7 @@ export function AudioResultTable({
         </div>
       )}
 
-      {rows.length > 0 && (
+      {!hideRowCount && rows.length > 0 && (
         <p className="text-[10px] text-muted-foreground">
           Getoond {sortedRows.length} van {rows.length} rijen.
         </p>
@@ -813,6 +876,89 @@ export function AudioResultTable({
 }
 
 // ── Sub-components (intern) ───────────────────────────────────────
+
+function Mp3ColumnHeader({
+  compact,
+  showMp3Url,
+  onToggleUrl,
+}: {
+  compact: boolean;
+  showMp3Url: boolean;
+  onToggleUrl: () => void;
+}) {
+  return (
+    <th className="px-3 py-2 font-semibold">
+      {compact ? (
+        <span>audio</span>
+      ) : (
+        <div className="flex items-center gap-2">
+          <span>mp3</span>
+          <button
+            type="button"
+            onClick={onToggleUrl}
+            title={
+              showMp3Url
+                ? "Toon link-tekst i.p.v. de volledige URL"
+                : "Toon de volledige URL i.p.v. de link-tekst"
+            }
+            className="rounded border border-border bg-background px-1.5 py-0.5 text-[9px] font-medium normal-case tracking-normal text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            {showMp3Url ? "link" : "url"}
+          </button>
+        </div>
+      )}
+    </th>
+  );
+}
+
+function Mp3ColumnCell({
+  row,
+  playing,
+  compact,
+  showMp3Url,
+  onPlayToggle,
+}: {
+  row: AudioRow;
+  playing: boolean;
+  compact: boolean;
+  showMp3Url: boolean;
+  onPlayToggle: (audioId: number, mp3Url: string) => void;
+}) {
+  return (
+    <td className="px-3 py-2 align-middle">
+      {row.mp3_url ? (
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onPlayToggle(row.audio_id, row.mp3_url)}
+            aria-label={playing ? "Pauzeer audio" : "Speel audio af"}
+            title={playing ? "Pauzeer" : "Direct afspelen in de tabel"}
+            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground"
+          >
+            {playing ? (
+              <PauseIcon className="size-3.5" />
+            ) : (
+              <SpeakerIcon className="size-3.5" />
+            )}
+          </button>
+          {!compact && (
+            <a
+              href={row.mp3_url}
+              target="_blank"
+              rel="noreferrer"
+              className="font-mono text-[10px] break-all text-accent underline-offset-2 hover:underline"
+              title={row.mp3_url}
+            >
+              {showMp3Url ? row.mp3_url : "open"}
+            </a>
+          )}
+        </div>
+      ) : (
+        <span className="text-[10px] text-muted-foreground/70">—</span>
+      )}
+    </td>
+  );
+}
 
 // "Filter ▼"-knop met dropdown-paneel met de FilterBar erin. Volgt
 // hetzelfde patroon als ColumnVisibilityMenu en LicenseHeader. Toont
@@ -866,11 +1012,10 @@ function FilterToggle({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium hover:bg-muted ${
-          hasActive
-            ? "border-accent/40 bg-accent/10 text-foreground"
-            : "border-border bg-background text-muted-foreground hover:text-foreground"
-        }`}
+        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium hover:bg-muted ${hasActive
+          ? "border-accent/40 bg-accent/10 text-foreground"
+          : "border-border bg-background text-muted-foreground hover:text-foreground"
+          }`}
         title={
           hasActive
             ? `${activeCount} actief filter${activeCount === 1 ? "" : "s"} — klik om te bewerken`
@@ -1224,14 +1369,14 @@ function SelectAllHeader({
   }, [indeterminate]);
 
   return (
-    <th className="px-3 py-2 font-semibold">
+    <th className="w-10 px-3 py-2 align-middle font-semibold">
       <input
         ref={inputRef}
         type="checkbox"
         checked={allChecked}
         onChange={onToggle}
         disabled={visibleCount === 0}
-        className="h-4 w-4 rounded border-input disabled:opacity-30"
+        className="size-4 rounded border-border accent-accent disabled:opacity-30"
         aria-label="Selecteer alle zichtbare rijen"
         title={
           allChecked
@@ -1274,11 +1419,13 @@ function SourceTextCell({
   editable,
   onPatchSourceText,
   translationCache,
+  compact = false,
 }: {
   row: AudioRow;
   editable: boolean;
   onPatchSourceText?: (row: AudioRow, text: string) => void;
   translationCache: ReturnType<typeof useTranslationCache>;
+  compact?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -1321,7 +1468,14 @@ function SourceTextCell({
   }
 
   if (!editable) {
-    return <span>{row.sentence_text}</span>;
+    return (
+      <span
+        className={compact ? "block truncate" : undefined}
+        title={compact ? row.sentence_text : undefined}
+      >
+        {row.sentence_text}
+      </span>
+    );
   }
 
   if (editing) {
@@ -1375,6 +1529,7 @@ function TranslationCell({
   readOnly = false,
   persistMode,
   hideEnrichActions = false,
+  compact = false,
 }: {
   row: AudioRow;
   translationCache: ReturnType<typeof useTranslationCache>;
@@ -1383,6 +1538,7 @@ function TranslationCell({
   readOnly?: boolean;
   persistMode?: AudioResultTablePersistMode;
   hideEnrichActions?: boolean;
+  compact?: boolean;
 }) {
   const cached = translationCache.get(row.audio_id, row.sentence_text);
   const [editing, setEditing] = useState(false);
@@ -1493,7 +1649,14 @@ function TranslationCell({
   }
 
   if (cached && readOnly) {
-    return <span className="text-xs">{cached.translation}</span>;
+    return (
+      <span
+        className={compact ? "block truncate" : undefined}
+        title={compact ? cached.translation : undefined}
+      >
+        {cached.translation}
+      </span>
+    );
   }
 
   if (saveError) {
@@ -1583,11 +1746,10 @@ function TranslationCell({
                 onClick={() => setShowAddAlt((v) => !v)}
                 title="Voeg een alternatieve correcte vertaling toe"
                 aria-pressed={showAddAlt}
-                className={`rounded border px-1.5 py-0.5 text-[10px] ${
-                  showAddAlt
-                    ? "border-accent bg-accent text-accent-foreground"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+                className={`rounded border px-1.5 py-0.5 text-[10px] ${showAddAlt
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
               >
                 ＋
               </button>
@@ -1677,10 +1839,12 @@ function TopicCell({
   row,
   translationCache,
   persistMode,
+  compact = false,
 }: {
   row: AudioRow;
   translationCache: ReturnType<typeof useTranslationCache>;
   persistMode?: AudioResultTablePersistMode;
+  compact?: boolean;
 }) {
   const cached = translationCache.get(row.audio_id, row.sentence_text);
   const [editing, setEditing] = useState(false);
@@ -1758,11 +1922,14 @@ function TopicCell({
         setDraft(cached.topic ?? "");
         setEditing(true);
       }}
-      className={`rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] text-accent ${persistMode ? "cursor-text" : ""}`}
+      className={`rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] text-accent ${persistMode ? "cursor-text" : ""
+        }${compact ? " block max-w-full truncate" : ""}`}
       title={
-        persistMode
-          ? "Dubbelklik om te bewerken"
-          : "AI-gegenereerd onderwerp-label."
+        compact
+          ? (cached.topic ?? undefined)
+          : persistMode
+            ? "Dubbelklik om te bewerken"
+            : "AI-gegenereerd onderwerp-label."
       }
     >
       {cached.topic}
@@ -1776,10 +1943,12 @@ function TagsCell({
   row,
   translationCache,
   persistMode,
+  compact = false,
 }: {
   row: AudioRow;
   translationCache: ReturnType<typeof useTranslationCache>;
   persistMode?: AudioResultTablePersistMode;
+  compact?: boolean;
 }) {
   const cached = translationCache.get(row.audio_id, row.sentence_text);
   const [editing, setEditing] = useState(false);
@@ -1860,17 +2029,33 @@ function TagsCell({
         setDraft(cached.tags.join(", "));
         setEditing(true);
       }}
-      className={`flex flex-wrap gap-1 ${persistMode ? "cursor-text" : ""}`}
-      title={persistMode ? "Dubbelklik om te bewerken" : undefined}
+      className={
+        compact
+          ? undefined
+          : `flex flex-wrap gap-1 ${persistMode ? "cursor-text" : ""}`
+      }
+      title={
+        compact
+          ? cached.tags.join(", ")
+          : persistMode
+            ? "Dubbelklik om te bewerken"
+            : undefined
+      }
     >
-      {cached.tags.map((tag) => (
-        <span
-          key={tag}
-          className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
-        >
-          {tag}
+      {compact ? (
+        <span className="block truncate font-mono text-[10px] text-muted-foreground">
+          {cached.tags.join(", ")}
         </span>
-      ))}
+      ) : (
+        cached.tags.map((tag) => (
+          <span
+            key={tag}
+            className="shrink-0 whitespace-nowrap rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+          >
+            {tag}
+          </span>
+        ))
+      )}
     </div>
   );
 }
@@ -1917,11 +2102,13 @@ function AlternativesCell({
   translationCache,
   readOnly = false,
   persistMode,
+  compact = false,
 }: {
   row: AudioRow;
   translationCache: ReturnType<typeof useTranslationCache>;
   readOnly?: boolean;
   persistMode?: AudioResultTablePersistMode;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
@@ -1996,9 +2183,17 @@ function AlternativesCell({
     if (count === 0) {
       return <span className="text-[10px] text-muted-foreground/70">—</span>;
     }
+    const joined = cached.alternatives.join(" · ");
     return (
-      <span className="text-[11px] text-muted-foreground">
-        {cached.alternatives.join(" · ")}
+      <span
+        className={
+          compact
+            ? "block truncate text-[11px] text-muted-foreground"
+            : "text-[11px] text-muted-foreground"
+        }
+        title={compact ? joined : undefined}
+      >
+        {joined}
       </span>
     );
   }
@@ -2008,11 +2203,10 @@ function AlternativesCell({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[10px] hover:text-foreground ${
-          count > 0
-            ? "border-accent/40 bg-accent/10 text-accent"
-            : "border-border bg-background text-muted-foreground"
-        }`}
+        className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[10px] hover:text-foreground ${count > 0
+          ? "border-accent/40 bg-accent/10 text-accent"
+          : "border-border bg-background text-muted-foreground"
+          }`}
         title={
           count === 0
             ? "Klap uit om een alternatieve vertaling toe te voegen"

@@ -114,7 +114,8 @@ export type EnrichResponse = EnrichSuccess | EnrichFailure;
 export type TranslateResponse = EnrichResponse;
 
 export async function POST(req: Request): Promise<Response> {
-  await assertAdmin();
+  const auth = await assertAdmin();
+  if (!auth.ok) return auth.response;
 
   let parsedBody: unknown;
   try {

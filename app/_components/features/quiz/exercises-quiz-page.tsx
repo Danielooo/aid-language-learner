@@ -1,63 +1,96 @@
 "use client";
 
-import { useAppProfile } from "@/app/(app)/_components/app-profile-provider";
-import { AppPageHeader } from "@/app/_components/ui/app-page-header";
-import { useExerciseSummaryStats } from "@/lib/dashboard/use-exercise-summary-stats";
+import { useState } from "react";
 
-import { QuizModeCard } from "./quiz-mode-card";
-import { SrsDueCard } from "./srs-due-card";
+import { AppPageHeader } from "@/app/_components/ui/app-page-header";
+
+import {
+  FlashcardsIcon,
+  QuizModeCard,
+  SorterenIcon,
+  TypenIcon,
+} from "./quiz-mode-card";
+
+import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
 
 const QUIZ_MODES = [
   {
     title: "Flashcards",
-    description:
-      "Oefen met kaartjes: bronzin en vertaling om en om bekijken en zelf beoordelen.",
+    description: "Bekijk en beoordeel.",
     href: "/oefenen/flashcards",
-    comingSoon: false,
-  },
-  {
-    title: "Typen",
-    description:
-      "Typ de vertaling van een oefening — volledig of met ontbrekend woord.",
-    href: "/oefenen/typen",
-    comingSoon: false,
+    icon: <FlashcardsIcon />,
   },
   {
     title: "Sorteren",
-    description: "Zet woorden of letters in de juiste volgorde.",
+    description: "Zet in de juiste volgorde.",
     href: "/oefenen/sorteren",
-    comingSoon: false,
+    icon: <SorterenIcon />,
+  },
+  {
+    title: "Typen",
+    description: "Typ de vertaling.",
+    href: "/oefenen/typen",
+    icon: <TypenIcon />,
   },
 ] as const;
 
 export function ExercisesQuizPage() {
-  const { displayLabel } = useAppProfile();
-  const { stats, loading } = useExerciseSummaryStats();
+  const [selection, setSelection] = useState<QuizSelectionMode | null>(null);
 
   return (
     <div className="space-y-6">
       <AppPageHeader
-        eyebrow="Oefenen"
         title="Oefenen"
-        accountLabel={displayLabel}
-        description="Kies een quiz-vorm en hoe je wilt oefenen: willekeurig, spaced repetition of een eigen selectie."
-        stats={stats.map((stat) => ({ ...stat, loading }))}
+        description="Kies wat je oefent, en daarna hoe."
       />
 
-      <SrsDueCard />
-
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {QUIZ_MODES.map((mode) => (
-          <li key={mode.title}>
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold text-foreground">
+          Wat wil je oefenen?
+        </h2>
+        <ul
+          className="grid w-full max-w-xl grid-cols-1 gap-3 sm:grid-cols-2"
+          role="radiogroup"
+          aria-label="Selectiewijze"
+        >
+          <li className="h-full">
             <QuizModeCard
-              title={mode.title}
-              description={mode.description}
-              href={"href" in mode ? mode.href : undefined}
-              comingSoon={mode.comingSoon}
+              title="Topic"
+              description="Kies een groep uit je leerplan."
+              selected={selection === "topic"}
+              onSelect={() => setSelection("topic")}
             />
           </li>
-        ))}
-      </ul>
+          <li className="h-full">
+            <QuizModeCard
+              title="Herhaalschema"
+              description="Alleen wat nu aan herhaling toe is."
+              selected={selection === "srs"}
+              onSelect={() => setSelection("srs")}
+            />
+          </li>
+        </ul>
+      </section>
+
+      {selection && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">
+            Hoe wil je oefenen?
+          </h2>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {QUIZ_MODES.map((mode) => (
+              <li key={mode.title} className="h-full">
+                <QuizModeCard
+                  title={mode.title}
+                  description={mode.description}
+                  href={`${mode.href}?modus=${selection}`}
+                  icon={mode.icon}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

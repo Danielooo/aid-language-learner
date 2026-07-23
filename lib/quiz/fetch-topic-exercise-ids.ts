@@ -1,6 +1,6 @@
 import { fisherYatesShuffle } from "@/lib/quiz/shuffle";
 
-import type { ExercisePickerItem } from "@/types/quiz";
+import type { ExerciseListItem } from "@/types/quiz";
 
 const PAGE_SIZE = 200;
 
@@ -16,9 +16,9 @@ export type FetchTopicExerciseIdsResult = {
  */
 export async function fetchTopicExerciseIds(
   topic: string,
-  filter?: (item: ExercisePickerItem) => boolean,
+  filter?: (item: ExerciseListItem) => boolean,
 ): Promise<FetchTopicExerciseIdsResult> {
-  const allItems: ExercisePickerItem[] = [];
+  const allItems: ExerciseListItem[] = [];
   let page = 1;
   let total = 0;
 
@@ -40,7 +40,7 @@ export async function fetchTopicExerciseIds(
     }
 
     const data = (await res.json()) as {
-      exercises: ExercisePickerItem[];
+      exercises: ExerciseListItem[];
       total: number;
     };
     allItems.push(...data.exercises);

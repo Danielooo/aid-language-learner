@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { QueryProvider } from "@/app/_components/query-provider";
 import { ThemeProvider } from "@/app/_components/theme-provider";
 
 import type { Metadata, Viewport } from "next";
@@ -48,7 +49,9 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col font-sans">
         {/* Header per route-group: publiek/auth renderen SiteHeaderServer
             zelf; de (app)-groep heeft een eigen app-shell met tab-navigatie. */}
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <QueryProvider>{children}</QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

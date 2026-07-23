@@ -10,7 +10,6 @@ export type AppPageHeaderStat = {
 };
 
 type AppPageHeaderProps = {
-  eyebrow: string;
   title: string;
   /** Zichtbare accountnaam (Naam), zonder @-prefix. */
   accountLabel?: string;
@@ -19,6 +18,9 @@ type AppPageHeaderProps = {
   actions?: ReactNode;
   stats?: AppPageHeaderStat[];
   hideStats?: boolean;
+  className?: string;
+  titleClassName?: string;
+  descriptionClassName?: string;
 };
 
 function StatItem({
@@ -52,7 +54,6 @@ function StatItem({
 }
 
 export function AppPageHeader({
-  eyebrow,
   title,
   accountLabel,
   description,
@@ -60,17 +61,21 @@ export function AppPageHeader({
   actions,
   stats,
   hideStats = false,
+  className,
+  titleClassName,
+  descriptionClassName,
 }: AppPageHeaderProps) {
   const showStats = !hideStats && stats && stats.length > 0;
 
   return (
-    <header className="space-y-4">
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {eyebrow}
-      </p>
-
+    <header className={cn("space-y-4", className)}>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        <h1
+          className={cn(
+            "text-2xl font-semibold tracking-tight text-foreground",
+            titleClassName,
+          )}
+        >
           {title}
         </h1>
         <div className="flex flex-wrap items-center gap-3">
@@ -90,7 +95,9 @@ export function AppPageHeader({
       )}
 
       {description && (
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className={cn("text-sm text-muted-foreground", descriptionClassName)}>
+          {description}
+        </p>
       )}
 
       {showStats && (

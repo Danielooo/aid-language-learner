@@ -1,0 +1,73 @@
+---
+description: Pagina-chrome (indeling, spacing, header, tabs) — niet feature-inhoud
+globs: app/(app)/**/*.tsx,app/_components/features/**/*.tsx,app/_components/ui/app-page-header.tsx,app/_components/ui/container.tsx
+alwaysApply: false
+---
+
+# Pagina-layout (chrome)
+
+Dit geldt voor **page chrome** (shell, header, spacing, tabs, card vs tabel).
+Body-inhoud per tab/feature is vrij zolang de chrome-patronen hieronder kloppen.
+Forceer geen nieuwe features, widgets of shared primitives om “mooi” te zijn.
+
+Complementair: `ui-terminology` = copy · `styling-tailwind` = Tailwind-techniek · dit = pagina-samenstelling.
+
+## Shell
+
+- Authenticated pages leven in `app/(app)/layout.tsx` (`Container width="xl"`, `gap-6` / `py-6`).
+- Geen tweede `Container` om app-pages heen (auth/marketing mag wel eigen container).
+
+## Page root + header
+
+```tsx
+// ✅
+<div className="space-y-6">
+  <AppPageHeader title="…" description="…" />
+  {/* body */}
+</div>
+
+// ❌ ad-hoc h1 + border-rij i.p.v. AppPageHeader
+```
+
+- Eén `AppPageHeader` bovenaan (`app/_components/ui/app-page-header.tsx`).
+- `title` verplicht; `description` / `actions` / `meta` naar behoefte.
+- Geen `accountLabel` of `stats` op user-pagina’s — account zit in de top nav.
+
+## Chrome per paginatype
+
+Kies het skelet dat bij de pagina past; vul de body met feature-inhoud.
+
+| Type | Voorbeelden | Chrome |
+| --- | --- | --- |
+| Lijst/data | Leerplan, Community, Admin review | Toolbar → optionele count → `rounded-md border` tabel; empty = muted one-liner (+ link), geen card-empty-state |
+| Hub/chooser | Oefenen, Admin home | Card-grid: `rounded-lg border bg-card p-5` |
+| Quiz-flow | Flashcards/Typen/Sorteren | Setup mag `rounded-2xl` + gradient; subpages met `meta` back-link |
+| Dashboard | Voortgang | Charts in card-shells; tabellen niet in chart-cards |
+| Profiel | Profiel | Uitzondering: `max-w-xl space-y-10` form-layout |
+
+## Tabs
+
+```tsx
+<div role="tablist" className="flex flex-wrap gap-2 border-b border-border pb-2">
+  <button
+    type="button"
+    role="tab"
+    className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+      active
+        ? "bg-muted text-foreground"
+        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+    }`}
+  >
+    …
+  </button>
+</div>
+```
+
+- Actief = `bg-muted text-foreground` (niet `bg-accent`, geen derde variant).
+- Tabs wisselen alleen body-inhoud; herhaal de page-header niet per tab.
+
+## Niet doen
+
+- Geen nieuwe `PageShell` / `EmptyState` / `Tabs`-primitive tenzij je bestaande duplicatie extract.
+- Bron van waarheid: `(app)/layout.tsx`, `app-page-header.tsx`, `container.tsx`.
+- Chrome-consistency ≠ feature-UX herschrijven.

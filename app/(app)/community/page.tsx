@@ -11,9 +11,8 @@ export default function CommunityPage() {
   return (
     <div className="space-y-6">
       <AppPageHeader
-        eyebrow="Bijdragen"
         title="Community"
-        description="Bied oefeningengroepen aan en volg de status van je bijdragen. Pending, goedgekeurd en afgekeurd tonen de snapshot die je indiende — niet je actuele leerplan."
+        description="Haal onder Overnemen een goedgekeurd community-topic binnen als bewerkbare kopie in je leerplan, of bied eigen topics aan onder Bijdragen."
       />
       <CommunityPageContent />
     </div>

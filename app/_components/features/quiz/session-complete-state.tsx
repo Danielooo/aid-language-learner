@@ -1,13 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
 
-import {
-  formatQuizShortcut,
-  isQuizShortcut,
-  QUIZ_SHORTCUTS,
-} from "@/lib/keyboard/quiz-shortcuts";
 import { APP_ROUTES } from "@/lib/routes";
 
 import type { QuizSessionPhase } from "./hooks/use-quiz-session";
@@ -31,30 +25,6 @@ export function SessionCompleteState({
   onStartMistakeReview,
   onFinish,
 }: SessionCompleteStateProps) {
-  useEffect(() => {
-    if (phase !== "main-complete" || mistakeCount === 0) return;
-
-    function onKeyDown(e: KeyboardEvent) {
-      const target = e.target;
-      const inInput =
-        target instanceof HTMLElement &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.tagName === "SELECT" ||
-          target.isContentEditable);
-      if (inInput) return;
-
-      if (isQuizShortcut(e, QUIZ_SHORTCUTS.reviewMistakes)) {
-        e.preventDefault();
-        onStartMistakeReview();
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown, { capture: true });
-    return () =>
-      window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, [phase, mistakeCount, onStartMistakeReview]);
-
   if (phase === "main-complete") {
     return (
       <div className="mx-auto max-w-lg space-y-5 text-center">
@@ -68,7 +38,7 @@ export function SessionCompleteState({
           <p className="text-xs text-muted-foreground">
             {skippedIneligible} oefening
             {skippedIneligible === 1 ? "" : "en"} overgeslagen (niet geschikt
-            voor deze quiz).
+            voor deze sessie).
           </p>
         )}
         <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
@@ -78,7 +48,7 @@ export function SessionCompleteState({
               onClick={onStartMistakeReview}
               className="cursor-pointer rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
             >
-              Fouten opnieuw doen ({formatQuizShortcut(QUIZ_SHORTCUTS.reviewMistakes)})
+              Fouten opnieuw doen
             </button>
           )}
           <button
@@ -175,7 +145,7 @@ function BackToOefenenLink() {
   );
 }
 
-/** Voortgangstekst voor topic- en custom-sessies. */
+/** Voortgangstekst voor topic-sessies. */
 export function formatQueueProgressLabel(
   progress: number,
   total: number,

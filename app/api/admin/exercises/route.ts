@@ -69,7 +69,8 @@ export type ExercisesAdminDeleteResponse =
   | ExercisesAdminDeleteFailure;
 
 export async function GET(req: Request): Promise<Response> {
-  await assertAdmin();
+  const auth = await assertAdmin();
+  if (!auth.ok) return auth.response;
 
   const reqUrl = new URL(req.url);
   const parse = listQuerySchema.safeParse({
@@ -144,7 +145,8 @@ export async function GET(req: Request): Promise<Response> {
 }
 
 export async function DELETE(req: Request): Promise<Response> {
-  await assertAdmin();
+  const auth = await assertAdmin();
+  if (!auth.ok) return auth.response;
 
   let body: unknown;
   try {

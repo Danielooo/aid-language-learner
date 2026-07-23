@@ -61,4 +61,5 @@ export type ExerciseGroupRow = {
   updated_at: string;
 };
 
-export const USER_AI_REQUESTS_PER_DAY = 10;
+/** Tijdelijk 100 tijdens development; productintentie blijft 10 (REQUIREMENTS). */
+export const USER_AI_REQUESTS_PER_DAY = 100;

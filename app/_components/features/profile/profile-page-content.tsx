@@ -41,7 +41,6 @@ export function ProfilePageContent({
   return (
     <div className="mx-auto w-full max-w-xl space-y-10">
       <AppPageHeader
-        eyebrow="Account"
         title="Profiel"
         description="Bekijk en wijzig je accountgegevens."
       />

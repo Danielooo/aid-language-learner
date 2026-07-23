@@ -1,0 +1,60 @@
+---
+description: Canonieke UI-benamingen — gebruik deze termen in alle user-facing copy
+alwaysApply: true
+---
+
+# UI-terminologie (single source of truth)
+
+Onderhoud hier de woordenlijst. Bij twijfel over een label: deze file, niet synoniemen verzinnen.
+
+## Harde regels
+
+1. User-facing copy is **Nederlands**, behalve vaste productnamen in de tabel.
+2. Gebruik **Canoniek**; schrijf nooit de termen onder **Vermijd** in UI-strings,
+   aria-labels, empty states, toasts of foutmeldingen.
+3. Code/DB/API-identifiers (`topic`, `global`, `quiz_attempts`, …) **niet** hernoemen
+   om UI-taal te matchen — alleen wat de gebruiker ziet.
+
+## Woordenlijst
+
+| Concept | Canoniek (UI) | Vermijd |
+| --- | --- | --- |
+| Collectie oefeningen | Topic | Set, Globaal |
+| Één oefenitem | Oefening | Kaart/kaartjes als entiteitsnaam |
+| Persoonlijk overzicht | Leerplan | Mijn leerplan (als nav/titel) |
+| Gedeeld corpus | Community | Globaal |
+| Community-acties | Bijdragen, Overnemen | — |
+| Admin-review van bijdragen | Bijdragen beoordelen | Review-queue, Review queue |
+| Review-status | Pending, Goedgekeurd, Afgekeurd | In behandeling (naast Pending) |
+| Oefengebied | Leren | Quiz (als gebiedsnaam) |
+| Oefenvormen | Flashcards, Typen, Sorteren | — |
+| Oefeningen met gesproken audio | Spraakoefeningen | Tatoeba-spraakoefeningen, Tatoeba-opnames (als lead-term) |
+| Herhalingssysteem | Herhaalschema | Spaced repetition, SRS |
+| Score-metriek | Nauwkeurigheid | Accuraatheid |
+| Admin-gebied | Beheer | — |
+| Rollen (UI) | Gebruiker, Admin | User, Beheerder |
+| Admin-gebruikerslijst | Gebruikers beheren | Gebruikers (als paginatitel/nav) |
+| Nieuw admin-account | Admin aanmaken | Nieuwe Beheerder |
+| Login-veld | Gebruikersnaam | Username |
+| Sleutelwoorden van oefening | Tags | - |
+| Tekst in de brontaal (oefening) | Brontaal (SPA) | sentence_text, bronzin, source text, Spaans (als kolomnaam), Brontaal |
+| Vertaling van de oefening | Vertaling (NL) | vertaling (NL) (lowercase), translation, doeltekst, Vertaling |
+
+
+## Uitzonderingen
+
+- Flashcard-*interactie*: "draai de kaart om" mag (UX-metafoor); tellen/lege staten = oefening.
+- Eerste uitleg herhaalschema mag één keer "(spaced repetition)" tussen haakjes.
+- Productnamen Community, Generator, Flashcards, Pending, Admin blijven zo.
+
+## Bronvermelding Tatoeba (audio)
+
+Gebruikers kennen Tatoeba niet. In user-facing copy:
+
+1. Lead met **spraakoefeningen** (wat de app doet), niet met “Tatoeba”.
+2. Bron mag wél: *De audiobestanden komen uit de Tatoeba-API* — hyperlink
+   “Tatoeba-API” naar `https://api.tatoeba.org` (`target="_blank"` +
+   `rel="noopener noreferrer"`).
+3. Vermijd lead-frases als “Zoek Tatoeba-opnames” / “Tatoeba-spraakoefeningen”.
+4. Code/comments/admin-import mogen “Tatoeba” gewoon noemen; dit geldt voor
+   UI-copy die eindgebruikers lezen (Generator Audio-tab, empty states, e.d.).

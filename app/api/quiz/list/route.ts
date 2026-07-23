@@ -5,16 +5,16 @@ import {
   isTopicActive,
 } from "@/lib/topics/active-topics";
 
-// Lichte lijst van oefeningen voor de custom exercise-picker in de quiz.
+// Lichte gepagineerde lijst van oefeningen (o.a. topic-queue opbouw).
 
 export const dynamic = "force-dynamic";
 
 import type {
   ExerciseListResponse,
-  ExercisePickerItem,
+  ExerciseListItem,
 } from "@/types/quiz";
 
-export type { ExerciseListResponse, ExercisePickerItem };
+export type { ExerciseListResponse, ExerciseListItem };
 
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 200;
@@ -69,6 +69,7 @@ export async function GET(req: Request) {
   let query = access.supabase
     .from("exercises")
     .select("id, source_text, target_text, topic", { count: "exact" })
+    .eq("owner_id", access.userId)
     .in("topic", activeList)
     .order("created_at", { ascending: false })
     .range(from, to);

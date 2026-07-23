@@ -63,7 +63,8 @@ function parseStatus(raw: string | null): GroupSubmissionStatus | null {
 }
 
 export async function GET(req: Request): Promise<Response> {
-  await assertAdmin();
+  const auth = await assertAdmin();
+  if (!auth.ok) return auth.response;
   const admin = getSupabaseAdmin();
 
   const status = parseStatus(new URL(req.url).searchParams.get("status"));
@@ -118,7 +119,9 @@ export async function GET(req: Request): Promise<Response> {
  * Goedkeuren: copy-on-approve vanuit pending of rejected snapshot.
  */
 export async function POST(req: Request): Promise<Response> {
-  const adminUser = await assertAdmin();
+  const auth = await assertAdmin();
+  if (!auth.ok) return auth.response;
+  const adminUser = auth.user;
   const admin = getSupabaseAdmin();
 
   let body: unknown;

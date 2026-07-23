@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
+import { isUserBanned } from "@/lib/auth/is-banned";
 import { isAdminUser } from "@/lib/auth/is-admin";
 import { APP_ROUTES } from "@/lib/routes";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -20,13 +21,18 @@ export default async function AdminLayout({
   if (!user) {
     redirect(`${APP_ROUTES.login}?next=${APP_ROUTES.admin}`);
   }
+  if (isUserBanned(user)) {
+    await supabase.auth.signOut();
+    redirect(`${APP_ROUTES.login}?fout=deactivated`);
+  }
   if (!isAdminUser(user)) {
     redirect(APP_ROUTES.oefenen);
   }
 
   const links = [
-    { href: APP_ROUTES.adminReview, label: "Review-queue" },
-    { href: APP_ROUTES.adminGebruikers, label: "Gebruikers" },
+    { href: APP_ROUTES.adminBijdragen, label: "Bijdragen beoordelen" },
+    { href: APP_ROUTES.adminGebruikers, label: "Gebruikers beheren" },
+    { href: APP_ROUTES.adminAanmaken, label: "Admin aanmaken" },
   ] as const;
 
   return (

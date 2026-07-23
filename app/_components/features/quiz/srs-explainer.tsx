@@ -58,11 +58,6 @@ export function SrsExplainer({ compact = false }: SrsExplainerProps) {
             </div>
           );
         })}
-
-        <p className="text-xs">
-          Overslaan telt niet mee. Via <em>Niet meer tonen</em> kun je een oefening
-          uitsluiten.
-        </p>
       </div>
     </details>
   );

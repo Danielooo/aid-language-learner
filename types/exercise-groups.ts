@@ -8,11 +8,12 @@ import type {
   GroupSubmissionStatus,
 } from "@/types/exercise-group-submission";
 
-/** Of een persoonlijke groep aangeboden mag worden aan de community. */
+/** Laatste community-aanbiedstatus van een persoonlijke groep (geen historie). */
 export type GroupOfferState =
   | "available"
   | "pending"
   | "approved"
+  | "rejected"
   | "empty";
 
 export type ExerciseGroupListItem = {
@@ -21,10 +22,39 @@ export type ExerciseGroupListItem = {
   exerciseCount: number;
   /** Alleen relevant voor personal: actief in oefenen/SRS via topic-prefs. */
   isActive?: boolean;
-  /** Alleen relevant voor community-corpus: al een eigen groep met dezelfde naam. */
+  /** Alleen relevant voor community-corpus: al overgenomen in leerplan. */
   alreadyCopied?: boolean;
-  /** Community: mag deze personal groep (opnieuw) aangeboden worden? */
+  /** ISO-timestamp van de personal kopie; null als niet overgenomen. */
+  copiedAt?: string | null;
+  /** Geaggregeerde tags van lid-oefeningen (voor zoeken op Overnemen). */
+  tagText?: string;
+  /** Community: laatste aanbiedstatus (of empty/available). */
   offerState?: GroupOfferState;
+  /** ISO-timestamp van die laatste status; null als nooit aangeboden. */
+  offerStatusAt?: string | null;
+  /** Community: afwijsreden van de laatste submission (alleen bij rejected). */
+  rejectReason?: string | null;
+  /**
+   * Community: live-inhoud wijkt af van de afgekeurde snapshot.
+   * Alleen gezet bij offerState === "rejected"; nodig om opnieuw te mogen aanbieden.
+   */
+  changedSinceReject?: boolean;
+  /**
+   * Personal: bron-community-groep; null = zelf gemaakt (of legacy zonder link).
+   */
+  sourceGroupId?: string | null;
+  /**
+   * Personal: minstens één lid-oefening handmatig aangepast (tekst/tags).
+   */
+  isEdited?: boolean;
+  /**
+   * Personal: minstens één lid-oefening heeft Tatoeba-audio (`audio_path`).
+   */
+  hasAudio?: boolean;
+};
+
+export type ExerciseGroupsDeleteSuccess = {
+  ok: true;
 };
 
 export type ExerciseGroupMember = {
@@ -40,8 +70,12 @@ export type ExerciseGroupDetail = {
   name: string;
   exerciseCount: number;
   alreadyCopied: boolean;
+  /** ISO-timestamp van de personal kopie; null als niet overgenomen. */
+  copiedAt?: string | null;
   members: ExerciseGroupMember[];
   offerState?: GroupOfferState;
+  rejectReason?: string | null;
+  changedSinceReject?: boolean;
 };
 
 export type ExerciseGroupsListSuccess = {
@@ -61,9 +95,18 @@ export type ExerciseGroupCopySuccess = {
   exerciseCount: number;
 };
 
+export type ExerciseGroupBulkCopySuccess = {
+  ok: true;
+  copied: number;
+  skipped: number;
+  errors: string[];
+};
+
 export type ExerciseGroupsFailure = {
   ok: false;
   error: string;
+  code?: "NAME_CONFLICT";
+  suggestedName?: string;
 };
 
 export type ExerciseGroupSubmitSuccess = {

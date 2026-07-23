@@ -149,7 +149,8 @@ export type PersistResponse = PreflightSuccess | ApplySuccess | PersistFailure;
 // ── Handler ──────────────────────────────────────────────────────────
 
 export async function POST(req: Request): Promise<Response> {
-  await assertAdmin();
+  const auth = await assertAdmin();
+  if (!auth.ok) return auth.response;
 
   let parsedBody: unknown;
   try {

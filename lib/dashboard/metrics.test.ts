@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildDashboardStats, computeSrsStepDistribution } from "@/lib/dashboard/metrics";
+import {
+  buildDashboardStats,
+  computeSrsStepDistribution,
+  computeTopicProgress,
+  computeUpcomingByDay,
+} from "@/lib/dashboard/metrics";
 
-import type { ProgressRow } from "@/lib/dashboard/types";
+import type { ExerciseTopicRow, ProgressRow } from "@/lib/dashboard/types";
 
 const NOW = new Date("2026-07-09T12:00:00.000Z");
 
@@ -142,5 +147,213 @@ describe("buildDashboardStats", () => {
     );
 
     assert.equal(chartDueTotal, stats.dueNowCount);
+  });
+
+  it("telt masteredCount bij 9× goed of meer", () => {
+    const rows: ProgressRow[] = [
+      makeRow({ exercise_id: "a", repetition_count: 8 }),
+      makeRow({
+        exercise_id: "b",
+        repetition_count: 9,
+        interval_days: 90,
+        last_reviewed_at: "2026-06-01T12:00:00.000Z",
+        next_review_at: "2026-09-01T12:00:00.000Z",
+      }),
+      makeRow({
+        exercise_id: "c",
+        repetition_count: 10,
+        interval_days: 180,
+        last_reviewed_at: "2026-01-01T12:00:00.000Z",
+        next_review_at: "2026-12-01T12:00:00.000Z",
+      }),
+    ];
+    const exercises: ExerciseTopicRow[] = [
+      { id: "a", topic: "A" },
+      { id: "b", topic: "A" },
+      { id: "c", topic: "A" },
+    ];
+
+    const stats = buildDashboardStats(rows, [], NOW, exercises);
+    assert.equal(stats.masteredCount, 2);
+    assert.equal(stats.totalExercises, 3);
+  });
+});
+
+describe("computeTopicProgress", () => {
+  it("berekent % klaar en status per topic, laagste % eerst", () => {
+    const exercises: ExerciseTopicRow[] = [
+      { id: "a1", topic: "Alpha" },
+      { id: "a2", topic: "Alpha" },
+      { id: "b1", topic: "Beta" },
+      { id: "b2", topic: "Beta" },
+      { id: "b3", topic: "Beta" },
+    ];
+    const rows: ProgressRow[] = [
+      makeRow({
+        exercise_id: "a1",
+        repetition_count: 9,
+        interval_days: 90,
+        next_review_at: "2026-09-01T12:00:00.000Z",
+      }),
+      makeRow({
+        exercise_id: "a2",
+        repetition_count: 9,
+        interval_days: 90,
+        next_review_at: "2026-09-01T12:00:00.000Z",
+      }),
+      makeRow({ exercise_id: "b1", repetition_count: 9, next_review_at: "2026-09-01T12:00:00.000Z" }),
+      makeRow({ exercise_id: "b2", repetition_count: 2 }),
+      // b3 zonder progress
+    ];
+
+    const topics = computeTopicProgress(exercises, rows, NOW);
+
+    assert.equal(topics[0]?.topic, "Beta");
+    assert.equal(topics[0]?.masteredCount, 1);
+    assert.equal(topics[0]?.totalCount, 3);
+    // (9 + 2 + 0) / (3 × 9) = 41% — voortgang tot alles beheerst
+    assert.equal(topics[0]?.percentMastered, 41);
+    // 41% < 44% (4/9) → bezig
+    assert.equal(topics[0]?.status, "bezig");
+    assert.equal(topics[0]?.dueCount, 2);
+    assert.deepEqual(topics[0]?.buckets, {
+      nogNiet: 1,
+      bezig: 1,
+      gevorderd: 0,
+      beheerst: 1,
+    });
+
+    assert.equal(topics[1]?.topic, "Alpha");
+    assert.equal(topics[1]?.percentMastered, 100);
+    assert.equal(topics[1]?.status, "beheerst");
+    assert.deepEqual(topics[1]?.buckets, {
+      nogNiet: 0,
+      bezig: 0,
+      gevorderd: 0,
+      beheerst: 2,
+    });
+  });
+
+  it("markeert topic als gestart bij progress-rij met 0× goed", () => {
+    const exercises: ExerciseTopicRow[] = [
+      { id: "x1", topic: "Xi" },
+      { id: "x2", topic: "Xi" },
+    ];
+    const rows: ProgressRow[] = [
+      makeRow({
+        exercise_id: "x1",
+        repetition_count: 0,
+        last_reviewed_at: "2026-07-09T11:00:00.000Z",
+        next_review_at: "2026-07-09T11:00:00.000Z",
+      }),
+    ];
+
+    const topics = computeTopicProgress(exercises, rows, NOW);
+    assert.equal(topics[0]?.status, "bezig");
+    assert.equal(topics[0]?.percentMastered, 0);
+    assert.deepEqual(topics[0]?.buckets, {
+      nogNiet: 2,
+      bezig: 0,
+      gevorderd: 0,
+      beheerst: 0,
+    });
+  });
+
+  it("gebruikt ver-gevorderd vanaf ~4× gemiddeld (bucket Gevorderd)", () => {
+    const exercises: ExerciseTopicRow[] = [
+      { id: "g1", topic: "Gamma" },
+      { id: "g2", topic: "Gamma" },
+      { id: "g3", topic: "Gamma" },
+    ];
+    // Alle 6× → 67% ≥ 44%
+    const rows: ProgressRow[] = [
+      makeRow({
+        exercise_id: "g1",
+        repetition_count: 6,
+        next_review_at: "2026-09-01T12:00:00.000Z",
+      }),
+      makeRow({
+        exercise_id: "g2",
+        repetition_count: 6,
+        next_review_at: "2026-09-01T12:00:00.000Z",
+      }),
+      makeRow({
+        exercise_id: "g3",
+        repetition_count: 6,
+        next_review_at: "2026-09-01T12:00:00.000Z",
+      }),
+    ];
+
+    const topics = computeTopicProgress(exercises, rows, NOW);
+    assert.equal(topics[0]?.percentMastered, 67);
+    assert.equal(topics[0]?.status, "ver-gevorderd");
+  });
+});
+
+describe("computeUpcomingByDay", () => {
+  it("zet achterstallige reviews onder Open en geeft Open + 7 dagen", () => {
+    const exercises: ExerciseTopicRow[] = [
+      { id: "overdue", topic: "A" },
+      { id: "tomorrow", topic: "A" },
+      { id: "fresh", topic: "A" },
+    ];
+    const rows: ProgressRow[] = [
+      makeRow({
+        exercise_id: "overdue",
+        repetition_count: 4,
+        next_review_at: "2026-07-01T12:00:00.000Z",
+      }),
+      makeRow({
+        exercise_id: "tomorrow",
+        repetition_count: 4,
+        next_review_at: "2026-07-10T12:00:00.000Z",
+      }),
+      // fresh: geen progress → Open
+    ];
+
+    const upcoming = computeUpcomingByDay(exercises, rows, NOW);
+    assert.equal(upcoming.length, 8);
+
+    const open = upcoming.find((day) => day.label === "Open");
+    const today = upcoming.find((day) => day.label === "Vandaag");
+    const tomorrow = upcoming.find((day) => day.label === "Morgen");
+
+    assert.ok(open);
+    assert.equal(open.count, 2);
+    assert.ok(today);
+    assert.equal(today.count, 0);
+    assert.ok(tomorrow);
+    assert.equal(tomorrow.count, 1);
+    assert.ok(upcoming.every((day) => typeof day.count === "number"));
+  });
+
+  it("telt later vandaag onder Vandaag terwijl dueNow dat niet doet", () => {
+    const exercises: ExerciseTopicRow[] = [
+      { id: "later-today", topic: "A" },
+    ];
+    const rows: ProgressRow[] = [
+      makeRow({
+        exercise_id: "later-today",
+        repetition_count: 3,
+        interval_days: 1,
+        last_reviewed_at: "2026-07-09T10:00:00.000Z",
+        next_review_at: "2026-07-09T20:00:00.000Z",
+      }),
+    ];
+
+    const upcoming = computeUpcomingByDay(exercises, rows, NOW);
+    const open = upcoming.find((day) => day.label === "Open");
+    const today = upcoming.find((day) => day.label === "Vandaag");
+    assert.ok(open);
+    assert.equal(open.count, 0);
+    assert.ok(today);
+    assert.equal(today.count, 1);
+
+    const stats = buildDashboardStats(rows, [], NOW, exercises);
+    assert.equal(stats.dueNowCount, 0);
+    assert.equal(
+      stats.upcomingByDay.find((day) => day.label === "Vandaag")?.count,
+      1,
+    );
   });
 });

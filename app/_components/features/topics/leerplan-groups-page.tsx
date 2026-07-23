@@ -1,333 +1,407 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { APP_ROUTES } from "@/lib/routes";
+import { APP_ROUTES, leerplanGroupPath } from "@/lib/routes";
+import { queryKeys } from "@/lib/query-keys";
+import { fetchJson } from "@/lib/api/fetch-json";
 
-import { LeerplanGroupCard } from "./leerplan-group-card";
-import { LeerplanGroupModal } from "./leerplan-group-modal";
+import { LeerplanGroupDeleteDialog } from "./leerplan-group-delete-dialog";
 
 import type {
-  ExerciseGroupDetail,
-  ExerciseGroupDetailSuccess,
   ExerciseGroupListItem,
+  ExerciseGroupsDeleteSuccess,
   ExerciseGroupsListSuccess,
 } from "@/types/exercise-groups";
 
-type TabId = "global" | "personal";
+type OriginFilter = "all" | "personal" | "community";
+type EditedFilter = "all" | "yes" | "no";
+type ActiveFilter = "all" | "active" | "inactive";
 
-type LeerplanGroupsPageProps = {
-  onStatsChange?: (stats: {
-    personalCount: number;
-    activeCount: number;
-    globalCount: number;
-  }) => void;
-};
-
-async function fetchGroups(
-  scope: "global" | "mine",
-): Promise<ExerciseGroupListItem[]> {
-  const res = await fetch(`/api/exercise-groups/${scope}`, {
-    cache: "no-store",
-  });
-  const body = (await res.json()) as ExerciseGroupsListSuccess & {
-    error?: string;
-  };
-  if (!res.ok || !body.ok) {
-    throw new Error(body.error ?? `Status ${res.status}`);
-  }
-  return body.groups;
+function isCommunityOrigin(item: ExerciseGroupListItem): boolean {
+  return Boolean(item.sourceGroupId);
 }
 
-async function fetchGroupDetail(
-  scope: "global" | "mine",
-  id: string,
-): Promise<ExerciseGroupDetail> {
-  const res = await fetch(`/api/exercise-groups/${scope}/${id}`, {
-    cache: "no-store",
-  });
-  const body = (await res.json()) as ExerciseGroupDetailSuccess & {
-    error?: string;
-  };
-  if (!res.ok || !body.ok) {
-    throw new Error(body.error ?? `Status ${res.status}`);
-  }
-  return body.group;
+function formatTagPreview(tagText: string | undefined): {
+  preview: string;
+  full: string | undefined;
+} {
+  if (!tagText?.trim()) return { preview: "—", full: undefined };
+  const parts = tagText
+    .split(/[,\s]+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const unique = Array.from(new Set(parts));
+  if (unique.length === 0) return { preview: "—", full: undefined };
+  const full = unique.join(", ");
+  return { preview: full, full };
 }
 
-export function LeerplanGroupsPage({ onStatsChange }: LeerplanGroupsPageProps) {
-  const [tab, setTab] = useState<TabId>("personal");
-  const [globalGroups, setGlobalGroups] = useState<ExerciseGroupListItem[]>([]);
-  const [personalGroups, setPersonalGroups] = useState<ExerciseGroupListItem[]>(
-    [],
-  );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [togglingName, setTogglingName] = useState<string | null>(null);
+/**
+ * Overzichtstabel van persoonlijke topics in het leerplan.
+ * Klik op een rij opent de bewerkpagina van dat topic.
+ */
+export function LeerplanGroupsPage() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalScope, setModalScope] = useState<"global" | "mine">("global");
-  const [modalGroupId, setModalGroupId] = useState<string | null>(null);
-  const [modalName, setModalName] = useState<string | null>(null);
-  const [modalDetail, setModalDetail] = useState<ExerciseGroupDetail | null>(
-    null,
-  );
-  const [modalLoading, setModalLoading] = useState(false);
-  const [modalError, setModalError] = useState<string | null>(null);
-  const [copyBusy, setCopyBusy] = useState(false);
+  const {
+    data: personalGroups = [],
+    isLoading: loading,
+    error: queryError,
+    isFetching,
+  } = useQuery({
+    queryKey: queryKeys.learningTopics(),
+    queryFn: async () => {
+      const body = await fetchJson<ExerciseGroupsListSuccess>(
+        "/api/exercise-groups/mine",
+      );
+      return body.groups;
+    },
+  });
 
-  const refreshLists = useCallback(async () => {
-    const [global, personal] = await Promise.all([
-      fetchGroups("global"),
-      fetchGroups("mine"),
-    ]);
-    setGlobalGroups(global);
-    setPersonalGroups(personal);
-    onStatsChange?.({
-      personalCount: personal.length,
-      activeCount: personal.filter((g) => g.isActive).length,
-      globalCount: global.length,
-    });
-  }, [onStatsChange]);
+  const [query, setQuery] = useState("");
+  const [originFilter, setOriginFilter] = useState<OriginFilter>("all");
+  const [editedFilter, setEditedFilter] = useState<EditedFilter>("all");
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
 
-  useEffect(() => {
-    let cancelled = false;
+  const [deleteTarget, setDeleteTarget] =
+    useState<ExerciseGroupListItem | null>(null);
 
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        await refreshLists();
-      } catch (err) {
-        if (!cancelled) {
-          setGlobalGroups([]);
-          setPersonalGroups([]);
-          setError(
-            err instanceof Error ? err.message : "Kon groepen niet laden.",
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshLists]);
-
-  async function handleToggleActive(name: string, isActive: boolean) {
-    const previous = personalGroups;
-    setTogglingName(name);
-    setPersonalGroups((current) =>
-      current.map((item) =>
-        item.name === name ? { ...item, isActive } : item,
-      ),
-    );
-    onStatsChange?.({
-      personalCount: previous.length,
-      activeCount: previous.filter((g) =>
-        g.name === name ? isActive : g.isActive,
-      ).length,
-      globalCount: globalGroups.length,
-    });
-
-    try {
-      const res = await fetch("/api/learning-topics", {
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({
+      name,
+      isActive,
+    }: {
+      name: string;
+      isActive: boolean;
+    }) => {
+      await fetchJson("/api/learning-topics", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: name, isActive }),
       });
-      const body = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok || !body.ok) {
-        throw new Error(body.error ?? `Status ${res.status}`);
-      }
-      await refreshLists();
-    } catch (err) {
-      setPersonalGroups(previous);
-      onStatsChange?.({
-        personalCount: previous.length,
-        activeCount: previous.filter((g) => g.isActive).length,
-        globalCount: globalGroups.length,
+    },
+    onMutate: async ({ name, isActive }) => {
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.learningTopics(),
       });
-      setError(
-        err instanceof Error ? err.message : "Kon voorkeur niet opslaan.",
+      const previous = queryClient.getQueryData<ExerciseGroupListItem[]>(
+        queryKeys.learningTopics(),
       );
-    } finally {
-      setTogglingName(null);
-    }
-  }
-
-  async function openModal(
-    scope: "global" | "mine",
-    item: ExerciseGroupListItem,
-  ) {
-    setModalScope(scope);
-    setModalGroupId(item.id);
-    setModalName(item.name);
-    setModalOpen(true);
-    setModalDetail(null);
-    setModalError(null);
-    setModalLoading(true);
-
-    try {
-      const detail = await fetchGroupDetail(scope, item.id);
-      setModalDetail(detail);
-      setModalName(detail.name);
-    } catch (err) {
-      setModalError(
-        err instanceof Error ? err.message : "Kon groep niet laden.",
+      queryClient.setQueryData<ExerciseGroupListItem[]>(
+        queryKeys.learningTopics(),
+        (old) =>
+          (old ?? []).map((g) =>
+            g.name === name ? { ...g, isActive } : g,
+          ),
       );
-    } finally {
-      setModalLoading(false);
-    }
-  }
-
-  function closeModal() {
-    if (copyBusy) return;
-    setModalOpen(false);
-    setModalGroupId(null);
-    setModalName(null);
-    setModalDetail(null);
-    setModalError(null);
-  }
-
-  async function handleCopy() {
-    if (!modalGroupId || modalDetail?.alreadyCopied) return;
-    setCopyBusy(true);
-    setModalError(null);
-
-    try {
-      const res = await fetch(
-        `/api/exercise-groups/global/${modalGroupId}/copy`,
-        { method: "POST" },
-      );
-      const body = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok || !body.ok) {
-        throw new Error(body.error ?? `Status ${res.status}`);
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) {
+        queryClient.setQueryData(
+          queryKeys.learningTopics(),
+          ctx.previous,
+        );
       }
-      await refreshLists();
-      setTab("personal");
-      setModalOpen(false);
-      setModalGroupId(null);
-      setModalName(null);
-      setModalDetail(null);
-      setModalError(null);
-    } catch (err) {
-      setModalError(
-        err instanceof Error ? err.message : "Kopiëren mislukt.",
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.learningTopics(),
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await fetchJson<ExerciseGroupsDeleteSuccess>(
+        `/api/exercise-groups/mine/${id}`,
+        { method: "DELETE" },
       );
-    } finally {
-      setCopyBusy(false);
-    }
+    },
+    onSuccess: () => {
+      setDeleteTarget(null);
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.learningTopics(),
+      });
+    },
+  });
+
+  const loadError = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Kon topics niet laden."
+    : null;
+
+  const actionError =
+    toggleActiveMutation.error instanceof Error
+      ? toggleActiveMutation.error.message
+      : deleteMutation.error instanceof Error
+        ? deleteMutation.error.message
+        : toggleActiveMutation.isError || deleteMutation.isError
+          ? "Actie mislukt."
+          : null;
+
+  const displayError = actionError ?? loadError;
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return personalGroups.filter((g) => {
+      if (originFilter === "personal" && isCommunityOrigin(g)) return false;
+      if (originFilter === "community" && !isCommunityOrigin(g)) return false;
+      if (editedFilter === "yes" && !g.isEdited) return false;
+      if (editedFilter === "no" && g.isEdited) return false;
+      if (activeFilter === "active" && !g.isActive) return false;
+      if (activeFilter === "inactive" && g.isActive) return false;
+
+      if (!q) return true;
+      if (g.name.toLowerCase().includes(q)) return true;
+      if ((g.tagText ?? "").toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [
+    personalGroups,
+    query,
+    originFilter,
+    editedFilter,
+    activeFilter,
+  ]);
+
+  function openGroupEditor(item: ExerciseGroupListItem) {
+    router.push(leerplanGroupPath(item.id));
   }
 
-  const tabButtonClass = (id: TabId) =>
-    `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-      tab === id
-        ? "bg-accent text-accent-foreground"
-        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-    }`;
+  function handleToggleActive(name: string, isActive: boolean) {
+    toggleActiveMutation.mutate({ name, isActive });
+  }
 
-  const visibleGroups = tab === "global" ? globalGroups : personalGroups;
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    deleteMutation.mutate(deleteTarget.id);
+  }
+
+  const isRefreshing = isFetching && !loading;
 
   return (
-    <div className="space-y-6">
-      <div
-        role="tablist"
-        aria-label="Leerplan-tabs"
-        className="flex flex-wrap gap-2"
-      >
+    <div className="space-y-4">
+
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-sm">
+          <span className="text-xs text-muted-foreground">Zoeken</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Topic of tags…"
+            className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs text-muted-foreground">Herkomst</span>
+          <select
+            value={originFilter}
+            onChange={(e) =>
+              setOriginFilter(e.target.value as OriginFilter)
+            }
+            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+          >
+            <option value="all">Alles</option>
+            <option value="personal">Persoonlijk</option>
+            <option value="community">Community</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs text-muted-foreground">Bewerkt</span>
+          <select
+            value={editedFilter}
+            onChange={(e) =>
+              setEditedFilter(e.target.value as EditedFilter)
+            }
+            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+          >
+            <option value="all">Alles</option>
+            <option value="yes">Ja</option>
+            <option value="no">Nee</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs text-muted-foreground">Actief</span>
+          <select
+            value={activeFilter}
+            onChange={(e) =>
+              setActiveFilter(e.target.value as ActiveFilter)
+            }
+            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+          >
+            <option value="all">Alles</option>
+            <option value="active">Actief</option>
+            <option value="inactive">Inactief</option>
+          </select>
+        </label>
         <button
           type="button"
-          role="tab"
-          aria-selected={tab === "personal"}
-          onClick={() => setTab("personal")}
-          className={tabButtonClass("personal")}
+          disabled={loading || isRefreshing}
+          onClick={() =>
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.learningTopics(),
+            })
+          }
+          className="ml-auto inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-foreground disabled:opacity-50"
         >
-          Persoonlijke oefeningengroepen ({personalGroups.length})
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "global"}
-          onClick={() => setTab("global")}
-          className={tabButtonClass("global")}
-        >
-          Community oefeningengroepen ({globalGroups.length})
+          Ververs
         </button>
       </div>
 
-      {error && (
-        <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
+      <p className="text-xs text-muted-foreground">
+        {filtered.length} zichtbaar
+        {query.trim() ? ` · filter: “${query.trim()}”` : ""}
+        {personalGroups.length > 0
+          ? ` · ${personalGroups.length} totaal`
+          : ""}
+      </p>
+
+      {displayError && (
+        <p
+          className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          role="alert"
+        >
+          {displayError}
         </p>
       )}
 
       {loading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-28 animate-pulse rounded-2xl border border-border bg-muted/40"
-            />
-          ))}
-        </div>
-      ) : visibleGroups.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Laden…</p>
+      ) : personalGroups.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          {tab === "personal" ? (
-            <>
-              Nog geen persoonlijke oefeningengroepen.{" "}
-              <Link
-                href={APP_ROUTES.generator}
-                className="font-medium text-accent underline-offset-2 hover:underline"
-              >
-                Genereer oefeningen
-              </Link>{" "}
-              of haal een community-oefeningengroep binnen.
-            </>
-          ) : (
-            "Geen community-oefeningengroepen beschikbaar."
-          )}
+          Nog geen persoonlijke topics.{" "}
+          <Link
+            href={APP_ROUTES.generator}
+            className="font-medium text-accent underline-offset-2 hover:underline"
+          >
+            Genereer oefeningen
+          </Link>{" "}
+          of haal topics binnen via{" "}
+          <Link
+            href={APP_ROUTES.community}
+            className="font-medium text-accent underline-offset-2 hover:underline"
+          >
+            Community → Overnemen
+          </Link>
+          .
+        </p>
+      ) : filtered.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Geen topics die bij je zoekopdracht of filters passen.
         </p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleGroups.map((item) => (
-            <LeerplanGroupCard
-              key={item.id}
-              item={item}
-              variant={tab}
-              toggling={togglingName === item.name}
-              onOpen={() =>
-                openModal(tab === "global" ? "global" : "mine", item)
-              }
-              onToggleActive={
-                tab === "personal" ? handleToggleActive : undefined
-              }
-            />
-          ))}
+        <div
+          className={`overflow-x-auto rounded-md border border-border ${isRefreshing ? "opacity-60 transition-opacity" : ""
+            }`}
+        >
+          <table className="w-full min-w-[52rem] text-left text-sm">
+            <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2">Topic</th>
+                <th className="px-3 py-2">Herkomst</th>
+                <th className="px-3 py-2">Bewerkt</th>
+                <th className="px-3 py-2">Audio</th>
+                <th className="px-3 py-2">Alle tags</th>
+                <th className="px-3 py-2">Oefeningen</th>
+                <th className="px-3 py-2">Actief</th>
+                <th className="px-3 py-2">Acties</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((item) => {
+                const fromCommunity = isCommunityOrigin(item);
+                const { preview: tagsPreview, full: tagsFull } =
+                  formatTagPreview(item.tagText);
+                const isActive = item.isActive ?? false;
+                const togglingThis =
+                  toggleActiveMutation.isPending &&
+                  toggleActiveMutation.variables?.name === item.name;
+
+                return (
+                  <tr
+                    key={item.id}
+                    tabIndex={0}
+                    onClick={() => openGroupEditor(item)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") openGroupEditor(item);
+                    }}
+                    className="cursor-pointer border-b border-border/60 hover:bg-muted/40"
+                  >
+                    <td className="px-3 py-2 font-medium text-foreground">
+                      {item.name}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {fromCommunity ? "Community" : "Persoonlijk"}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {item.isEdited ? "Ja" : "Nee"}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {item.hasAudio ? "Ja" : "Nee"}
+                    </td>
+                    <td
+                      className="max-w-[12rem] truncate px-3 py-2 text-muted-foreground"
+                      title={tagsFull}
+                    >
+                      {tagsPreview}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {item.exerciseCount}
+                    </td>
+                    <td
+                      className="px-3 py-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isActive}
+                        disabled={togglingThis}
+                        onChange={(e) =>
+                          handleToggleActive(
+                            item.name,
+                            e.target.checked,
+                          )
+                        }
+                        className="size-4 rounded border-border accent-accent disabled:opacity-50"
+                        aria-label={`${isActive ? "Deactiveer" : "Activeer"} topic ${item.name}`}
+                      />
+                    </td>
+                    <td
+                      className="px-3 py-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(item)}
+                        className="rounded-md border border-border px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
+                      >
+                        Verwijderen
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
-      <LeerplanGroupModal
-        open={modalOpen}
-        name={modalName}
-        members={modalDetail?.members ?? []}
-        loading={modalLoading}
-        busy={copyBusy}
-        showCopyAction={modalScope === "global"}
-        alreadyCopied={
-          modalDetail?.alreadyCopied ??
-          (modalScope === "global" &&
-            Boolean(
-              modalName &&
-                personalGroups.some((g) => g.name === modalName),
-            ))
-        }
-        error={modalError}
-        onClose={closeModal}
-        onCopy={handleCopy}
+      <LeerplanGroupDeleteDialog
+        open={deleteTarget != null}
+        groupName={deleteTarget?.name ?? null}
+        exerciseCount={deleteTarget?.exerciseCount ?? 0}
+        deleting={deleteMutation.isPending}
+        onCancel={() => {
+          if (!deleteMutation.isPending) setDeleteTarget(null);
+        }}
+        onConfirm={confirmDelete}
       />
     </div>
   );

@@ -13,17 +13,35 @@ type CopyFailure = {
   ok: false;
   error: string;
   status: 404 | 409 | 500;
+  code?: "NAME_CONFLICT";
+  suggestedName?: string;
 };
+
+export type CopyGlobalGroupOptions = {
+  /** Gewenste personal naam; default = community-naam. */
+  name?: string;
+};
+
+/** Voorstel: originele naam + datum van vandaag tussen haakjes. */
+export function suggestedCommunityCopyName(baseName: string, at = new Date()): string {
+  const date = new Intl.DateTimeFormat("nl-NL", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(at);
+  return `${baseName.trim()} (${date})`;
+}
 
 /**
  * Kopieert een actieve global groep naar een nieuwe persoonlijke groep
  * en activeert het bijbehorende topic in het leerplan.
- * Faalt met 409 als er al een persoonlijke groep met dezelfde naam bestaat.
+ * Meerdere kopieën van dezelfde bron zijn toegestaan; bij gelijke naam → 409 NAME_CONFLICT.
  */
 export async function copyGlobalGroupToPersonal(
   supabase: SupabaseClient,
   userId: string,
   globalGroupId: string,
+  options?: CopyGlobalGroupOptions,
 ): Promise<CopySuccess | CopyFailure> {
   const { data: globalGroup, error: groupError } = await supabase
     .from("exercise_groups")
@@ -39,21 +57,26 @@ export async function copyGlobalGroupToPersonal(
   if (!globalGroup) {
     return {
       ok: false,
-      error: "Community-oefeningengroep niet gevonden of niet actief.",
+      error: "Community-topic niet gevonden of niet actief.",
       status: 404,
     };
   }
 
-  const groupName = (globalGroup.name as string).trim();
-  if (!groupName) {
-    return { ok: false, error: "Groepsnaam mag niet leeg zijn.", status: 500 };
+  const sourceName = (globalGroup.name as string).trim();
+  if (!sourceName) {
+    return { ok: false, error: "Topicnaam mag niet leeg zijn.", status: 500 };
+  }
+
+  const targetName = (options?.name ?? sourceName).trim();
+  if (!targetName) {
+    return { ok: false, error: "Topicnaam mag niet leeg zijn.", status: 409 };
   }
 
   const { data: existingPersonal, error: existingError } = await supabase
     .from("exercise_groups")
     .select("id")
     .eq("owner_id", userId)
-    .eq("name", groupName)
+    .eq("name", targetName)
     .maybeSingle();
 
   if (existingError) {
@@ -62,8 +85,10 @@ export async function copyGlobalGroupToPersonal(
   if (existingPersonal?.id) {
     return {
       ok: false,
-      error: `Je hebt al een persoonlijke groep met de naam "${groupName}".`,
+      error: `Je hebt al een topic met de naam "${targetName}".`,
       status: 409,
+      code: "NAME_CONFLICT",
+      suggestedName: suggestedCommunityCopyName(sourceName),
     };
   }
 
@@ -81,7 +106,7 @@ export async function copyGlobalGroupToPersonal(
   if (sourceRows.length === 0) {
     return {
       ok: false,
-      error: "Deze community-oefeningengroep heeft geen oefeningen.",
+      error: "Dit community-topic heeft geen oefeningen.",
       status: 404,
     };
   }
@@ -90,25 +115,27 @@ export async function copyGlobalGroupToPersonal(
   const { data: createdGroup, error: createError } = await supabase
     .from("exercise_groups")
     .insert({
-      name: groupName,
+      name: targetName,
       owner_id: userId,
       is_active: true,
+      source_group_id: globalGroupId,
     })
     .select("id")
     .maybeSingle();
 
   if (createError || !createdGroup?.id) {
-    // Unieke race: iemand anders maakte dezelfde naam aan.
     if (createError?.code === "23505") {
       return {
         ok: false,
-        error: `Je hebt al een persoonlijke groep met de naam "${groupName}".`,
+        error: `Je hebt al een topic met de naam "${targetName}".`,
         status: 409,
+        code: "NAME_CONFLICT",
+        suggestedName: suggestedCommunityCopyName(sourceName),
       };
     }
     return {
       ok: false,
-      error: createError?.message ?? "Persoonlijke groep aanmaken mislukt.",
+      error: createError?.message ?? "Persoonlijk topic aanmaken mislukt.",
       status: 500,
     };
   }
@@ -118,7 +145,7 @@ export async function copyGlobalGroupToPersonal(
   const exerciseRows = sourceRows.map((row) => ({
     source_text: row.source_text,
     target_text: row.target_text,
-    topic: row.topic ?? groupName,
+    topic: targetName,
     tags: row.tags ?? "",
     source_lang: row.source_lang,
     audio_path: row.audio_path,
@@ -145,7 +172,7 @@ export async function copyGlobalGroupToPersonal(
   await supabase.from("user_topic_preferences").upsert(
     {
       user_id: userId,
-      topic: groupName,
+      topic: targetName,
       is_active: true,
       updated_at: new Date().toISOString(),
     },
@@ -155,7 +182,7 @@ export async function copyGlobalGroupToPersonal(
   return {
     ok: true,
     personalGroupId,
-    name: groupName,
+    name: targetName,
     exerciseCount: exerciseRows.length,
   };
 }
