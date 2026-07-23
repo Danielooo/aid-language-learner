@@ -19,29 +19,32 @@ Bron van de eisen: `[EINDOPDRACHT.md](EINDOPDRACHT.md)` (alleen D1, D2 + relevan
 ### Exact hervatten (nu)
 
 - **Ronde:** **Fase 6 — Verificatie** (product-smoke D1/D2; H Generator klaar).
-- **Eerste antwoord in nieuwe chat:** kondig **Fase 6 stap 1** aan (checklist hieronder) en wacht op feedback.
+- **Eerste antwoord in nieuwe chat:** kondig **Fase 6 stap 2** aan (Leerplan) met de checklist hieronder; wacht op feedback.
 - **Branch:** `feature/user-panels`.
-- **Rol:** wissel per stap (Gebruiker vs Admin) zoals de checklist vraagt.
+- **Rol:** Gebruiker (Admin niet nodig voor Leerplan).
+- **Bug-IDs:** volgende vrije ID = **B47**.
 
 ### Waar we zijn
 
 | Ronde | Status |
 | --- | --- |
 | A Auth | Klaar |
-| B Leerplan | Klaar |
+| B Leerplan | Klaar (bouw); **Fase 6 smoke nog open** |
 | C Community | Klaar |
-| D Leren | Klaar |
+| D Leren | Klaar (bouw); UX-opruiming tussendoor, zie “Sinds stap 1”) |
 | E Exercises | Klaar |
 | F Voortgang | Klaar |
 | G Admin | Klaar |
 | H Generator | Klaar (smoke + pre-smoke bugs; developer gedaan) |
-| **Fase 6 Verificatie** | **Volgende — start bij checklist-stap 1** |
+| **Fase 6 Verificatie** | **Bezig — stap 2 Leerplan** (stap 1 Auth ✅) |
 
-### Generator (H) — afgerond (kort)
+### Sinds stap 1 (Auth) — tussendoor (geen Leerplan-smoke)
 
-- Tabs Tekst/Audio via `?tab=`; gedeelde chat-chrome; Topic/Leerplan-copy
-- Nieuw topic / toevoegen aan bestaand; draft (chat + batches + destinationMode) over refresh
-- Pre-smoke fixes: selectie/deletes/edits in draft, dupe-fallback, audio partial persist, retry+blocked
+Niet als “stap 2 klaar” tellen; wel meenemen bij latere Leren-smoke (stap 4):
+
+- **B46** (fixed): Oefenen/dashboard telde global+eigen oefeningen op topicnaam → filter `owner_id = user` (quiz list/topics/route, SRS due, dashboard-stats).
+- **Legacy moduskeuze weg:** “Hoe wil je oefenen?” (Topic/Herhaalschema/Zelf kiezen) verwijderd van flashcards/typen/sorteren. Modus alleen via hub `/oefenen` + `?modus=topic|srs`; zonder/ongeldige modus → redirect hub. Custom/exercise-picker **volledig weg** (geen NTH).
+- Overige Oefenen-UX eerder: score→progress in kaart, Overslaan/Vorige/hotkeys weg, etc. (zie §0.1 B45+ / Nice to haves).
 
 ### Fase 6 — open voor developer-check
 
@@ -49,10 +52,10 @@ Eindverificatie over het hele product (zie ook sectie **Fase 6 — Verificatie**
 
 Checklist Fase 6 (nog open):
 
-1. ☐ Inloggen / registreren / rollen
-2. ☐ Leerplan: lijst, toggle, bewerken, verwijderen
+1. ☑ Inloggen / registreren / rollen
+2. ☐ Leerplan: lijst, toggle, bewerken, verwijderen ← **nu**
 3. ☐ Community: overnemen + bijdragen
-4. ☐ Leren: flashcards / typen / sorteren + progress
+4. ☐ Leren: flashcards / typen / sorteren + progress (hub-modus + B46 meenemen)
 5. ☐ Exercises CRUD
 6. ☐ Dashboard / voortgang
 7. ☐ Admin: users + Bijdragen beoordelen (als Admin)
@@ -60,15 +63,38 @@ Checklist Fase 6 (nog open):
 9. ☐ Geen `useEffect`-fetch meer op Tier 1/2 kandidaten (grep)
 10. ☐ D1- en D2-eisenchecklists opnieuw nalopen; open gaps noteren
 
+### Stap 2 — Leerplan smoke (wat de developer checkt)
+
+Route: `/leerplan` (+ `/leerplan/[id]`). Canonieke UI: **Topic**, **Leerplan** (geen “Set/Globaal/Mijn leerplan”).
+
+**Overzicht (`/leerplan`)**
+
+1. Lijst laadt topics met count / tags / herkomst (eigen vs overgenomen) / Bewerkt.
+2. Zoeken + filters (herkomst, bewerkt, actief) — empty state bij geen match.
+3. **Actief**-toggle: blijft staan, foutmelding zichtbaar bij fail (regressie **B29**); inactief topic hoort **niet** in Oefenen-topickeuze.
+4. Rijklik of bewerken → detail `/leerplan/[id]`.
+5. **Verwijderen**: bevestigingsdialoog; na ok weg uit lijst (ook met oefeningen).
+6. Link/CTA naar Generator werkt.
+7. Cache (**B30**): na oefening toevoegen/wijzigen/verwijderen in topic → terug naar overzicht: counts / Bewerkt / lijst niet ~30s stale.
+
+**Detail (`/leerplan/[id]`)**
+
+8. Topic bewerken (naam/meta naar gelang UI); oefeningen bekijken/bewerken; terug naar Leerplan.
+9. Topic verwijderen vanaf detail → terug naar overzicht, topic weg.
+10. Leeg topic: copy/CTA klopt; “alle oefeningen verwijderen” (als aanwezig) ruimt topic+oefeningen op.
+
+**Klaar-criterium:** developer zegt ok/klaar op deze stap → vink checklist-item 2 af in Handoff + Fase 6-sectie; door naar stap 3 Community.
+
 ### Volgende actie
 
-1. Start **Fase 6 stap 1** (checklist hierboven); door naar 2…10 pas na “klaar/ok” per stap.
-2. Bij feedback → triage → fix → noteer in §0.1 (volgende vrije ID na B45).
-3. Na hele Fase 6 groen: D1/D2 finaliseren; Nice to haves **alleen op verzoek**.
+1. **Nu:** Fase 6 stap 2 (Leerplan) — checklist hierboven doorlopen met developer.
+2. Bij feedback → triage → fix → noteer in §0.1 (**B47+**).
+3. Daarna stap 3…10 na “klaar/ok” per stap.
+4. Na hele Fase 6 groen: D1/D2 finaliseren; Nice to haves **alleen op verzoek**.
 
 ### Startprompt (plakken in nieuwe chat)
 
-> Lees `PLAN.md` sectie **Handoff** (esp. **Exact hervatten**) en §0.1. Start meteen **Fase 6 stap 1** (inloggen/registreren/rollen); wacht op mijn feedback per stap. Geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`. **Scope-guard:** voer uit wat gevraagd wordt; noem achteraf kort als het een nieuwe/grote feature was buiten de afrond-focus.
+> Lees `PLAN.md` sectie **Handoff** (esp. **Exact hervatten** + **Stap 2 — Leerplan smoke**) en §0.1. Start meteen **Fase 6 stap 2** (Leerplan); loop de checklist met mij; wacht op feedback per stap. Geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`. **Scope-guard:** voer uit wat gevraagd wordt; noem achteraf kort als het een nieuwe/grote feature was buiten de afrond-focus.
 
 ### Regels (kort)
 
@@ -295,6 +321,7 @@ Korte startnotities — vul aan terwijl je de checklists afwerkt.
 | B43 | Admin Gebruikers | Rol wisselen (user↔admin) i.p.v. aparte Admin aanmaken | ja | medium | fixed |
 | B44 | Admin Deactiveren | PATCH /api/admin/users → 500 (thrown Response 401 + proxy getUser race) | ja | blocker | fixed |
 | B45 | Leren Typen/Sorteren | Overslaan weg (UI+recordSkip); N in “X van N” steeg door queue-append | ja | medium | fixed |
+| B46 | Leren Topic + Voortgang | Queue/dashboard telden global+eigen (topicnaam); alleen `owner_id` = user | ja | high | fixed |
 
 
 **Ernst:**
@@ -315,7 +342,6 @@ Alles hieronder is (was) `useState`/`useEffect` + `fetch`.
 - [ ] `app/_components/features/dashboard/use-dashboard-stats.ts`
 - [ ] Quiz progress/due:
   - [ ] `app/_components/features/quiz/exercises-quiz-page.tsx`
-  - [ ] `app/_components/features/quiz/quiz-selection-screen.tsx`
   - [ ] `app/_components/features/quiz/srs-topic-picker-section.tsx`
 - [ ] Topics in 3 decks:
   - [ ] `app/_components/features/quiz/flashcard-deck.tsx`
@@ -332,7 +358,6 @@ Alles hieronder is (was) `useState`/`useEffect` + `fetch`.
 - [ ] `app/_components/features/topics/leerplan-groups-page.tsx`
 - [ ] `app/_components/features/admin/admin-users-table.tsx`
 - [ ] `app/_components/features/community/community-adopt-panel.tsx`
-- [ ] `app/_components/features/quiz/exercise-picker.tsx`
 - [ ] `app/_components/features/quiz/use-quiz-storage.ts`
 - [ ] `app/_components/features/exercises/exercises-list-page.tsx`
 - [ ] `app/_components/features/admin/admin-review-queue.tsx`
@@ -455,8 +480,8 @@ Patroon voor writes:
 
 Handmatige smoke (product + D1/D2):
 
-- [ ] Inloggen / registreren / rollen
-- [ ] Leerplan: lijst, toggle, bewerken, verwijderen
+- [x] Inloggen / registreren / rollen
+- [ ] Leerplan: lijst, toggle, bewerken, verwijderen  ← **nu** (zie Handoff → Stap 2)
 - [ ] Community: overnemen + bijdragen
 - [ ] Leren: flashcards / typen / sorteren + progress
 - [ ] Exercises CRUD
@@ -524,3 +549,4 @@ Geen assessment-eisen — pas doen als D1/D2 en blockers af zijn. Agent pakt ze 
 - [ ] Alternatieve vertalingen toevoegen tijdens het oefenen (bv. na feedback een geldig antwoord opslaan als alternatief)
 - [ ] Voortgang → topic-detail: doorlink naar Oefenen voor dat specifieke topic
 - [ ] Oefenen keyboard-shortcuts terugzetten (Spatie/G/F/V; typen/sorteren Enter/[ /]; audio Ctrl+Alt+P; leave Enter; labels + gedeelde module) — Esc blijft al in product
+- [ ] Vorige oefening in Oefenen (flashcards/typen/sorteren + SRS-historie) — verwijderd vóór deadline; opnieuw inbouwen indien gewenst
