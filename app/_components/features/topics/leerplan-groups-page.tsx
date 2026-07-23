@@ -187,7 +187,7 @@ export function LeerplanGroupsPage() {
 
   return (
     <div className="space-y-4">
-      
+
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-sm">
           <span className="text-xs text-muted-foreground">Zoeken</span>
@@ -298,9 +298,8 @@ export function LeerplanGroupsPage() {
         </p>
       ) : (
         <div
-          className={`overflow-x-auto rounded-md border border-border ${
-            isRefreshing ? "opacity-60 transition-opacity" : ""
-          }`}
+          className={`overflow-x-auto rounded-md border border-border ${isRefreshing ? "opacity-60 transition-opacity" : ""
+            }`}
         >
           <table className="w-full min-w-[52rem] text-left text-sm">
             <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">

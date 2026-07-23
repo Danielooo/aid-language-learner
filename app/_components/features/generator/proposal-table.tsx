@@ -269,9 +269,8 @@ export function ProposalTable({
 
   const selectedCount = selectedIds.size;
 
-  const countLabel = `${rows.length} oefening${rows.length === 1 ? "" : "en"}${
-    selectedCount > 0 ? ` · ${selectedCount} geselecteerd` : ""
-  }${batches.length > 1 ? ` · ${batches.length} batches` : ""}`;
+  const countLabel = `${rows.length} oefening${rows.length === 1 ? "" : "en"}${selectedCount > 0 ? ` · ${selectedCount} geselecteerd` : ""
+    }${batches.length > 1 ? ` · ${batches.length} batches` : ""}`;
 
   return (
     <section className="space-y-4">

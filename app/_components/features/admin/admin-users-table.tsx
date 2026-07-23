@@ -111,9 +111,8 @@ function ColumnFilterHeader<T extends string>({
         onClick={onToggle}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className={`inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-left hover:bg-muted/80 ${
-          active ? "text-accent" : "text-muted-foreground"
-        }`}
+        className={`inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-left hover:bg-muted/80 ${active ? "text-accent" : "text-muted-foreground"
+          }`}
       >
         <span>
           {label}
@@ -140,9 +139,8 @@ function ColumnFilterHeader<T extends string>({
                 type="button"
                 role="option"
                 aria-selected={selected}
-                className={`flex w-full px-3 py-1.5 text-left text-xs hover:bg-muted ${
-                  selected ? "font-medium text-accent" : "text-foreground"
-                }`}
+                className={`flex w-full px-3 py-1.5 text-left text-xs hover:bg-muted ${selected ? "font-medium text-accent" : "text-foreground"
+                  }`}
                 onClick={() => onSelect(opt.value)}
               >
                 {opt.label}
@@ -293,41 +291,41 @@ export function AdminUsersTable() {
   const confirmCopy =
     pendingAction?.type === "ban"
       ? {
-          title: "Account deactiveren?",
-          description: (
-            <>
-              Weet je zeker dat je “{pendingLabel}” wilt deactiveren? Een
-              nieuwe login wordt geblokkeerd. Een sessie die nu al openstaat
-              blijft bruikbaar tot die gebruiker opnieuw moet inloggen.
-            </>
-          ),
-          confirmLabel: "Deactiveren",
-          pendingLabel: "Deactiveren…",
-        }
+        title: "Account deactiveren?",
+        description: (
+          <>
+            Weet je zeker dat je “{pendingLabel}” wilt deactiveren? Een
+            nieuwe login wordt geblokkeerd. Een sessie die nu al openstaat
+            blijft bruikbaar tot die gebruiker opnieuw moet inloggen.
+          </>
+        ),
+        confirmLabel: "Deactiveren",
+        pendingLabel: "Deactiveren…",
+      }
       : pendingAction?.type === "delete" && pendingAction.row.role === "admin"
         ? {
-            title: "Admin verwijderen?",
-            description: (
-              <>
-                Weet je zeker dat je het admin-account “{pendingLabel}” wilt
-                verwijderen?
-              </>
-            ),
-            confirmLabel: "Verwijderen",
-            pendingLabel: "Verwijderen…",
-          }
+          title: "Admin verwijderen?",
+          description: (
+            <>
+              Weet je zeker dat je het admin-account “{pendingLabel}” wilt
+              verwijderen?
+            </>
+          ),
+          confirmLabel: "Verwijderen",
+          pendingLabel: "Verwijderen…",
+        }
         : {
-            title: "Gebruiker verwijderen?",
-            description: (
-              <>
-                Weet je zeker dat je “{pendingLabel}” definitief wilt
-                verwijderen? Alle gegevens van deze gebruiker (oefeningen,
-                voortgang, inzendingen) gaan permanent verloren.
-              </>
-            ),
-            confirmLabel: "Verwijderen",
-            pendingLabel: "Verwijderen…",
-          };
+          title: "Gebruiker verwijderen?",
+          description: (
+            <>
+              Weet je zeker dat je “{pendingLabel}” definitief wilt
+              verwijderen? Alle gegevens van deze gebruiker (oefeningen,
+              voortgang, inzendingen) gaan permanent verloren.
+            </>
+          ),
+          confirmLabel: "Verwijderen",
+          pendingLabel: "Verwijderen…",
+        };
 
   return (
     <div className="space-y-3">

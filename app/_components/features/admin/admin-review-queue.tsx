@@ -221,10 +221,9 @@ export function AdminReviewQueue() {
   }
 
   const tabButtonClass = (id: TabId) =>
-    `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-      tab === id
-        ? "bg-muted text-foreground"
-        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+    `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === id
+      ? "bg-muted text-foreground"
+      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
     }`;
 
   return (
