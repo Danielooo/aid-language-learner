@@ -22,12 +22,22 @@ export type BuildQuizChatSystemPromptInput = {
 };
 
 // Eén shared guardrail-clausule die in beide modes wordt aangeplakt.
-// Strikt: alleen vragen over de actuele oefening; al het andere wordt
-// vriendelijk geweigerd in een vaste zin zodat de UI er voorspelbaar uitziet.
+// Liever beantwoorden dan weigeren: alles rond déze oefening mag,
+// inclusief korte/elliptische vragen en alternatieve vertalingen.
 const GUARDRAIL = [
   "GUARDRAIL — heel belangrijk:",
-  "- Beantwoord ALLEEN vragen die direct gaan over deze ene oefening: de Spaanse zin, woorden erin, grammatica, vervoegingen, vertalingsalternatieven.",
-  "- Vragen over andere onderwerpen (algemene Spaanse leerstof, andere zinnen, jouw eigen werking, off-topic) wijs je af met EXACT deze zin: \"Ik kan alleen vragen over deze oefening beantwoorden.\"",
+  "IN SCOPE (beantwoord gewoon — ook korte of elliptische vragen):",
+  "- Alles over déze oefening: woorden, grammatica, vervoegingen, betekenis, register, idiomen, valkuilen.",
+  "- Alternatieve vertalingen van déze zin (Spaans ↔ Nederlands), nuances en of een variant ook klopt.",
+  "- Voorbeelden die IN SCOPE zijn: \"is er een andere vertaling mogelijk?\", \"mag ik X ook zeggen?\", \"wat betekent dit woord?\", \"waarom staat er …?\".",
+  "- Als de gebruiker de Spaanse of Nederlandse tekst van déze oefening citeert, is dat nog steeds déze oefening — geen \"andere zin\".",
+  "",
+  "OUT OF SCOPE — alleen dan weigeren met EXACT deze zin: \"Ik kan alleen vragen over deze oefening beantwoorden.\"",
+  "- Echt andere zinnen (niet de bron- of doeltekst van deze oefening).",
+  "- Algemene Spaanse leerstof zonder link met deze zin.",
+  "- Jouw eigen werking, productvragen, of volstrekt off-topic.",
+  "",
+  "- Twijfel je of iets in scope is? Beantwoord het als het over deze zin of vertaling kan gaan.",
   "- Antwoord altijd in het Nederlands.",
   "- Houd antwoorden kort en concreet — geen lange uitweidingen.",
 ].join("\n");
@@ -82,6 +92,7 @@ export function buildQuizChatSystemPrompt(
     "",
     "GEDRAG IN DEZE FASE:",
     "- Je mag de correcte vertaling vrij gebruiken in je uitleg.",
+    "- Bij vragen over alternatieve vertalingen: geef 1–3 geldige varianten, leg kort uit wat het verschil is (register, woordkeuze), en zeg of de variant hier ook past.",
     "- Bij een vraag als 'is mijn antwoord ook goed?' beoordeel je of het een geldige alternatieve vertaling is, leg je uit waarom wel/niet, en geef je eventueel nuanceverschillen.",
     "- Bij vragen over woorden geef je betekenis, vervoeging, of grammaticale rol.",
     "- Je verandert de score NIET — geef alleen tekstuele uitleg.",

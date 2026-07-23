@@ -99,6 +99,55 @@ export function getLastBatchExerciseCount(batches: ProposalBatch[]): number {
   return last?.proposal.exercises.length ?? 0;
 }
 
+/** Verwijder oefeningen op basis van pseudo-audio_id; lege batches vallen weg. */
+export function filterProposalBatchesByAudioIds(
+  batches: ProposalBatch[],
+  removeAudioIds: ReadonlySet<number>,
+): ProposalBatch[] {
+  let startIndex = 0;
+  const next: ProposalBatch[] = [];
+  for (const batch of batches) {
+    const exercises = batch.proposal.exercises.filter((_, index) => {
+      const id = proposalIndexToAudioId(startIndex + index);
+      return !removeAudioIds.has(id);
+    });
+    startIndex += batch.proposal.exercises.length;
+    if (exercises.length === 0) continue;
+    next.push({
+      ...batch,
+      proposal: { ...batch.proposal, exercises },
+    });
+  }
+  return next;
+}
+
+/** Werk één oefening bij via pseudo-audio_id. */
+export function updateProposalExerciseByAudioId(
+  batches: ProposalBatch[],
+  audioId: number,
+  patch: Partial<ExerciseProposal>,
+): ProposalBatch[] {
+  let startIndex = 0;
+  return batches.map((batch) => {
+    const exercises = batch.proposal.exercises.map((ex, index) => {
+      const id = proposalIndexToAudioId(startIndex + index);
+      if (id !== audioId) return ex;
+      return {
+        ...ex,
+        ...patch,
+        tags: patch.tags ?? ex.tags,
+        alternative_translations:
+          patch.alternative_translations ?? ex.alternative_translations,
+      };
+    });
+    startIndex += batch.proposal.exercises.length;
+    return {
+      ...batch,
+      proposal: { ...batch.proposal, exercises },
+    };
+  });
+}
+
 export function mapProposalToRows(proposal: ProposeExercisesOutput): AudioRow[] {
   return proposal.exercises.map((ex, index) => ({
     audio_id: proposalIndexToAudioId(index),

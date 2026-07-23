@@ -13,7 +13,10 @@ import {
 import type { AudioRow } from "@/types/tatoeba";
 import { useTranslationCache } from "@/lib/hooks/use-translation-cache";
 
-import { ProposalTopicDestination } from "./proposal-topic-destination";
+import {
+  ProposalTopicDestination,
+  type TopicDestinationMode,
+} from "./proposal-topic-destination";
 import {
   getLastAudioBatchExerciseCount,
   mapAudioBatchToRows,
@@ -51,11 +54,15 @@ type AudioProposalTableProps = {
   proposal: ProposeAudioExercisesOutput | null;
   persistState: PersistState;
   onSave: (body: AudioPersistBody) => void;
-  /** Herstelde selectie uit localStorage-draft. */
   initialSelectedIds?: number[];
-  /** Hersteld onderwerp uit localStorage-draft. */
   initialTopic?: string;
-  /** Melden van selectie/topic-wijzigingen voor draft-persist. */
+  destinationMode: TopicDestinationMode;
+  onDestinationModeChange: (mode: TopicDestinationMode) => void;
+  onRemoveAudioIds?: (audioIds: number[]) => void;
+  onUpdateExercise?: (
+    audioId: number,
+    values: ExerciseEditValues,
+  ) => void;
   onDraftMetaChange?: (meta: {
     selectedAudioIds: number[];
     topic: string;
@@ -69,6 +76,10 @@ export function AudioProposalTable({
   onSave,
   initialSelectedIds,
   initialTopic,
+  destinationMode,
+  onDestinationModeChange,
+  onRemoveAudioIds,
+  onUpdateExercise,
   onDraftMetaChange,
 }: AudioProposalTableProps) {
   const translationLookup = useTranslationCache();
@@ -87,6 +98,7 @@ export function AudioProposalTable({
   const topicInitializedRef = useRef(Boolean(initialTopic?.trim()));
   const topicRef = useRef(topic);
   topicRef.current = topic;
+  const didApplyInitialSelectionRef = useRef(false);
 
   const prevBatchCountRef = useRef(0);
   const prevBatchesRef = useRef<AudioProposalBatch[]>([]);
@@ -103,6 +115,7 @@ export function AudioProposalTable({
     if (nextCount === 0) {
       setRows([]);
       setSelectedIds(new Set());
+      didApplyInitialSelectionRef.current = false;
       if (prevCount > 0) {
         setTopic("");
         topicInitializedRef.current = false;
@@ -123,7 +136,6 @@ export function AudioProposalTable({
     }
 
     if (nextCount > prevCount) {
-      // Nieuwste batch eerst: live (1 batch) én restore (alle batches tegelijk).
       const newBatches = batches.slice(prevCount).toReversed();
       const newRows = newBatches.flatMap((batch) => {
         const batchRows = mapAudioBatchToRows(batch);
@@ -134,7 +146,6 @@ export function AudioProposalTable({
         );
         return batchRows;
       });
-      // Nieuwste batch bovenaan; skip audio_ids die al in de tabel staan.
       setRows((prev) => {
         const seen = new Set(prev.map((r) => r.audio_id));
         const unique = newRows.filter((r) => {
@@ -166,7 +177,17 @@ export function AudioProposalTable({
   }, [batches, proposal?.topic, initialTopic]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Draft-meta naar parent voor localStorage.
+  useLayoutEffect(() => {
+    if (didApplyInitialSelectionRef.current) return;
+    if (!initialSelectedIds?.length || rows.length === 0) return;
+    const valid = initialSelectedIds.filter((id) =>
+      rows.some((row) => row.audio_id === id),
+    );
+    if (valid.length === 0) return;
+    setSelectedIds(new Set(valid));
+    didApplyInitialSelectionRef.current = true;
+  }, [initialSelectedIds, rows]);
+
   useLayoutEffect(() => {
     draftMetaRef.current?.({
       selectedAudioIds: Array.from(selectedIds),
@@ -190,7 +211,8 @@ export function AudioProposalTable({
     translationRef.current.removeByAudioIds(ids);
     setRows((prev) => prev.filter((row) => !selectedIds.has(row.audio_id)));
     setSelectedIds(new Set());
-  }, [selectedIds]);
+    onRemoveAudioIds?.(ids);
+  }, [selectedIds, onRemoveAudioIds]);
 
   const handleRowDoubleClick = useCallback((row: AudioRow) => {
     setEditError(null);
@@ -224,10 +246,11 @@ export function AudioProposalTable({
             : r,
         ),
       );
+      onUpdateExercise?.(editRow.audio_id, values);
       setEditRow(null);
       setEditError(null);
     },
-    [editRow],
+    [editRow, onUpdateExercise],
   );
 
   const handleSave = useCallback(() => {
@@ -256,6 +279,8 @@ export function AudioProposalTable({
         suggestedTopic={proposal?.topic ?? ""}
         topic={topic}
         onTopicChange={setTopic}
+        mode={destinationMode}
+        onModeChange={onDestinationModeChange}
         actions={({ blocked, existingTopicName }) => {
           const saveLabel = existingTopicName
             ? selectedCount > 0
@@ -414,7 +439,8 @@ function SaveButton({
         <button
           type="button"
           onClick={onSave}
-          className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+          disabled={disabled}
+          className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
         >
           Opnieuw proberen
         </button>

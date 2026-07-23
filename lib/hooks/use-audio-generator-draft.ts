@@ -3,17 +3,28 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 
 import type { AudioProposalBatch } from "@/app/_components/features/generator/audio-proposal-table-adapter";
+import {
+  parsePersistedChatMessages,
+  type PersistedChatMessage,
+} from "@/app/_components/features/generator/persisted-chat-messages";
+import type { TopicDestinationMode } from "@/app/_components/features/generator/proposal-topic-destination";
 
-// Client-only draft voor audio-generator (batches + topic/selectie).
+// Client-only draft voor audio-generator (batches + chat + topic/selectie).
 // Overleeft refresh/navigatie; wordt gewist na opslaan of “Wis chat”.
 
 const STORAGE_KEY = "aid-audio-generator-draft-v1";
 const DRAFT_UPDATED_EVENT = "aid-audio-generator-draft-updated";
 
+function parseDestinationMode(value: unknown): TopicDestinationMode {
+  return value === "existing" ? "existing" : "new";
+}
+
 export type AudioGeneratorDraftSnapshot = {
   batches: AudioProposalBatch[];
   selectedAudioIds: number[];
   topic: string;
+  messages: PersistedChatMessage[];
+  destinationMode: TopicDestinationMode;
 };
 
 type CacheEntry = {
@@ -62,6 +73,8 @@ function parseSnapshot(raw: string | null): AudioGeneratorDraftSnapshot | null {
       batches: draft.batches,
       selectedAudioIds: draft.selectedAudioIds,
       topic: draft.topic,
+      messages: parsePersistedChatMessages(draft.messages),
+      destinationMode: parseDestinationMode(draft.destinationMode),
     };
   } catch {
     return null;
@@ -126,7 +139,11 @@ export function useAudioGeneratorDraft(): UseAudioGeneratorDraft {
   );
 
   const save = useCallback((next: AudioGeneratorDraftSnapshot) => {
-    if (next.batches.length === 0 && !next.topic.trim()) {
+    if (
+      next.batches.length === 0 &&
+      !next.topic.trim() &&
+      next.messages.length === 0
+    ) {
       writeSnapshot(null);
       return;
     }

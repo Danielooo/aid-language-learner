@@ -2,18 +2,29 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 
+import {
+  parsePersistedChatMessages,
+  type PersistedChatMessage,
+} from "@/app/_components/features/generator/persisted-chat-messages";
+import type { TopicDestinationMode } from "@/app/_components/features/generator/proposal-topic-destination";
 import type { ProposalBatch } from "@/app/_components/features/generator/proposal-table-adapter";
 
-// Client-only draft voor tekst-generator (batches + topic/selectie).
+// Client-only draft voor tekst-generator (batches + chat + topic/selectie).
 // Overleeft refresh/navigatie; wordt gewist na opslaan of “Wis chat”.
 
 const STORAGE_KEY = "aid-text-generator-draft-v1";
 const DRAFT_UPDATED_EVENT = "aid-text-generator-draft-updated";
 
+function parseDestinationMode(value: unknown): TopicDestinationMode {
+  return value === "existing" ? "existing" : "new";
+}
+
 export type TextGeneratorDraftSnapshot = {
   batches: ProposalBatch[];
   selectedAudioIds: number[];
   topic: string;
+  messages: PersistedChatMessage[];
+  destinationMode: TopicDestinationMode;
 };
 
 type CacheEntry = {
@@ -59,6 +70,8 @@ function parseSnapshot(raw: string | null): TextGeneratorDraftSnapshot | null {
       batches: draft.batches,
       selectedAudioIds: draft.selectedAudioIds,
       topic: draft.topic,
+      messages: parsePersistedChatMessages(draft.messages),
+      destinationMode: parseDestinationMode(draft.destinationMode),
     };
   } catch {
     return null;
@@ -123,7 +136,11 @@ export function useTextGeneratorDraft(): UseTextGeneratorDraft {
   );
 
   const save = useCallback((next: TextGeneratorDraftSnapshot) => {
-    if (next.batches.length === 0 && !next.topic.trim()) {
+    if (
+      next.batches.length === 0 &&
+      !next.topic.trim() &&
+      next.messages.length === 0
+    ) {
       writeSnapshot(null);
       return;
     }

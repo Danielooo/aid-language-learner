@@ -20,7 +20,9 @@ import {
 } from "./hooks/use-ai-quota";
 import { AudioProposalTable } from "./audio-proposal-table";
 import {
+  filterAudioProposalBatchesByAudioIds,
   mergeAudioProposalBatches,
+  updateAudioProposalExerciseByAudioId,
   type AudioPersistBody,
   type AudioProposalBatch,
   type ProposeAudioExercisesOutput,
@@ -29,7 +31,13 @@ import {
   GeneratorSavedGroupModal,
   type SavedGroupMember,
 } from "./generator-saved-group-modal";
+import {
+  persistedMessagesToUIMessages,
+  uiMessagesToPersisted,
+} from "./persisted-chat-messages";
+import type { TopicDestinationMode } from "./proposal-topic-destination";
 
+import type { ExerciseEditValues } from "@/app/_components/features/exercises/exercise-edit-modal";
 import type { AudioExerciseProposal } from "@/types/audio-exercise";
 import type { UIMessage } from "ai";
 
@@ -63,12 +71,18 @@ const APPEND_SUGGESTION = "Zoek nog 5 spraakoefeningen";
 export function AudioExerciseGenerator() {
   const draft = useAudioGeneratorDraft();
   const restoredRef = useRef(false);
+  const [draftHydrated, setDraftHydrated] = useState(false);
   const queryClient = useQueryClient();
 
   const [input, setInput] = useState("");
   const [batches, setBatches] = useState<AudioProposalBatch[]>([]);
   const [draftSelectedIds, setDraftSelectedIds] = useState<number[]>([]);
   const [draftTopic, setDraftTopic] = useState("");
+  const [destinationMode, setDestinationMode] =
+    useState<TopicDestinationMode>("new");
+  const [emptyToolMessageIds, setEmptyToolMessageIds] = useState(
+    () => new Set<string>(),
+  );
   const processedBatchIds = useRef(new Set<string>());
   const batchesRef = useRef<AudioProposalBatch[]>([]);
   const mergedProposalRef = useRef<ProposeAudioExercisesOutput | null>(null);
@@ -83,24 +97,6 @@ export function AudioExerciseGenerator() {
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const { aiQuota, refreshAiQuota } = useAiQuota();
 
-  // Eenmalig draft herstellen na mount (localStorage).
-  /* eslint-disable react-hooks/set-state-in-effect -- hydrate from localStorage */
-  useEffect(() => {
-    if (restoredRef.current) return;
-    restoredRef.current = true;
-    const snap = draft.snapshot;
-    if (!snap) return;
-    if (snap.batches.length === 0 && !snap.topic.trim()) return;
-    setBatches(snap.batches);
-    setDraftSelectedIds(snap.selectedAudioIds);
-    setDraftTopic(snap.topic);
-    batchesRef.current = snap.batches;
-    for (const batch of snap.batches) {
-      processedBatchIds.current.add(batch.id);
-    }
-  }, [draft.snapshot]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
   const mergedProposal = useMemo(
     () => (batches.length > 0 ? mergeAudioProposalBatches(batches) : null),
     [batches],
@@ -112,26 +108,6 @@ export function AudioExerciseGenerator() {
   useEffect(() => {
     batchesRef.current = batches;
   }, [batches]);
-
-  // Batches + topic/selectie persistent houden (ook topic-only vóór genereren).
-  useEffect(() => {
-    if (!restoredRef.current) return;
-    if (batches.length === 0 && !draftTopic.trim()) {
-      draft.clear();
-      return;
-    }
-    draft.save({
-      batches,
-      selectedAudioIds: draftSelectedIds,
-      topic: draftTopic || mergedProposal?.topic || "",
-    });
-  }, [
-    batches,
-    draftSelectedIds,
-    draftTopic,
-    draft,
-    mergedProposal?.topic,
-  ]);
 
   /* eslint-disable react-hooks/refs */
   const transport = useMemo(
@@ -162,6 +138,88 @@ export function AudioExerciseGenerator() {
   const { messages, sendMessage, status, error, setMessages, stop } = useChat({
     transport,
   });
+
+  const getAssistantFallbackText = useCallback((message: UIMessage): string | null => {
+    if (emptyToolMessageIds.has(message.id)) {
+      return "Geen nieuwe oefeningen — alles was al in het voorstel.";
+    }
+    for (const part of message.parts) {
+      if (
+        part.type === "tool-proposeAudioExercises" &&
+        part.state === "output-available"
+      ) {
+        const output = part.output;
+        if (!isAudioProposeOutput(output)) continue;
+        const count = output.exercises.length;
+        return count === 1
+          ? "1 oefening toegevoegd"
+          : `${count} oefeningen toegevoegd`;
+      }
+    }
+    return null;
+  }, [emptyToolMessageIds]);
+
+  // Eenmalig draft herstellen na mount (localStorage), na useChat i.v.m. setMessages.
+  /* eslint-disable react-hooks/set-state-in-effect -- hydrate from localStorage */
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const snap = draft.snapshot;
+    if (
+      snap &&
+      (snap.batches.length > 0 ||
+        snap.topic.trim() ||
+        snap.messages.length > 0)
+    ) {
+      setBatches(snap.batches);
+      setDraftSelectedIds(snap.selectedAudioIds);
+      setDraftTopic(snap.topic);
+      setDestinationMode(snap.destinationMode);
+      batchesRef.current = snap.batches;
+      for (const batch of snap.batches) {
+        processedBatchIds.current.add(batch.id);
+      }
+      if (snap.messages.length > 0) {
+        setMessages(persistedMessagesToUIMessages(snap.messages));
+      }
+    }
+    setDraftHydrated(true);
+  }, [draft.snapshot, setMessages]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Batches + chat + topic/selectie persistent houden.
+  useEffect(() => {
+    if (!draftHydrated) return;
+    const persistedMessages = uiMessagesToPersisted(
+      messages,
+      getAssistantFallbackText,
+    );
+    if (
+      batches.length === 0 &&
+      !draftTopic.trim() &&
+      persistedMessages.length === 0
+    ) {
+      draft.clear();
+      return;
+    }
+    draft.save({
+      batches,
+      selectedAudioIds: draftSelectedIds,
+      topic: draftTopic || mergedProposal?.topic || "",
+      messages: persistedMessages,
+      destinationMode,
+    });
+  }, [
+    draftHydrated,
+    batches,
+    draftSelectedIds,
+    draftTopic,
+    destinationMode,
+    draft,
+    mergedProposal?.topic,
+    messages,
+    getAssistantFallbackText,
+  ]);
 
   const searchError = useMemo(
     () => findLatestAudioSearchError(messages),
@@ -211,7 +269,15 @@ export function AudioExerciseGenerator() {
             seen.add(ex.audio_id);
             return true;
           });
-          if (unique.length === 0) continue;
+          if (unique.length === 0) {
+            setEmptyToolMessageIds((prev) => {
+              if (prev.has(msg.id)) return prev;
+              const next = new Set(prev);
+              next.add(msg.id);
+              return next;
+            });
+            continue;
+          }
 
           const nextBatch: AudioProposalBatch = {
             id: batchId,
@@ -242,6 +308,8 @@ export function AudioExerciseGenerator() {
     batchesRef.current = [];
     setDraftSelectedIds([]);
     setDraftTopic("");
+    setDestinationMode("new");
+    setEmptyToolMessageIds(new Set());
     processedBatchIds.current.clear();
     draft.clear();
     setPersistState({
@@ -269,6 +337,31 @@ export function AudioExerciseGenerator() {
     setDraftTopic((prev) => (prev === meta.topic ? prev : meta.topic));
   }
 
+  function handleRemoveAudioIds(audioIds: number[]) {
+    const remove = new Set(audioIds);
+    const next = filterAudioProposalBatchesByAudioIds(
+      batchesRef.current,
+      remove,
+    );
+    batchesRef.current = next;
+    setBatches(next);
+  }
+
+  function handleUpdateExercise(audioId: number, values: ExerciseEditValues) {
+    const next = updateAudioProposalExerciseByAudioId(
+      batchesRef.current,
+      audioId,
+      {
+        source_text: values.sourceText,
+        target_text: values.targetText,
+        tags: values.tags,
+        alternative_translations: values.alternatives,
+      },
+    );
+    batchesRef.current = next;
+    setBatches(next);
+  }
+
   async function handleSave(requestBody: AudioPersistBody) {
     setPersistState({
       status: "saving",
@@ -294,6 +387,16 @@ export function AudioExerciseGenerator() {
         return;
       }
 
+      if (json.inserted < requestBody.exercises.length) {
+        setPersistState({
+          status: "error",
+          requestBody,
+          response: json,
+          error: `Slechts ${json.inserted} van ${requestBody.exercises.length} oefeningen opgeslagen. Probeer opnieuw voor de rest.`,
+        });
+        return;
+      }
+
       const members: SavedGroupMember[] = requestBody.exercises.map(
         (ex, index) => ({
           key: `${ex.audio_id}-${index}`,
@@ -313,6 +416,8 @@ export function AudioExerciseGenerator() {
       batchesRef.current = [];
       setDraftSelectedIds([]);
       setDraftTopic("");
+      setDestinationMode("new");
+      setEmptyToolMessageIds(new Set());
       processedBatchIds.current.clear();
       draft.clear();
       setPersistState({
@@ -335,23 +440,6 @@ export function AudioExerciseGenerator() {
       });
     }
   }
-
-  const getAssistantFallbackText = useCallback((message: UIMessage): string | null => {
-    for (const part of message.parts) {
-      if (
-        part.type === "tool-proposeAudioExercises" &&
-        part.state === "output-available"
-      ) {
-        const output = part.output;
-        if (!isAudioProposeOutput(output)) continue;
-        const count = output.exercises.length;
-        return count === 1
-          ? "1 oefening toegevoegd"
-          : `${count} oefeningen toegevoegd`;
-      }
-    }
-    return null;
-  }, []);
 
   const quotaLabel = formatQuotaLabel(aiQuota);
   const canClear = messages.length > 0 || batches.length > 0;
@@ -391,7 +479,7 @@ export function AudioExerciseGenerator() {
           getAssistantFallbackText={getAssistantFallbackText}
           emptyState={
             <div className="space-y-2 text-sm text-muted-foreground">
-              <p>Zoek echte Tatoeba-opnames. Probeer:</p>
+              <p>Nog geen berichten. Probeer:</p>
               <ul className="space-y-1.5">
                 {SUGGESTIONS.map((s) => (
                   <li key={s}>
@@ -456,6 +544,10 @@ export function AudioExerciseGenerator() {
         onSave={handleSave}
         initialSelectedIds={draftSelectedIds}
         initialTopic={draftTopic || mergedProposal?.topic || ""}
+        destinationMode={destinationMode}
+        onDestinationModeChange={setDestinationMode}
+        onRemoveAudioIds={handleRemoveAudioIds}
+        onUpdateExercise={handleUpdateExercise}
         onDraftMetaChange={handleDraftMetaChange}
       />
 

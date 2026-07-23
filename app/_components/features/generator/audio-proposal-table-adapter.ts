@@ -76,6 +76,42 @@ export function getLastAudioBatchExerciseCount(
   return batches.at(-1)?.proposal.exercises.length ?? 0;
 }
 
+/** Verwijder oefeningen op audio_id; lege batches vallen weg. */
+export function filterAudioProposalBatchesByAudioIds(
+  batches: AudioProposalBatch[],
+  removeAudioIds: ReadonlySet<number>,
+): AudioProposalBatch[] {
+  const next: AudioProposalBatch[] = [];
+  for (const batch of batches) {
+    const exercises = batch.proposal.exercises.filter(
+      (ex) => !removeAudioIds.has(ex.audio_id),
+    );
+    if (exercises.length === 0) continue;
+    next.push({
+      ...batch,
+      proposal: { ...batch.proposal, exercises },
+    });
+  }
+  return next;
+}
+
+/** Werk één audio-oefening bij via audio_id. */
+export function updateAudioProposalExerciseByAudioId(
+  batches: AudioProposalBatch[],
+  audioId: number,
+  patch: Partial<AudioExerciseProposal>,
+): AudioProposalBatch[] {
+  return batches.map((batch) => ({
+    ...batch,
+    proposal: {
+      ...batch.proposal,
+      exercises: batch.proposal.exercises.map((ex) =>
+        ex.audio_id === audioId ? { ...ex, ...patch } : ex,
+      ),
+    },
+  }));
+}
+
 export function seedAudioTranslationCache(
   cache: UseTranslationCache,
   rows: AudioRow[],

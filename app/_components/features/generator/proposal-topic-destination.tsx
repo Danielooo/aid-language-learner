@@ -24,6 +24,9 @@ type ProposalTopicDestinationProps = {
   suggestedTopic: string;
   topic: string;
   onTopicChange: (topic: string) => void;
+  /** Gecontroleerde modus (parent/draft); voorkomt stale state na save/clear. */
+  mode: TopicDestinationMode;
+  onModeChange: (mode: TopicDestinationMode) => void;
   actions: (ctx: DestinationActionsContext) => React.ReactNode;
 };
 
@@ -35,6 +38,8 @@ export function ProposalTopicDestination({
   suggestedTopic,
   topic,
   onTopicChange,
+  mode,
+  onModeChange,
   actions,
 }: ProposalTopicDestinationProps) {
   const { data: groups = [], isLoading: groupsLoading } = useQuery({
@@ -47,9 +52,10 @@ export function ProposalTopicDestination({
     },
   });
 
-  const [mode, setMode] = useState<TopicDestinationMode>("new");
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const autoPrefillKeyRef = useRef<string | null>(null);
+  // Naam uit “Nieuw topic” bewaren terwijl je in “bestaand” zit.
+  const newTopicDraftRef = useRef(topic);
 
   const trimmedTopic = topic.trim();
   const nameConflict =
@@ -67,21 +73,53 @@ export function ProposalTopicDestination({
     (mode === "new" && nameConflict) ||
     (mode === "existing" && !selectedGroup);
 
+  // Na hydrate / mode=existing: selectie koppelen aan topicnaam.
+  useEffect(() => {
+    if (mode !== "existing" || groups.length === 0 || !trimmedTopic) return;
+    const match = groups.find((g) => g.name.trim() === trimmedTopic);
+    if (!match) return;
+    if (selectedGroupId === match.id) return;
+    setSelectedGroupId(match.id);
+  }, [mode, groups, trimmedTopic, selectedGroupId]);
+
+  // Reset selectie wanneer parent terug naar “nieuw” gaat (save/clear).
+  useEffect(() => {
+    if (mode === "new") {
+      setSelectedGroupId("");
+    }
+  }, [mode]);
+
   useEffect(() => {
     const key = suggestedTopic.trim();
     if (!key || groups.length === 0) return;
     if (autoPrefillKeyRef.current === key) return;
     autoPrefillKeyRef.current = key;
+    // In “bestaand” heeft de user de bestemming zelf gekozen.
+    if (mode === "existing") return;
+    // Alleen auto-switch als topic nog leeg is of gelijk aan de AI-suggestie.
+    if (trimmedTopic && trimmedTopic !== key) return;
     const match = groups.find((g) => g.name.trim() === key);
     if (!match) return;
-    setMode("existing");
+    newTopicDraftRef.current = topic;
+    onModeChange("existing");
     setSelectedGroupId(match.id);
     onTopicChange(match.name);
-  }, [suggestedTopic, groups, onTopicChange]);
+  }, [
+    suggestedTopic,
+    groups,
+    onTopicChange,
+    onModeChange,
+    mode,
+    topic,
+    trimmedTopic,
+  ]);
 
   function handleModeChange(next: TopicDestinationMode) {
-    setMode(next);
+    if (next === mode) return;
+
     if (next === "existing") {
+      newTopicDraftRef.current = topic;
+      onModeChange("existing");
       const match =
         groups.find((g) => g.name.trim() === trimmedTopic) ?? groups[0] ?? null;
       if (match) {
@@ -92,9 +130,11 @@ export function ProposalTopicDestination({
       }
       return;
     }
-    if (!trimmedTopic && suggestedTopic.trim()) {
-      onTopicChange(suggestedTopic.trim());
-    }
+
+    // Terug naar nieuw: herstel eerdere nieuw-naam (mag leeg zijn).
+    onModeChange("new");
+    setSelectedGroupId("");
+    onTopicChange(newTopicDraftRef.current);
   }
 
   function handleSelectGroup(groupId: string) {
@@ -166,8 +206,7 @@ export function ProposalTopicDestination({
                   )}
                   {groups.map((g) => (
                     <option key={g.id} value={g.id}>
-                      {g.name} ({g.exerciseCount ?? 0} oefening
-                      {(g.exerciseCount ?? 0) === 1 ? "" : "en"})
+                      {g.name}
                     </option>
                   ))}
                 </>
@@ -255,11 +294,18 @@ function ExistingTopicPreview({ groupId }: { groupId: string }) {
 
   const members = data?.members ?? [];
 
+  // Standaard ingeklapt: voorstel-tabel blijft bereikbaar zonder scrollen.
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">
+    <details className="group space-y-2">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+        <span
+          aria-hidden="true"
+          className="inline-block transition-transform group-open:rotate-90"
+        >
+          ▸
+        </span>
         Bestaande oefeningen in dit topic ({members.length})
-      </p>
+      </summary>
       {members.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Dit topic heeft nog geen oefeningen.
@@ -276,6 +322,6 @@ function ExistingTopicPreview({ groupId }: { groupId: string }) {
           </ul>
         </div>
       )}
-    </div>
+    </details>
   );
 }

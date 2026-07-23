@@ -13,7 +13,10 @@ import {
 import type { AudioRow } from "@/types/tatoeba";
 import { useTranslationCache } from "@/lib/hooks/use-translation-cache";
 
-import { ProposalTopicDestination } from "./proposal-topic-destination";
+import {
+  ProposalTopicDestination,
+  type TopicDestinationMode,
+} from "./proposal-topic-destination";
 import {
   getLastBatchExerciseCount,
   mapBatchToRows,
@@ -56,6 +59,13 @@ type ProposalTableProps = {
   initialSelectedIds?: number[];
   /** Hersteld onderwerp uit localStorage-draft. */
   initialTopic?: string;
+  destinationMode: TopicDestinationMode;
+  onDestinationModeChange: (mode: TopicDestinationMode) => void;
+  onRemoveAudioIds?: (audioIds: number[]) => void;
+  onUpdateExercise?: (
+    audioId: number,
+    values: ExerciseEditValues,
+  ) => void;
   /** Melden van selectie/topic-wijzigingen voor draft-persist. */
   onDraftMetaChange?: (meta: {
     selectedAudioIds: number[];
@@ -73,12 +83,14 @@ export function ProposalTable({
   onSave,
   initialSelectedIds,
   initialTopic,
+  destinationMode,
+  onDestinationModeChange,
+  onRemoveAudioIds,
+  onUpdateExercise,
   onDraftMetaChange,
 }: ProposalTableProps) {
   const translationLookup = useTranslationCache();
   const translationRef = useRef(translationLookup);
-  // Layout-effect (niet gewone effect): het batches-effect hieronder leest
-  // deze ref en moet de verse lookup zien binnen dezelfde commit.
   useLayoutEffect(() => {
     translationRef.current = translationLookup;
   }, [translationLookup]);
@@ -93,6 +105,7 @@ export function ProposalTable({
   const topicInitializedRef = useRef(Boolean(initialTopic?.trim()));
   const topicRef = useRef(topic);
   topicRef.current = topic;
+  const didApplyInitialSelectionRef = useRef(false);
 
   const prevBatchCountRef = useRef(0);
   const prevBatchesRef = useRef<ProposalBatch[]>([]);
@@ -101,9 +114,6 @@ export function ProposalTable({
     draftMetaRef.current = onDraftMetaChange;
   }, [onDraftMetaChange]);
 
-  // Batches → rijen synchroniseren kan niet als pure afleiding: het seedt
-  // ook de gedeelde vertaal-cache (extern systeem). De sync setState hier
-  // is bewust en begrensd (alleen bij batch-mutaties).
   /* eslint-disable react-hooks/set-state-in-effect */
   useLayoutEffect(() => {
     const prevCount = prevBatchCountRef.current;
@@ -112,8 +122,7 @@ export function ProposalTable({
     if (nextCount === 0) {
       setRows([]);
       setSelectedIds(new Set());
-      // Alleen topic wissen na clear/save (had batches → leeg), niet bij
-      // initiële lege staat of als de user al een bestemming koos.
+      didApplyInitialSelectionRef.current = false;
       if (prevCount > 0) {
         setTopic("");
         topicInitializedRef.current = false;
@@ -127,7 +136,6 @@ export function ProposalTable({
     }
 
     if (!topicInitializedRef.current) {
-      // Behoud handmatig gekozen topic; anders AI-/draft-naam.
       if (!topicRef.current.trim()) {
         setTopic(initialTopic?.trim() || proposal?.topic || "");
       }
@@ -141,7 +149,6 @@ export function ProposalTable({
         0,
       );
 
-      // Chronologische ids behouden; nieuwste batch bovenaan (live + restore).
       const batchRowGroups = newBatches.map((batch) => {
         const batchRows = mapBatchToRows(batch, startIndex);
         seedTranslationCache(translationRef.current, batchRows, batch.proposal);
@@ -176,7 +183,18 @@ export function ProposalTable({
   }, [batches, proposal?.topic, initialTopic]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Draft-meta naar parent voor localStorage.
+  // Eenmalig draft-selectie toepassen nadat rijen bestaan.
+  useLayoutEffect(() => {
+    if (didApplyInitialSelectionRef.current) return;
+    if (!initialSelectedIds?.length || rows.length === 0) return;
+    const valid = initialSelectedIds.filter((id) =>
+      rows.some((row) => row.audio_id === id),
+    );
+    if (valid.length === 0) return;
+    setSelectedIds(new Set(valid));
+    didApplyInitialSelectionRef.current = true;
+  }, [initialSelectedIds, rows]);
+
   useLayoutEffect(() => {
     draftMetaRef.current?.({
       selectedAudioIds: Array.from(selectedIds),
@@ -193,7 +211,8 @@ export function ProposalTable({
     translationRef.current.removeByAudioIds(ids);
     setRows((prev) => prev.filter((row) => !selectedIds.has(row.audio_id)));
     setSelectedIds(new Set());
-  }, [selectedIds]);
+    onRemoveAudioIds?.(ids);
+  }, [selectedIds, onRemoveAudioIds]);
 
   const handleRowDoubleClick = useCallback((row: AudioRow) => {
     setEditError(null);
@@ -227,10 +246,11 @@ export function ProposalTable({
             : r,
         ),
       );
+      onUpdateExercise?.(editRow.audio_id, values);
       setEditRow(null);
       setEditError(null);
     },
-    [editRow],
+    [editRow, onUpdateExercise],
   );
 
   const handleSave = useCallback(() => {
@@ -242,7 +262,6 @@ export function ProposalTable({
       selectedIds,
       trimmedTopic,
     );
-    // Header-onderwerp wint: row-cache mag de groepsnaam niet overschrijven.
     body.topic = trimmedTopic;
     if (body.exercises.length === 0) return;
     onSave(body);
@@ -260,6 +279,8 @@ export function ProposalTable({
         suggestedTopic={proposal?.topic ?? ""}
         topic={topic}
         onTopicChange={setTopic}
+        mode={destinationMode}
+        onModeChange={onDestinationModeChange}
         actions={({ blocked, existingTopicName }) => {
           const saveLabel = existingTopicName
             ? selectedCount > 0
@@ -371,7 +392,6 @@ export function ProposalTable({
   );
 }
 
-/** Lege voorstel-tabel met dezelfde headers als na genereren. */
 function EmptyProposalTableChrome({
   message,
   showMp3,
@@ -430,7 +450,8 @@ function SaveButton({
         <button
           type="button"
           onClick={onSave}
-          className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+          disabled={disabled}
+          className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
         >
           Opnieuw proberen
         </button>

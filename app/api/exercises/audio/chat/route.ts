@@ -93,7 +93,7 @@ export async function POST(req: Request) {
   // Tool binnen POST zodat execute exclude-IDs uit draftSummary kan gebruiken.
   const proposeAudioExercises = tool({
     description:
-      "Zoek N Spaans→NL oefeningen mét Tatoeba-audio bij een onderwerp. De UI toont de hits; de gebruiker kan een groep opslaan.",
+      "Alleen voor Spaans→Nederlands oefeningen mét Tatoeba-audio. Zoek N hits bij een onderwerp; de UI toont ze zodat de gebruiker kan opslaan.",
     inputSchema: proposeAudioExercisesSchema,
     execute: async (input) => {
       const result = await searchAudioExercises({
