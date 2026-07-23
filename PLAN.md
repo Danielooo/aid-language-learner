@@ -12,9 +12,17 @@ Bron van de eisen: `[EINDOPDRACHT.md](EINDOPDRACHT.md)` (alleen D1, D2 + relevan
 
 
 
-## Handoff (laatst bijgewerkt: 2026-07-21)
+## Handoff (laatst bijgewerkt: 2026-07-23)
 
 **Lees dit eerst** bij een nieuwe agentsessie. Werk stap voor stap met de developer: stap aankondigen → feedback → fix → pas door als de developer zegt dat de stap klaar is. Geen commits tenzij gevraagd. **NOOIT** `IDEEFASE.md` lezen of editen.
+
+### Exact hervatten (nu)
+
+- **Ronde:** **H — Generator** (UI-align gedaan; smoke nog open vanaf stap 1).
+- **Eerste antwoord in nieuwe chat:** kondig **H stap 1/6** aan (checklist hieronder) en wacht op feedback. Niet opnieuw G openen tenzij de developer dat vraagt.
+- **Branch:** `feature/user-panels`.
+- **Rol voor H:** inloggen als **Gebruiker** (niet Admin) — Generator zit in de user-nav.
+- **UI-align (vóór smoke):** tabs via `?tab=audio` (zoals Community); chat via gedeelde `ChatThread`/`ChatComposer`; text/audio-parity; Leerplan-terminologie.
 
 ### Waar we zijn
 
@@ -25,61 +33,47 @@ Bron van de eisen: `[EINDOPDRACHT.md](EINDOPDRACHT.md)` (alleen D1, D2 + relevan
 | C Community | Klaar |
 | D Leren | Klaar |
 | E Exercises | Klaar |
-| F Voortgang | Klaar (fixes af; optionele her-smoke) |
-| **G Admin** | **Volgende — developer smoke** |
-| H Generator | — |
+| F Voortgang | Klaar |
+| G Admin | Klaar (B40–B44 fixed; smoke door developer gedaan) |
+| **H Generator** | **Volgende — start bij checklist-stap 1 (na UI-align)** |
 
-### Voortgang (F) — afgerond
+### Admin (G) — afgerond (kort)
 
-Developer-fixes voor F zijn binnen (o.a. B33–B39, statuslabels weg uit de topic-lijst, cache-invalidate, modal-copy, error+retry). Productgedrag kort:
+- Beheer alleen Admin; niet-admin → `/oefenen`
+- Gebruikers: deactiveren (sessies + kick), Verwijderen, **Admin aanmaken** op `/admin/admin-aanmaken`
+- Bijdragen beoordelen: `/admin/bijdragen`
 
-- `/voortgang`: Herhaalschema-% = deel nu bij; “Alles bij” / “X open” (evt. “later vandaag gepland”)
-- Per topic: alleen actieve topics met herhaalschema-progress; % = ladder tot 9×; **geen** statusbadge in de lijst (wel verdeling in modal)
-- Grafieken + tooltips; stats invalideren na oefenpogingen / SRS
-- Nice to have blijft: doorlink topic-detail → Oefenen (§ Nice to haves)
+### Generator (H) — open voor developer-check
 
-**Optioneel:** developer mag smoke-ronde F nog één keer dubbelchecken (checklist hieronder). Geen blockers bekend — **niet verplicht** vóór G.
+Smoke van **Generator** (`/generator`): AI-tekstchat + Audio (Tatoeba). Scope = bestaand pad stabiel; geen pipeline-herontwerp.
 
-Optionele F-checklist:
-
-1. Nav → Voortgang → laadt zonder crash
-2. Herhaalschema: % bij + statusregel
-3. Topic-lijst zonder statuslabels; klik → modal met verdeling
-4. Beide grafieken (of nette empty)
-5. Na herhaalschema-sessie: soft-nav terug → verse cijfers
-6. API-fout → melding + Opnieuw proberen
-
-### Admin (G) — open voor developer-check
-
-Smoke van **Beheer** (admin-rol): gebruikers, Bijdragen beoordelen, oefeningen/tatoeba waar relevant.
-
-**Gebruikers beheren (B40–B43):** deactiveren trekt sessies in + proxy kick; login toont “gedeactiveerd”; Verwijderen wist account+data; rol-wissel weg; **Admin aanmaken** is aparte tab (`/admin/admin-aanmaken`).
+**UI-align (2026-07-23):** chrome gelijk aan andere tabs — `ChatThread`/`ChatComposer`, muted tablist + URL-tab, voorstel-knoppen text≈audio, copy **Leerplan**/**Topic**.
 
 Scope (geen nieuwe features):
-- Alleen als beheerder bereikbaar; niet-admin → nette deny/redirect
-- Gebruikerslijst (`/admin/gebruikers`): laden, zoeken/filteren indien aanwezig, rol/acties zonder stille fail
-- Bijdragen beoordelen (`/admin/bijdragen`): pending submissions; goedkeuren/afwijzen/heropenen waar UI dat biedt
-- Overige admin-pagina’s die in nav staan (oefeningen, tatoeba-import): laden zonder crash; diepe Tatoeba-pipeline niet herontwerpen
-- Terminologie: Beheer, Gebruiker, Admin, Pending, Goedgekeurd, Afgekeurd
+- Pagina laadt; tabs **Tekst** / **Audio**; quota zichtbaar of nette empty/fout
+- Tekst: chat streamt; tool `proposeExercises` → voorsteltabel; selectie + **Topic opslaan** → topic in Leerplan
+- Audio: zoek/preview + opslaan zonder crash (diepe Tatoeba-import blijft admin)
+- Foutpaden: geen stille leegte; quota-limiet begrijpelijk
+- Terminologie: Generator, Topic, Oefening, Leerplan (geen “Set”/“Globaal”/“Groep”)
 
-Checklist voor smoke (G):
+Checklist voor smoke (H) — nog allemaal open:
 
-1. Inloggen als beheerder → Beheer bereikbaar
-2. Niet-admin → geen toegang (of lege/forbidden state)
-3. Gebruikers beheren: laden; AI/deactiveren/verwijderen; Admin aanmaken-tab; acties falen niet stil
-4. Bijdragen beoordelen: lijst + minstens één statuspad (approve/reject) of nette empty
-5. Foutpad/API: geen stille leegte
-6. Deactiveren: andere tab/sessie van die user → uitgelogd; opnieuw inloggen → “gedeactiveerd”
+1. ☐ Nav → Generator → laadt; tabs Tekst / Audio wisselbaar (`?tab=audio`)
+2. ☐ Tekst: prompt → streaming antwoord + voorstelregels (of nette fout)
+3. ☐ Selectie + Topic opslaan → succesmodal / zichtbaar in Leerplan
+4. ☐ Audio-tab: zoeken of preview zonder crash (of nette empty/fout)
+5. ☐ Quota: label klopt; bij limiet begrijpelijke melding (geen stille fail)
+6. ☐ Soft-nav weg/terug of refresh: draft/tab-gedrag acceptabel (geen crash)
 
 ### Volgende actie
 
-1. **Default:** start smoke-ronde **G — Admin** (checklist hierboven).
-2. **Optioneel:** eerst F nog eens kort dubbelchecken; bij feedback → triage → fix → §0.1.
-3. Bij G-feedback → triage → fix → noteer in §0.1; pas daarna **H — Generator**.
+1. Start **H stap 1** (checklist hierboven); door naar 2…6 pas na “klaar/ok” per stap.
+2. Bij feedback → triage → fix → noteer in §0.1 (volgende vrije ID na B44).
+3. Na hele H-checklist groen: markeer H klaar in deze handoff; daarna Fase 6 / D1–D2 of Nice to haves **alleen op verzoek**.
 
 ### Startprompt (plakken in nieuwe chat)
 
-> Lees `PLAN.md` sectie **Handoff** en §0.1. Ga verder vanaf “Volgende actie”. Default = smoke G Admin; F-hercheck is optioneel. Stap voor stap; geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`. **Scope-guard:** voer uit wat gevraagd wordt; noem achteraf kort als het een nieuwe/grote feature was buiten de afrond-focus.
+> Lees `PLAN.md` sectie **Handoff** (esp. **Exact hervatten**) en §0.1. Start meteen smoke **H — Generator stap 1/6**; wacht op mijn feedback per stap. Geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`. **Scope-guard:** voer uit wat gevraagd wordt; noem achteraf kort als het een nieuwe/grote feature was buiten de afrond-focus.
 
 ### Regels (kort)
 
