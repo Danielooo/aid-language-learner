@@ -10,18 +10,18 @@ Bron van de eisen: `[EINDOPDRACHT.md](EINDOPDRACHT.md)` (alleen D1, D2 + relevan
 
 ---
 
-## Handoff (laatst bijgewerkt: 2026-07-23)
+## Handoff (laatst bijgewerkt: 2026-07-24)
 
 **Lees dit eerst** bij een nieuwe agentsessie. Werk stap voor stap met de developer: stap aankondigen → feedback → fix → pas door als de developer zegt dat de stap klaar is. Geen commits tenzij gevraagd. **NOOIT** `IDEEFASE.md` lezen of editen.
 
 ### Exact hervatten (nu)
 
-- **Ronde:** **Fase 6 — Verificatie** (stap 10 D1/D2 — gaps open).
-- **Eerste antwoord in nieuwe chat:** open D1/D2-gaps (public repo, README, Vercel, docs).
-- **Branch:** `feature/user-panels`.
+- **Ronde:** **Fase 6 — Verificatie** (stap 10 D1/D2 — Vercel-deploy **halverwege**).
+- **Eerste antwoord in nieuwe chat:** hervat Vercel env-vars (lijst hieronder), daarna `vercel --prod`, daarna Supabase Auth URLs.
+- **Branch:** `main` (feature/user-panels gemerged/verwijderd; project gelinkt aan Vercel).
 - **Rol:** n.v.t.
 - **Bug-IDs:** volgende vrije ID = **B54**.
-- **Laatst bevestigd:** B53 exercises-list ✅; Fase 6 smoke 1–9 ✅; stap 10 inventory gedaan.
+- **Laatst bevestigd:** B53 exercises-list ✅; Fase 6 smoke 1–9 ✅; Vercel-project aangemaakt; 1 env var toegevoegd.
 
 ### Waar we zijn
 
@@ -32,7 +32,38 @@ Bron van de eisen: `[EINDOPDRACHT.md](EINDOPDRACHT.md)` (alleen D1, D2 + relevan
 | Stap 9 Query           | Klaar (Tier 1/2; B53)                                               |
 | Stap 10 D1/D2          | **Bezig** — kern D2 ✅; oplever-/leerlijn-gaps open (zie Gaps-tabel) |
 | **Fase 6 Verificatie** | **Bijna klaar** — rest = gaps dicht of bewust uitstellen naar D3    |
+| Vercel deploy          | **Bezig** — project + 1/N env vars; build faalde tot env compleet is |
 
+
+### Vercel — hervatten hier (2026-07-24)
+
+**Project:** `danielooo1s-projects/aid-language-learner` (CLI gelinkt; team `danielooo1s-projects`).
+
+**Wat al gebeurde:**
+- `vercel` / `vercel --prod` geprobeerd → build faalt bij prerender `/admin/contributions`: ontbrekende Supabase env op Vercel (`.env.local` telt niet op de remote build).
+- `vercel env ls` was eerst leeg.
+- `vercel env add` gestart; **klaar:** `NEXT_PUBLIC_SUPABASE_URL` (Production + Preview + Development, non-sensitive).
+- **Gestopt** na die ene var — rest nog toevoegen.
+
+**Nog toevoegen via `vercel env add` (waarden uit lokale `.env.local`):**
+
+| Name | Sensitive? | Environments |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | nee (`n`) | Production, Preview, Development |
+| `SUPABASE_SERVICE_ROLE_KEY` | ja (`Y`) | idem |
+| `SUPABASE_SECRET_KEY` | ja (`Y`) | idem (als aanwezig lokaal) |
+| `OPENAI_API_KEY` | ja (`Y`) | idem |
+| `AUTH_STRICT_PASSWORD` | nee | idem (bv. `true`) |
+
+Niet op Vercel: `SEED_USER_PASSWORD`.
+
+**Daarna:**
+1. `vercel env ls` — check of namen er staan.
+2. `vercel --prod` — geslaagde Production-URL noteren.
+3. Supabase Dashboard → Authentication → URL Configuration: Site URL + Redirect URLs = die Vercel-URL (+ `http://localhost:3000/**` voor lokaal).
+4. Productie-URL in Gaps-tabel / D1-oplevering zetten; smoke op Vercel.
+
+**Let op:** bij eerdere `vercel --prod` link-flow is `.env.local` per ongeluk overschreven door Vercel pull (alleen `VERCEL_OIDC_TOKEN`). Lokaal weer hersteld — bij `vercel env pull` / overwrite **niet** blind `yes` kiezen zonder backup.
 
 ### Sinds stap 1 (Auth) — tussendoor
 
@@ -61,13 +92,14 @@ Meegenomen bij Leren / Exercises / Voortgang / Admin:
 
 ### Volgende actie
 
-1. **Nu:** D1/D2-gaps dicht — start met repo **public**, README + Supabase URL, Vercel deploy.
-2. docs/ERD = leerlijn / D3 — op verzoek.
-3. Nice to haves **alleen op verzoek**.
+1. **Nu:** Vercel env-vars afmaken (zie tabel hierboven) → `vercel --prod` → Supabase Auth URLs.
+2. Daarna overige D1/D2-gaps: repo **public**, README.
+3. docs/ERD = leerlijn / D3 — op verzoek.
+4. Nice to haves **alleen op verzoek**.
 
 ### Startprompt (plakken in nieuwe chat)
 
-> Lees `PLAN.md` Handoff + Gaps-tabel. Dicht open oplevergaps of vraag prioriteit. Geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`.
+> Lees `PLAN.md` Handoff § Vercel — hervatten hier. Maak env-vars af, deploy `--prod`, zet Supabase Auth URLs. Geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`.
 
 ### Regels (kort)
 
@@ -123,7 +155,7 @@ Fases 2–6 dekken **criterium 2.2** en de quickscan-eis “CRUD met React Query
 - [x] Vercel AI SDK met werkende AI Agent
 - [x] Minimaal 1 externe API geïntegreerd via Tool Calling (`proposeAudioExercises` → Tatoeba)
 - [x] Streaming responses in de chat-interface
-- [ ] Applicatie gedeployed naar productie via Vercel ← **gap** (niet gevonden in Vercel-team)
+- [ ] Applicatie gedeployed naar productie via Vercel ← **gap** (project bestaat; env 1/N; build nog rood)
 - [x] Werkt in development zonder kritieke runtime errors (Fase 6 smoke); productie na deploy opnieuw checken
 
 ### Vier kernfunctionaliteiten
@@ -215,7 +247,7 @@ Gaps-tabel:
 | Gap                     | Notitie                                             | Actie                                  |
 | ----------------------- | --------------------------------------------------- | -------------------------------------- |
 | GitHub public           | Repo is **private**                                 | Settings → Change visibility → Public  |
-| Vercel deploy           | Geen `aid-language-learner` project in Vercel-team  | Deploy + URL noteren                   |
+| Vercel deploy           | Project `aid-language-learner` gelinkt; alleen `NEXT_PUBLIC_SUPABASE_URL` gezet; `--prod` faalt zonder rest env | Rest env via `vercel env add` → `--prod` → Auth URLs + URL noteren |
 | README                  | Nog create-next-app template                        | Install + env + scripts + Supabase URL |
 | Skills                  | Klaar — `.agents/skills/` (≥2, incl. vercel-react)  | —                                      |
 | `docs/*`                | PROJECT-BRIEF / PROMPT-LOG / AI-DECISIONS ontbreken | Aanmaken (leerlijn)                    |
