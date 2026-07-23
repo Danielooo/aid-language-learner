@@ -1,9 +1,8 @@
 ---
-description: Stage relevante files, stel een conventional-commit message voor, commit na akkoord
+description: Stage relevante files, stel een conventional-commit messages voor, commit na akkoord
 ---
 
-Snelle, light-weight commit. Geen docs-scan, geen `Refs:`-update, geen
-status-footer.
+Snelle, light-weight commits. 
 
 ## Stappen
 
@@ -36,8 +35,7 @@ Toon het voorstel aan de gebruiker:
 > Files: `.cursor/rules/nextjs-app-router.mdc`
 > Akkoord, of pas je 'm aan?
 
-Als er duidelijk meerdere logische gebeurtenissen open staan, stel kort
-groepering voor — Default is meerdere commits, maar stel ook een enkele commit voor
+Default is meerdere commits, maar stel ook een enkele commit voor
 
 ### 3. Commit
 
