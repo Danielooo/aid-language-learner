@@ -30,6 +30,7 @@ export async function GET(req: Request) {
   const now = new Date();
   const activeTopics = await getActiveTopicsForUser(access.supabase, access.userId);
 
+  // Alleen eigen oefeningen (B46): globale corpus-rijen niet in Voortgang.
   const [progressRes, exerciseTopicsRes, attemptsRes] = await Promise.all([
     access.supabase
       .from("exercise_progress")
@@ -37,7 +38,10 @@ export async function GET(req: Request) {
         "exercise_id, repetition_count, interval_days, last_reviewed_at, next_review_at, is_suspended",
       )
       .eq("user_id", access.userId),
-    access.supabase.from("exercises").select("id, topic"),
+    access.supabase
+      .from("exercises")
+      .select("id, topic")
+      .eq("owner_id", access.userId),
     access.supabase
       .from("quiz_attempts")
       .select("created_at, is_correct, exercise_id, exercises(topic)")
@@ -67,6 +71,8 @@ export async function GET(req: Request) {
 
   const progressRows = ((progressRes.data ?? []) as unknown as ProgressRow[]).filter(
     (row) => {
+      // Alleen progress op eigen oefeningen (niet globale ids uit oude sessies).
+      if (!topicByExerciseId.has(row.exercise_id)) return false;
       const topic = topicByExerciseId.get(row.exercise_id) ?? null;
       return isTopicActive(activeTopics, topic);
     },

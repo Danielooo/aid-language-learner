@@ -30,6 +30,7 @@ export async function GET() {
   const { data, error } = await access.supabase
     .from("exercises")
     .select("topic")
+    .eq("owner_id", access.userId)
     .not("topic", "is", null)
     .in("topic", activeList);
 

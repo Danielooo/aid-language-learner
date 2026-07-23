@@ -10,9 +10,9 @@ import {
   isTopicActive,
 } from "@/lib/topics/active-topics";
 
-// Random oefening uit `exercises` voor de generator-quiz. RLS filtert
-// automatisch op (`owner_id is null` OR `owner_id = auth.uid()`), dus
-// de user ziet de seed-set + zijn eigen gegenereerde oefeningen.
+// Oefeningen voor Oefenen: alleen eigen rijen (`owner_id = user`).
+// Globale corpus-oefeningen (RLS: owner_id null) horen niet in Topic/SRS-
+// sessies — die tellingen moeten matchen met Leerplan-groepen.
 //
 // Query-modes:
 //   * (default) random — optioneel ?topic=
@@ -32,6 +32,7 @@ async function fetchById(
     .from("exercises")
     .select(EXERCISE_QUIZ_SELECT)
     .eq("id", id)
+    .eq("owner_id", access.userId)
     .maybeSingle();
 
   if (error) return { error: Response.json({ error: error.message }, { status: 500 }) };
@@ -141,6 +142,7 @@ async function fetchRandom(
   let countQuery = access.supabase
     .from("exercises")
     .select("id", { count: "exact", head: true })
+    .eq("owner_id", access.userId)
     .in("topic", activeList);
   if (topic) countQuery = countQuery.eq("topic", topic);
   for (const id of excludeIds) {
@@ -170,6 +172,7 @@ async function fetchRandom(
   let rowQuery = access.supabase
     .from("exercises")
     .select(EXERCISE_QUIZ_SELECT)
+    .eq("owner_id", access.userId)
     .in("topic", activeList)
     .range(offset, offset);
   if (topic) rowQuery = rowQuery.eq("topic", topic);

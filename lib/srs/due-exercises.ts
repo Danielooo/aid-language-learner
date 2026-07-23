@@ -44,10 +44,15 @@ export function isSrsExerciseDue(
 
 async function fetchExercisesInTopics(
   supabase: SupabaseClient,
+  userId: string,
   activeList: string[],
   topic: string | null,
 ): Promise<ExerciseIdRow[]> {
-  let query = supabase.from("exercises").select("id, topic").in("topic", activeList);
+  let query = supabase
+    .from("exercises")
+    .select("id, topic")
+    .eq("owner_id", userId)
+    .in("topic", activeList);
 
   if (topic) {
     query = query.eq("topic", topic);
@@ -114,7 +119,7 @@ export async function countSrsDue(
   const activeListSet = new Set(activeList);
 
   const [exercises, progressByExerciseId] = await Promise.all([
-    fetchExercisesInTopics(supabase, activeList, topic),
+    fetchExercisesInTopics(supabase, userId, activeList, topic),
     fetchProgressByExerciseId(supabase, userId),
   ]);
 
@@ -143,7 +148,7 @@ export async function pickRandomSrsDueExercise(
   const activeListSet = new Set(activeList);
 
   const [exercises, progressByExerciseId] = await Promise.all([
-    fetchExercisesInTopics(supabase, activeList, topic),
+    fetchExercisesInTopics(supabase, userId, activeList, topic),
     fetchProgressByExerciseId(supabase, userId),
   ]);
 
@@ -162,6 +167,7 @@ export async function pickRandomSrsDueExercise(
     .from("exercises")
     .select(EXERCISE_QUIZ_SELECT)
     .eq("id", pickId)
+    .eq("owner_id", userId)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
