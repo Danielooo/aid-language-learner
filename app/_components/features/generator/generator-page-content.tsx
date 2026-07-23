@@ -34,9 +34,24 @@ export function GeneratorPageContent() {
       <AppPageHeader
         title="Generator"
         description={
-          tab === "text"
-            ? 'Kies of je een nieuw topic maakt of toevoegt aan bestaand. Vraag daarna de chatbot om Spaans→Nederlands oefeningen, review het voorstel en klik "Topic opslaan".'
-            : 'Kies of je een nieuw topic maakt of toevoegt aan bestaand. Zoek daarna Tatoeba-spraakoefeningen, preview met het luidsprekertje en sla op.'
+          tab === "text" ? (
+            'Kies of je een nieuw topic maakt of toevoegt aan bestaand. Vraag daarna de chatbot om Spaans→Nederlands oefeningen, review het voorstel en klik "Topic opslaan".'
+          ) : (
+            <>
+              Kies of je een nieuw topic maakt of toevoegt aan bestaand.
+              Genereer daarna spraakoefeningen, beluister ze met het
+              luidsprekertje en sla op. De audiobestanden komen uit de{" "}
+              <a
+                href="https://api.tatoeba.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                Tatoeba-API
+              </a>
+              .
+            </>
+          )
         }
       />
 

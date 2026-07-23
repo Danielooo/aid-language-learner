@@ -28,6 +28,7 @@ Onderhoud hier de woordenlijst. Bij twijfel over een label: deze file, niet syno
 | Review-status | Pending, Goedgekeurd, Afgekeurd | In behandeling (naast Pending) |
 | Oefengebied | Leren | Quiz (als gebiedsnaam) |
 | Oefenvormen | Flashcards, Typen, Sorteren | — |
+| Oefeningen met gesproken audio | Spraakoefeningen | Tatoeba-spraakoefeningen, Tatoeba-opnames (als lead-term) |
 | Herhalingssysteem | Herhaalschema | Spaced repetition, SRS |
 | Score-metriek | Nauwkeurigheid | Accuraatheid |
 | Admin-gebied | Beheer | — |
@@ -45,3 +46,15 @@ Onderhoud hier de woordenlijst. Bij twijfel over een label: deze file, niet syno
 - Flashcard-*interactie*: "draai de kaart om" mag (UX-metafoor); tellen/lege staten = oefening.
 - Eerste uitleg herhaalschema mag één keer "(spaced repetition)" tussen haakjes.
 - Productnamen Community, Generator, Flashcards, Pending, Admin blijven zo.
+
+## Bronvermelding Tatoeba (audio)
+
+Gebruikers kennen Tatoeba niet. In user-facing copy:
+
+1. Lead met **spraakoefeningen** (wat de app doet), niet met “Tatoeba”.
+2. Bron mag wél: *De audiobestanden komen uit de Tatoeba-API* — hyperlink
+   “Tatoeba-API” naar `https://api.tatoeba.org` (`target="_blank"` +
+   `rel="noopener noreferrer"`).
+3. Vermijd lead-frases als “Zoek Tatoeba-opnames” / “Tatoeba-spraakoefeningen”.
+4. Code/comments/admin-import mogen “Tatoeba” gewoon noemen; dit geldt voor
+   UI-copy die eindgebruikers lezen (Generator Audio-tab, empty states, e.d.).
