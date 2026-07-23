@@ -65,12 +65,12 @@ export function Dashboard({ stats, loading, error, onRetry }: DashboardProps) {
         upcomingTodayCount={upcomingTodayCount}
       />
 
-      <TopicProgressList topics={stats.topicProgress} />
-
       <section className="grid gap-6 lg:grid-cols-2">
         <UpcomingReviewsChart data={stats.upcomingByDay} />
         <ActivityBarsChart data={stats.activityBars} streakDays={stats.streakDays} />
       </section>
+
+      <TopicProgressList topics={stats.topicProgress} />
     </div>
   );
 }
@@ -79,11 +79,11 @@ function DashboardSkeleton() {
   return (
     <div className="space-y-6">
       <div className="h-32 animate-pulse rounded-lg border border-border bg-muted/40" />
-      <div className="h-44 animate-pulse rounded-md border border-border bg-muted/40" />
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="h-52 animate-pulse rounded-lg border border-border bg-muted/40" />
         <div className="h-52 animate-pulse rounded-lg border border-border bg-muted/40" />
       </div>
+      <div className="h-44 animate-pulse rounded-md border border-border bg-muted/40" />
     </div>
   );
 }
