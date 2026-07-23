@@ -19,32 +19,34 @@ Bron van de eisen: `[EINDOPDRACHT.md](EINDOPDRACHT.md)` (alleen D1, D2 + relevan
 ### Exact hervatten (nu)
 
 - **Ronde:** **Fase 6 — Verificatie** (product-smoke D1/D2; H Generator klaar).
-- **Eerste antwoord in nieuwe chat:** kondig **Fase 6 stap 2** aan (Leerplan) met de checklist hieronder; wacht op feedback.
+- **Eerste antwoord in nieuwe chat:** **stap 7 Admin** (checklist hieronder).
 - **Branch:** `feature/user-panels`.
-- **Rol:** Gebruiker (Admin niet nodig voor Leerplan).
-- **Bug-IDs:** volgende vrije ID = **B47**.
+- **Rol:** **Admin** (nodig voor Beheer).
+- **Bug-IDs:** volgende vrije ID = **B52**.
+- **Laatst bevestigd:** stap 6 Dashboard/voortgang ✅ (2026-07-23).
 
 ### Waar we zijn
 
 | Ronde | Status |
 | --- | --- |
 | A Auth | Klaar |
-| B Leerplan | Klaar (bouw); **Fase 6 smoke nog open** |
-| C Community | Klaar |
-| D Leren | Klaar (bouw); UX-opruiming tussendoor, zie “Sinds stap 1”) |
-| E Exercises | Klaar |
-| F Voortgang | Klaar |
-| G Admin | Klaar |
+| B Leerplan | Klaar (bouw + Fase 6 smoke ✅) |
+| C Community | Klaar (bouw + Fase 6 smoke ✅) |
+| D Leren | Klaar (bouw + Fase 6 smoke ✅) |
+| E Exercises | Klaar (bouw + Fase 6 smoke ✅; B51 cache-shape fix) |
+| F Voortgang | Klaar (bouw + Fase 6 smoke ✅; charts boven Per topic) |
+| G Admin | Klaar (bouw); **Fase 6 smoke nu** |
 | H Generator | Klaar (smoke + pre-smoke bugs; developer gedaan) |
-| **Fase 6 Verificatie** | **Bezig — stap 2 Leerplan** (stap 1 Auth ✅) |
+| **Fase 6 Verificatie** | **Bezig — stap 7 Admin** (1–6 ✅; Dashboard ok) |
 
-### Sinds stap 1 (Auth) — tussendoor (geen Leerplan-smoke)
+### Sinds stap 1 (Auth) — tussendoor
 
-Niet als “stap 2 klaar” tellen; wel meenemen bij latere Leren-smoke (stap 4):
+Meegenomen bij Leren / Exercises / Voortgang:
 
-- **B46** (fixed): Oefenen/dashboard telde global+eigen oefeningen op topicnaam → filter `owner_id = user` (quiz list/topics/route, SRS due, dashboard-stats).
-- **Legacy moduskeuze weg:** “Hoe wil je oefenen?” (Topic/Herhaalschema/Zelf kiezen) verwijderd van flashcards/typen/sorteren. Modus alleen via hub `/oefenen` + `?modus=topic|srs`; zonder/ongeldige modus → redirect hub. Custom/exercise-picker **volledig weg** (geen NTH).
-- Overige Oefenen-UX eerder: score→progress in kaart, Overslaan/Vorige/hotkeys weg, etc. (zie §0.1 B45+ / Nice to haves).
+- **B46** (fixed): Oefenen/dashboard telde global+eigen oefeningen op topicnaam → filter `owner_id = user`.
+- **B51** (fixed): `/leerplan/[id]` crash na Generator audio→bestaand topic — gedeelde `learningTopic`-key shape.
+- Voortgang: chart-rij (Komende herhalingen / Oefenactiviteit) boven Per topic.
+- **Legacy moduskeuze weg:** modus alleen via hub `/oefenen` + `?modus=topic|srs`.
 
 ### Fase 6 — open voor developer-check
 
@@ -53,48 +55,53 @@ Eindverificatie over het hele product (zie ook sectie **Fase 6 — Verificatie**
 Checklist Fase 6 (nog open):
 
 1. ☑ Inloggen / registreren / rollen
-2. ☐ Leerplan: lijst, toggle, bewerken, verwijderen ← **nu**
-3. ☐ Community: overnemen + bijdragen
-4. ☐ Leren: flashcards / typen / sorteren + progress (hub-modus + B46 meenemen)
-5. ☐ Exercises CRUD
-6. ☐ Dashboard / voortgang
-7. ☐ Admin: users + Bijdragen beoordelen (als Admin)
+2. ☑ Leerplan: lijst, toggle, bewerken, verwijderen
+3. ☑ Community: overnemen + bijdragen
+4. ☑ Leren: flashcards / typen / sorteren + progress
+5. ☑ Exercises CRUD
+6. ☑ Dashboard / voortgang
+7. ☐ Admin: users + Bijdragen beoordelen (als Admin) ← **nu**
 8. ☐ Generator / AI (quota + opslaan + streaming) — hercheck kort na H
 9. ☐ Geen `useEffect`-fetch meer op Tier 1/2 kandidaten (grep)
 10. ☐ D1- en D2-eisenchecklists opnieuw nalopen; open gaps noteren
 
-### Stap 2 — Leerplan smoke (wat de developer checkt)
+### Stap 7 — Admin smoke (wat de developer checkt)
 
-Route: `/leerplan` (+ `/leerplan/[id]`). Canonieke UI: **Topic**, **Leerplan** (geen “Set/Globaal/Mijn leerplan”).
+Rol: **Admin**. Canonieke UI: **Beheer**, **Gebruikers beheren**, **Bijdragen beoordelen**, **Pending / Goedgekeurd / Afgekeurd**, **Gebruiker / Admin**.
 
-**Overzicht (`/leerplan`)**
+**Toegang**
 
-1. Lijst laadt topics met count / tags / herkomst (eigen vs overgenomen) / Bewerkt.
-2. Zoeken + filters (herkomst, bewerkt, actief) — empty state bij geen match.
-3. **Actief**-toggle: blijft staan, foutmelding zichtbaar bij fail (regressie **B29**); inactief topic hoort **niet** in Oefenen-topickeuze.
-4. Rijklik of bewerken → detail `/leerplan/[id]`.
-5. **Verwijderen**: bevestigingsdialoog; na ok weg uit lijst (ook met oefeningen).
-6. Link/CTA naar Generator werkt.
-7. Cache (**B30**): na oefening toevoegen/wijzigen/verwijderen in topic → terug naar overzicht: counts / Bewerkt / lijst niet ~30s stale.
+1. Als Admin: nav **Beheer** bereikbaar; `/admin` landt op Bijdragen (`/admin/bijdragen`).
+2. Als Gebruiker: Beheer niet bruikbaar / geen admin-API (403 of redirect).
 
-**Detail (`/leerplan/[id]`)**
+**Gebruikers beheren** (`/admin/gebruikers`)
 
-8. Topic bewerken (naam/meta naar gelang UI); oefeningen bekijken/bewerken; terug naar Leerplan.
-9. Topic verwijderen vanaf detail → terug naar overzicht, topic weg.
-10. Leeg topic: copy/CTA klopt; “alle oefeningen verwijderen” (als aanwezig) ruimt topic+oefeningen op.
+3. Lijst laadt; filters (rol / status / AI) werken; empty bij geen match.
+4. **Rol wisselen** user↔admin (**B43**); blijft staan na refresh.
+5. **Deactiveren** (**B40/B44**): actie slaagt (geen 500); bestaande sessie van die user is meteen onbruikbaar (niet wachten op JWT-expiry).
+6. Login als gedeactiveerde user → duidelijke “gedeactiveerd”-fout (**B41**), niet generiek.
+7. **Verwijderen** (**B42**): bevestiging → account + data weg; weg uit lijst; fout zichtbaar bij fail.
+8. Eigen admin-account: gevaarlijke acties disabled/geblokkeerd waar bedoeld.
 
-**Klaar-criterium:** developer zegt ok/klaar op deze stap → vink checklist-item 2 af in Handoff + Fase 6-sectie; door naar stap 3 Community.
+**Bijdragen beoordelen** (`/admin/bijdragen`)
+
+9. Tabs Pending / Goedgekeurd / Afgekeurd + counts; laden… / fout + Opnieuw.
+10. Rij/modal: inhoud bekijken; **Goedkeuren** → naar Goedgekeurd; verschijnt in Community Overnemen.
+11. **Afkeuren** met reden → Afgekeurd; reden zichtbaar voor inzender (Community Bijdragen).
+12. Bulk-selectie (indien UI) werkt veilig; geen stille failure.
+
+**Klaar-criterium:** developer zegt ok/klaar → vink checklist-item 7 af; door naar stap 8 Generator.
 
 ### Volgende actie
 
-1. **Nu:** Fase 6 stap 2 (Leerplan) — checklist hierboven doorlopen met developer.
-2. Bij feedback → triage → fix → noteer in §0.1 (**B47+**).
-3. Daarna stap 3…10 na “klaar/ok” per stap.
+1. **Nu:** Fase 6 stap 7 (Admin) — checklist hierboven; **inloggen als Admin**.
+2. Bij feedback → triage → fix → noteer in §0.1 (**B52+**).
+3. Daarna stap 8…10 na “klaar/ok” per stap.
 4. Na hele Fase 6 groen: D1/D2 finaliseren; Nice to haves **alleen op verzoek**.
 
 ### Startprompt (plakken in nieuwe chat)
 
-> Lees `PLAN.md` sectie **Handoff** (esp. **Exact hervatten** + **Stap 2 — Leerplan smoke**) en §0.1. Start meteen **Fase 6 stap 2** (Leerplan); loop de checklist met mij; wacht op feedback per stap. Geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`. **Scope-guard:** voer uit wat gevraagd wordt; noem achteraf kort als het een nieuwe/grote feature was buiten de afrond-focus.
+> Lees `PLAN.md` sectie **Handoff** (esp. **Exact hervatten** + **Stap 7 — Admin smoke**) en §0.1. Start meteen **Fase 6 stap 7** (Admin); loop de checklist met mij; wacht op feedback per stap. Rol = Admin. Geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`. **Scope-guard:** voer uit wat gevraagd wordt; noem achteraf kort als het een nieuwe/grote feature was buiten de afrond-focus.
 
 ### Regels (kort)
 
@@ -322,6 +329,11 @@ Korte startnotities — vul aan terwijl je de checklists afwerkt.
 | B44 | Admin Deactiveren | PATCH /api/admin/users → 500 (thrown Response 401 + proxy getUser race) | ja | blocker | fixed |
 | B45 | Leren Typen/Sorteren | Overslaan weg (UI+recordSkip); N in “X van N” steeg door queue-append | ja | medium | fixed |
 | B46 | Leren Topic + Voortgang | Queue/dashboard telden global+eigen (topicnaam); alleen `owner_id` = user | ja | high | fixed |
+| B47 | Leren SRS | Geen “x van N”; N = due-snapshot bij picker, vast tot sessie-einde | ja | medium | fixed |
+| B48 | Leren Sorteren | Controleren onder de fold op korte viewport (media-query te mild) | ja | high | superseded |
+| B49 | Leren Oefenen | Speel-UI: flex + `100dvh`-band; midden scrollt; Controleren in flow (geen sticky); alle modi | ja | high | fixed |
+| B50 | Leren SRS | Geen “Fouten opnieuw doen” / main-complete na ronde (alleen SrsCompleteState) | ja | medium | fixed |
+| B51 | Exercises detail | Na Generator audio→bestaand topic crashte `/leerplan/[id]`: gedeelde `learningTopic`-key, Generator cachete groep-object, edit-page verwachtte string → React “Objects are not valid as a React child” | ja | blocker | fixed |
 
 
 **Ernst:**
@@ -481,12 +493,12 @@ Patroon voor writes:
 Handmatige smoke (product + D1/D2):
 
 - [x] Inloggen / registreren / rollen
-- [ ] Leerplan: lijst, toggle, bewerken, verwijderen  ← **nu** (zie Handoff → Stap 2)
-- [ ] Community: overnemen + bijdragen
-- [ ] Leren: flashcards / typen / sorteren + progress
-- [ ] Exercises CRUD
-- [ ] Dashboard / voortgang
-- [ ] Admin: users + review (als beheerder)
+- [x] Leerplan: lijst, toggle, bewerken, verwijderen
+- [x] Community: overnemen + bijdragen
+- [x] Leren: flashcards / typen / sorteren + progress
+- [x] Exercises CRUD
+- [x] Dashboard / voortgang
+- [ ] Admin: users + review (als beheerder)  ← **nu** (zie Handoff → Stap 7)
 - [ ] Generator / AI-agent (quota + opslaan + streaming)
 - [ ] Geen `useEffect`-fetch meer op Tier 1/2 kandidaten (grep op `setLoading` in die files)
 - [ ] D1- en D2-eisenchecklists opnieuw nalopen; open gaps noteren
