@@ -229,8 +229,8 @@ export function computeTopicProgress(
 
 /**
  * Herhalingen per kalenderdag (Europe/Amsterdam).
- * Achterstallig + alles tot einde vandaag → "Vandaag".
- * Geeft altijd `horizonDays` dagen terug (inclusief nullen).
+ * Eerste staaf = nu aan de beurt (achterstallig + due).
+ * Daarna: later vandaag, morgen, … (`horizonDays` kalenderdagen).
  */
 export function computeUpcomingByDay(
   exercises: ReadonlyArray<ExerciseTopicRow>,
@@ -244,25 +244,31 @@ export function computeUpcomingByDay(
     progressRows.map((row) => [row.exercise_id, row] as const),
   );
 
+  const OPEN_DAY_KEY = "__open__";
   const counts = new Map<string, number>();
 
   for (const exercise of exercises) {
     const progress = progressByExerciseId.get(exercise.id);
     if (progress?.is_suspended) continue;
 
-    if (!progress) {
-      counts.set(todayKey, (counts.get(todayKey) ?? 0) + 1);
+    if (!progress || isDueRow(progress, now)) {
+      counts.set(OPEN_DAY_KEY, (counts.get(OPEN_DAY_KEY) ?? 0) + 1);
       continue;
     }
 
     const reviewDay = toDayKey(new Date(progress.next_review_at));
-    const bucketDay = reviewDay <= todayKey ? todayKey : reviewDay;
-    if (bucketDay > lastKey) continue;
+    if (reviewDay > lastKey) continue;
 
-    counts.set(bucketDay, (counts.get(bucketDay) ?? 0) + 1);
+    counts.set(reviewDay, (counts.get(reviewDay) ?? 0) + 1);
   }
 
-  const out: UpcomingDay[] = [];
+  const out: UpcomingDay[] = [
+    {
+      day: OPEN_DAY_KEY,
+      label: "Open",
+      count: counts.get(OPEN_DAY_KEY) ?? 0,
+    },
+  ];
   for (let i = 0; i < horizonDays; i++) {
     const day = addDaysToDayKey(todayKey, i);
     out.push({

@@ -21,7 +21,7 @@ export function UpcomingReviewsChart({ data }: UpcomingReviewsChartProps) {
       isEmpty={!hasAny}
       emptyTitle="Geen herhalingen gepland"
       emptyMessage="Oefen via je herhaalschema om hier komende dagen te zien."
-      hint="Vandaag = achterstallig + alles gepland vandaag"
+      hint="Open = nu aan de beurt · Vandaag = later vandaag"
       contentClassName="h-48 w-full min-h-[12rem]"
     >
       <div className="flex h-full items-end gap-2 pt-2">

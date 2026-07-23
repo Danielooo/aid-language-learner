@@ -5,7 +5,7 @@ import { MetricTooltip } from "./metric-tooltip";
 type ProgressSummaryProps = {
   totalExercises: number;
   dueNowCount: number;
-  /** Herhalingen in de “Vandaag”-staaf (incl. later vandaag). */
+  /** Herhalingen in de “Vandaag”-staaf (alleen later vandaag, niet open). */
   upcomingTodayCount?: number;
 };
 

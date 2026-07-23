@@ -54,7 +54,8 @@ export function Dashboard({ stats, loading, error, onRetry }: DashboardProps) {
     );
   }
 
-  const upcomingTodayCount = stats.upcomingByDay[0]?.count ?? 0;
+  const upcomingTodayCount =
+    stats.upcomingByDay.find((day) => day.label === "Vandaag")?.count ?? 0;
 
   return (
     <div className="space-y-6">

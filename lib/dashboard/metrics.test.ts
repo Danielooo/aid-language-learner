@@ -291,7 +291,7 @@ describe("computeTopicProgress", () => {
 });
 
 describe("computeUpcomingByDay", () => {
-  it("bundelt achterstallige reviews onder vandaag en geeft 7 dagen", () => {
+  it("zet achterstallige reviews onder Open en geeft Open + 7 dagen", () => {
     const exercises: ExerciseTopicRow[] = [
       { id: "overdue", topic: "A" },
       { id: "tomorrow", topic: "A" },
@@ -308,23 +308,26 @@ describe("computeUpcomingByDay", () => {
         repetition_count: 4,
         next_review_at: "2026-07-10T12:00:00.000Z",
       }),
-      // fresh: geen progress → vandaag
+      // fresh: geen progress → Open
     ];
 
     const upcoming = computeUpcomingByDay(exercises, rows, NOW);
-    assert.equal(upcoming.length, 7);
+    assert.equal(upcoming.length, 8);
 
+    const open = upcoming.find((day) => day.label === "Open");
     const today = upcoming.find((day) => day.label === "Vandaag");
     const tomorrow = upcoming.find((day) => day.label === "Morgen");
 
+    assert.ok(open);
+    assert.equal(open.count, 2);
     assert.ok(today);
-    assert.equal(today.count, 2);
+    assert.equal(today.count, 0);
     assert.ok(tomorrow);
     assert.equal(tomorrow.count, 1);
     assert.ok(upcoming.every((day) => typeof day.count === "number"));
   });
 
-  it("telt later vandaag mee in Vandaag terwijl dueNow dat niet doet", () => {
+  it("telt later vandaag onder Vandaag terwijl dueNow dat niet doet", () => {
     const exercises: ExerciseTopicRow[] = [
       { id: "later-today", topic: "A" },
     ];
@@ -339,12 +342,18 @@ describe("computeUpcomingByDay", () => {
     ];
 
     const upcoming = computeUpcomingByDay(exercises, rows, NOW);
+    const open = upcoming.find((day) => day.label === "Open");
     const today = upcoming.find((day) => day.label === "Vandaag");
+    assert.ok(open);
+    assert.equal(open.count, 0);
     assert.ok(today);
     assert.equal(today.count, 1);
 
     const stats = buildDashboardStats(rows, [], NOW, exercises);
     assert.equal(stats.dueNowCount, 0);
-    assert.equal(stats.upcomingByDay[0]?.count, 1);
+    assert.equal(
+      stats.upcomingByDay.find((day) => day.label === "Vandaag")?.count,
+      1,
+    );
   });
 });

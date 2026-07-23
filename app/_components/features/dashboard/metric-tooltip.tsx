@@ -9,7 +9,7 @@ export const METRIC_TERMS = {
   },
   "grafiek-komende-herhalingen": {
     label: "Komende herhalingen",
-    help: "Aantal oefeningen per dag in je herhaalschema voor de komende 7 dagen. Vandaag omvat achterstallig én later vandaag gepland. Dat kan hoger zijn dan ‘open’ bij Herhaalschema (alleen nu aan de beurt).",
+    help: "Aantal oefeningen in je herhaalschema: Open (nu aan de beurt, incl. achterstallig), Vandaag (later vandaag gepland), daarna de komende dagen.",
   },
   "grafiek-activiteit": {
     label: "Oefenactiviteit",
