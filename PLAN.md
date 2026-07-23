@@ -10,49 +10,43 @@ Bron van de eisen: `[EINDOPDRACHT.md](EINDOPDRACHT.md)` (alleen D1, D2 + relevan
 
 ---
 
-
-
 ## Handoff (laatst bijgewerkt: 2026-07-23)
 
 **Lees dit eerst** bij een nieuwe agentsessie. Werk stap voor stap met de developer: stap aankondigen → feedback → fix → pas door als de developer zegt dat de stap klaar is. Geen commits tenzij gevraagd. **NOOIT** `IDEEFASE.md` lezen of editen.
 
 ### Exact hervatten (nu)
 
-- **Ronde:** **Fase 6 — Verificatie** (product-smoke D1/D2; H Generator klaar).
-- **Eerste antwoord in nieuwe chat:** **stap 7 Admin** (checklist hieronder).
+- **Ronde:** **Fase 6 — Verificatie** (stap 10 D1/D2 — gaps open).
+- **Eerste antwoord in nieuwe chat:** open D1/D2-gaps (public repo, README, Vercel, docs).
 - **Branch:** `feature/user-panels`.
-- **Rol:** **Admin** (nodig voor Beheer).
-- **Bug-IDs:** volgende vrije ID = **B52**.
-- **Laatst bevestigd:** stap 6 Dashboard/voortgang ✅ (2026-07-23).
+- **Rol:** n.v.t.
+- **Bug-IDs:** volgende vrije ID = **B54**.
+- **Laatst bevestigd:** B53 exercises-list ✅; Fase 6 smoke 1–9 ✅; stap 10 inventory gedaan.
 
 ### Waar we zijn
 
-| Ronde | Status |
-| --- | --- |
-| A Auth | Klaar |
-| B Leerplan | Klaar (bouw + Fase 6 smoke ✅) |
-| C Community | Klaar (bouw + Fase 6 smoke ✅) |
-| D Leren | Klaar (bouw + Fase 6 smoke ✅) |
-| E Exercises | Klaar (bouw + Fase 6 smoke ✅; B51 cache-shape fix) |
-| F Voortgang | Klaar (bouw + Fase 6 smoke ✅; charts boven Per topic) |
-| G Admin | Klaar (bouw); **Fase 6 smoke nu** |
-| H Generator | Klaar (smoke + pre-smoke bugs; developer gedaan) |
-| **Fase 6 Verificatie** | **Bezig — stap 7 Admin** (1–6 ✅; Dashboard ok) |
+
+| Ronde                  | Status                                                              |
+| ---------------------- | ------------------------------------------------------------------- |
+| A–H product            | Klaar (Fase 6 smoke 1–8 ✅)                                          |
+| Stap 9 Query           | Klaar (Tier 1/2; B53)                                               |
+| Stap 10 D1/D2          | **Bezig** — kern D2 ✅; oplever-/leerlijn-gaps open (zie Gaps-tabel) |
+| **Fase 6 Verificatie** | **Bijna klaar** — rest = gaps dicht of bewust uitstellen naar D3    |
+
 
 ### Sinds stap 1 (Auth) — tussendoor
 
-Meegenomen bij Leren / Exercises / Voortgang:
+Meegenomen bij Leren / Exercises / Voortgang / Admin:
 
 - **B46** (fixed): Oefenen/dashboard telde global+eigen oefeningen op topicnaam → filter `owner_id = user`.
 - **B51** (fixed): `/leerplan/[id]` crash na Generator audio→bestaand topic — gedeelde `learningTopic`-key shape.
+- **B52** (fixed): Admin Deactiveren intermittent `bad_jwt` (ES256 kid) — admin-client prefer `SUPABASE_SERVICE_ROLE_KEY` (JWT) i.p.v. opaque `sb_secret_`.
+- Stap 9: `admin-review-queue` + `exercises-list-page` → `useQuery`/`useMutation`.
+- **B53** (fixed): exercises-list infinite re-render na migratie (`?? []` + setState in render).
 - Voortgang: chart-rij (Komende herhalingen / Oefenactiviteit) boven Per topic.
 - **Legacy moduskeuze weg:** modus alleen via hub `/oefenen` + `?modus=topic|srs`.
 
-### Fase 6 — open voor developer-check
-
-Eindverificatie over het hele product (zie ook sectie **Fase 6 — Verificatie** hieronder). Geen nieuwe features; alleen bevestigen + bugs fixen.
-
-Checklist Fase 6 (nog open):
+### Fase 6 — checklist
 
 1. ☑ Inloggen / registreren / rollen
 2. ☑ Leerplan: lijst, toggle, bewerken, verwijderen
@@ -60,48 +54,20 @@ Checklist Fase 6 (nog open):
 4. ☑ Leren: flashcards / typen / sorteren + progress
 5. ☑ Exercises CRUD
 6. ☑ Dashboard / voortgang
-7. ☐ Admin: users + Bijdragen beoordelen (als Admin) ← **nu**
-8. ☐ Generator / AI (quota + opslaan + streaming) — hercheck kort na H
-9. ☐ Geen `useEffect`-fetch meer op Tier 1/2 kandidaten (grep)
-10. ☐ D1- en D2-eisenchecklists opnieuw nalopen; open gaps noteren
-
-### Stap 7 — Admin smoke (wat de developer checkt)
-
-Rol: **Admin**. Canonieke UI: **Beheer**, **Gebruikers beheren**, **Bijdragen beoordelen**, **Pending / Goedgekeurd / Afgekeurd**, **Gebruiker / Admin**.
-
-**Toegang**
-
-1. Als Admin: nav **Beheer** bereikbaar; `/admin` landt op Bijdragen (`/admin/bijdragen`).
-2. Als Gebruiker: Beheer niet bruikbaar / geen admin-API (403 of redirect).
-
-**Gebruikers beheren** (`/admin/gebruikers`)
-
-3. Lijst laadt; filters (rol / status / AI) werken; empty bij geen match.
-4. **Rol wisselen** user↔admin (**B43**); blijft staan na refresh.
-5. **Deactiveren** (**B40/B44**): actie slaagt (geen 500); bestaande sessie van die user is meteen onbruikbaar (niet wachten op JWT-expiry).
-6. Login als gedeactiveerde user → duidelijke “gedeactiveerd”-fout (**B41**), niet generiek.
-7. **Verwijderen** (**B42**): bevestiging → account + data weg; weg uit lijst; fout zichtbaar bij fail.
-8. Eigen admin-account: gevaarlijke acties disabled/geblokkeerd waar bedoeld.
-
-**Bijdragen beoordelen** (`/admin/bijdragen`)
-
-9. Tabs Pending / Goedgekeurd / Afgekeurd + counts; laden… / fout + Opnieuw.
-10. Rij/modal: inhoud bekijken; **Goedkeuren** → naar Goedgekeurd; verschijnt in Community Overnemen.
-11. **Afkeuren** met reden → Afgekeurd; reden zichtbaar voor inzender (Community Bijdragen).
-12. Bulk-selectie (indien UI) werkt veilig; geen stille failure.
-
-**Klaar-criterium:** developer zegt ok/klaar → vink checklist-item 7 af; door naar stap 8 Generator.
+7. ☑ Admin: users + Bijdragen beoordelen (als Admin)
+8. ☑ Generator / AI (quota + opslaan + streaming)
+9. ☑ Geen `useEffect`-fetch meer op Tier 1/2 kandidaten (grep)
+10. ☑ D1/D2-checklists nagelopen; open gaps genoteerd (Gaps-tabel)
 
 ### Volgende actie
 
-1. **Nu:** Fase 6 stap 7 (Admin) — checklist hierboven; **inloggen als Admin**.
-2. Bij feedback → triage → fix → noteer in §0.1 (**B52+**).
-3. Daarna stap 8…10 na “klaar/ok” per stap.
-4. Na hele Fase 6 groen: D1/D2 finaliseren; Nice to haves **alleen op verzoek**.
+1. **Nu:** D1/D2-gaps dicht — start met repo **public**, README + Supabase URL, Vercel deploy.
+2. docs/ERD = leerlijn / D3 — op verzoek.
+3. Nice to haves **alleen op verzoek**.
 
 ### Startprompt (plakken in nieuwe chat)
 
-> Lees `PLAN.md` sectie **Handoff** (esp. **Exact hervatten** + **Stap 7 — Admin smoke**) en §0.1. Start meteen **Fase 6 stap 7** (Admin); loop de checklist met mij; wacht op feedback per stap. Rol = Admin. Geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`. **Scope-guard:** voer uit wat gevraagd wordt; noem achteraf kort als het een nieuwe/grote feature was buiten de afrond-focus.
+> Lees `PLAN.md` Handoff + Gaps-tabel. Dicht open oplevergaps of vraag prioriteit. Geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`.
 
 ### Regels (kort)
 
@@ -121,8 +87,6 @@ Wel **achteraf** (kort, na de fix/feature) aangeven als de vraag afwijkt van die
 - Bij opeenstapeling van zulke verzoeken: mag je dat in die nabeschouwing expliciet maken.
 
 ---
-
-
 
 ## Hoe dit plan gebruiken
 
@@ -146,194 +110,175 @@ Fases 2–6 dekken **criterium 2.2** en de quickscan-eis “CRUD met React Query
 
 ---
 
-
-
 ## Eisen deelopdracht 1 — Broncode Next.js
-
-
 
 ### Stack en product
 
-- [ ] Full-stack webapp gebouwd met Cursor
-- [ ] Frontend: Next.js (App Router) + TypeScript + Tailwind CSS
-- [ ] Backend: Supabase
-- [ ] Externe data via netwerkrequests naar een API
-- [ ] AI verrijkt/interpreteert die data (niet alleen doorsturen)
-- [ ] Verrijkte resultaten worden waar nodig opgeslagen in de eigen database
-- [ ] Vercel AI SDK met werkende AI Agent
-- [ ] Minimaal 1 externe API geïntegreerd via Tool Calling
-- [ ] Streaming responses in de chat-interface
-- [ ] Applicatie gedeployed naar productie via Vercel
-- [ ] Werkt in development én productie zonder kritieke runtime errors (criterium 1.1)
-
-
+- [x] Full-stack webapp gebouwd met Cursor
+- [x] Frontend: Next.js (App Router) + TypeScript + Tailwind CSS
+- [x] Backend: Supabase
+- [x] Externe data via netwerkrequests naar een API (Tatoeba)
+- [x] AI verrijkt/interpreteert die data (niet alleen doorsturen)
+- [x] Verrijkte resultaten worden waar nodig opgeslagen in de eigen database
+- [x] Vercel AI SDK met werkende AI Agent
+- [x] Minimaal 1 externe API geïntegreerd via Tool Calling (`proposeAudioExercises` → Tatoeba)
+- [x] Streaming responses in de chat-interface
+- [ ] Applicatie gedeployed naar productie via Vercel ← **gap** (niet gevonden in Vercel-team)
+- [x] Werkt in development zonder kritieke runtime errors (Fase 6 smoke); productie na deploy opnieuw checken
 
 ### Vier kernfunctionaliteiten
 
 Minimaal vier, waarvan: registreren/inloggen, ≥1 AI-gedreven (agent-based), + twee casus-features.
 
 
-| #   | Functionaliteit         | Type                   | Status |
-| --- | ----------------------- | ---------------------- | ------ |
-| 1   | Registreren en inloggen | verplicht (auth)       | [ ]    |
-| 2   | *(AI-feature: …)*       | verplicht (AI / agent) | [ ]    |
-| 3   | *(aanvullend: …)*       | casus                  | [ ]    |
-| 4   | *(aanvullend: …)*       | casus                  | [ ]    |
+| #   | Functionaliteit                                   | Type                   | Status |
+| --- | ------------------------------------------------- | ---------------------- | ------ |
+| 1   | Registreren en inloggen                           | verplicht (auth)       | [x]    |
+| 2   | Generator (AI + tools + stream)                   | verplicht (AI / agent) | [x]    |
+| 3   | Leren (Flashcards/Typen/Sorteren + herhaalschema) | casus                  | [x]    |
+| 4   | Leerplan + Community (overnemen/bijdragen)        | casus                  | [x]    |
 
 
-- [ ] Agent-based flow met meerstaps-aanpak (`maxSteps`) — criterium 1.3
-- [ ] Externe API + LLM-interpretatie met gebruikersinput — criterium 1.2
-- [ ] Alle vier functionaliteiten werken op Vercel — quickscan
-
-
+- [x] Agent-based flow met tool-calling + `stopWhen` (AI SDK 6; equivalent meerstaps/`maxSteps`) — criterium 1.3
+- [x] Externe API + LLM-interpretatie met gebruikersinput — criterium 1.2
+- [ ] Alle vier functionaliteiten werken op Vercel — quickscan ← hangt aan deploy-gap
 
 ### Repo-structuur (leerlijn-intentie)
 
 Dit project gebruikt root-`app/` (niet `src/`). Respecteer bestaande conventies; dicht gaps.
 
-- [ ] `.cursor/rules/` aanwezig (projectregels)
-- [ ] `.skills/` — Skills.sh met ≥2 actieve skills, waaronder `vercel-react-best-practices`
-- [ ] `docs/PROJECT-BRIEF.md` — projectbeschrijving
-- [ ] `docs/PROMPT-LOG.md` — gedocumenteerde prompts
-- [ ] `docs/AI-DECISIONS.md` — architectuurbeslissingen
-- [ ] Query-client / provider (TanStack Query) — zie fases 2–6
-- [ ] `.env.example` (geen secrets)
-- [ ] `.gitignore`, `README.md`, TypeScript + Tailwind-config
-- [ ] Code is schoon, gestructureerd en onderhoudbaar (criterium 1.4)
-
-
+- [x] `.cursor/rules/` aanwezig (projectregels)
+- [x] Skills (≥2, incl. `vercel-react-best-practices`) — in `.agents/skills/` (Skills.sh): `vercel-react-best-practices`, `supabase-postgres-best-practices`, `ai-sdk`
+- [x] Query-client / provider (TanStack Query) — fases 2–6
+- [x] `.env.example` (geen secrets)
+- [x] `.gitignore`, TypeScript + Tailwind-config
+- [ ] `README.md` met project-specifieke installatie (nu nog create-next-app template) ← **gap**
+- [x] Code is schoon, gestructureerd en onderhoudbaar (criterium 1.4)
 
 ### Git / GitHub
 
-- [ ] Project op GitHub; repository is **public**
-- [ ] Eerste commit = initiële projectopzet (historisch: gedaan / N/A)
-- [ ] Kleine, beschrijvende commits
-- [ ] Pull requests per feature; regelmatig mergen naar `main`
-- [ ] ≥20 kleine commits met zinvolle messages (criterium 1.5)
-- [ ] ≥5 pull requests gemerged naar `main` (criterium 1.5)
-
-
+- [ ] Project op GitHub; repository is **public** ← **gap** (nu: **private**)
+- [x] Eerste commit = initiële projectopzet (historisch: gedaan)
+- [x] Kleine, beschrijvende commits
+- [x] Pull requests per feature; regelmatig mergen naar `main`
+- [x] ≥20 kleine commits met zinvolle messages (criterium 1.5) — ~127 commits
+- [x] ≥5 pull requests gemerged naar `main` (criterium 1.5) — 13 PRs
 
 ### Opleveren (D1)
 
-- [ ] README.md met heldere installatie-instructies (collega kan zelfstandig draaien)
-- [ ] GitHub-URL klaarzetten (formeel in D3; hier al noteren)
-- [ ] Vercel productie-URL klaarzetten (formeel in D3; hier al noteren)
+- [ ] README.md met heldere installatie-instructies (collega kan zelfstandig draaien) ← **gap**
+- [ ] GitHub-URL klaarzetten (formeel in D3; hier: `https://github.com/Danielooo/aid-language-learner` — eerst public maken)
+- [ ] Vercel productie-URL klaarzetten (formeel in D3; hier nog leeg)
 
 ---
 
-
-
 ## Eisen deelopdracht 2 — Supabase + Auth + React Query
-
-
 
 ### Database
 
-- [ ] Schema met minimaal 4 tabellen
-- [ ] Logische relaties (foreign keys)
-- [ ] Constraints: primary keys, NOT NULL, UNIQUE waar passend
-- [ ] Criterium 2.1: schema + relaties + constraints kloppen
-
-
+- [x] Schema met minimaal 4 tabellen (7: exercises, quiz_attempts, profiles, exercise_progress, user_topic_preferences, exercise_groups, exercise_group_submissions)
+- [x] Logische relaties (foreign keys)
+- [x] Constraints: primary keys, NOT NULL, UNIQUE waar passend
+- [x] Criterium 2.1: schema + relaties + constraints kloppen
 
 ### Data in de app (React Query)
 
-- [ ] Voor relevante entiteiten: werkende **CRUD** (Create, Read, Update, Delete)
-- [ ] CRUD geïmplementeerd met **React Query (TanStack Query)** — caching en sync met de UI
-- [ ] Criterium 2.2: Query correct gebruikt voor databeheer
+- [x] Voor relevante entiteiten: werkende **CRUD** (Create, Read, Update, Delete)
+- [x] CRUD geïmplementeerd met **React Query (TanStack Query)** — caching en sync met de UI (Tier 1/2 inkl. review-queue + exercises-list)
+- [x] Criterium 2.2: Query correct gebruikt voor databeheer
 
 → Uitvoering: fases 2–6 hieronder.
 
 ### Authenticatie en RLS
 
-- [ ] Registreren met Supabase Auth
-- [ ] Inloggen met Supabase Auth
-- [ ] Sessies correct afgehandeld in de applicatie
-- [ ] RLS ingeschakeld op relevante tabellen
-- [ ] Policies: gebruiker leest/wijzigt/verwijdert alleen eigen data (koppeling via `user_id` of equivalent)
-- [ ] Criterium 2.3: Auth + RLS + policies
-
-
+- [x] Registreren met Supabase Auth
+- [x] Inloggen met Supabase Auth
+- [x] Sessies correct afgehandeld in de applicatie
+- [x] RLS ingeschakeld op relevante tabellen (alle 7 public-tabellen)
+- [x] Policies: gebruiker leest/wijzigt/verwijdert alleen eigen data (koppeling via `user_id` / `owner_id`)
+- [x] Criterium 2.3: Auth + RLS + policies
 
 ### Opleveren (D2)
 
-- [ ] Persoonlijke Supabase REST API base URL in README.md
+- [ ] Persoonlijke Supabase REST API base URL in README.md ← **gap** (URL: `https://inpdstwtqcfcjnrqvemp.supabase.co`)
 - [ ] ERD / Schema Visualizer-screenshot klaarzetten (formeel in D3)
 
 ---
-
-
 
 ## Gaps t.o.v. huidige app
 
 Korte startnotities — vul aan terwijl je de checklists afwerkt.
 
+Gaps-tabel:
 
-| Gap                      | Notitie                         | Actie           |
-| ------------------------ | ------------------------------- | --------------- |
-| TanStack Query ontbreekt | Nog geen package / provider     | Fases 2–6       |
-| Overige D1/D2-items      | Zelf afvinken tijdens inventory | Eisenchecklists |
+
+| Gap                     | Notitie                                             | Actie                                  |
+| ----------------------- | --------------------------------------------------- | -------------------------------------- |
+| GitHub public           | Repo is **private**                                 | Settings → Change visibility → Public  |
+| Vercel deploy           | Geen `aid-language-learner` project in Vercel-team  | Deploy + URL noteren                   |
+| README                  | Nog create-next-app template                        | Install + env + scripts + Supabase URL |
+| Skills                  | Klaar — `.agents/skills/` (≥2, incl. vercel-react)  | —                                      |
+| `docs/*`                | PROJECT-BRIEF / PROMPT-LOG / AI-DECISIONS ontbreken | Aanmaken (leerlijn)                    |
+| ERD screenshot          | Formeel D3                                          | Schema Visualizer export               |
+| TanStack Query Tier 1/2 | Klaar                                               | —                                      |
 
 
 ---
 
-
-
 ## Fase 0 — Inventory (½–1 dag, geen grote refactors)
-
-
 
 ### 0.1 Buglijst
 
 
-| ID  | Feature | Symptoom | Reproduceerbaar? | Ernst                   | Status |
-| --- | ------- | -------- | ---------------- | ----------------------- | ------ |
-| B1  |         |          | ja/nee           | blocker/high/medium/low | open   |
-| B7  | Community | Bijdragen: 4 status-tabs + count-strip i.p.v. één tabel met filter; Overnemen niet eerste tab; “Oefeningengroep” i.p.v. Topic | ja | high | fixed |
-| B8  | Community Overnemen | Geen dropdown-filters zoals Leerplan; opnieuw overnemen geblokkeerd als topic al in leerplan stond | ja | high | fixed |
-| B9  | Community Overnemen | Naamconflict-modal verscheen niet: sluiten groep-modal wiste `nameConflict` via `onClose`; bulk hernoemde stil | ja | high | fixed |
-| B10 | Community Bijdragen | Kolommen versprongen bij wisselen statusfilter (auto table layout) | ja | medium | fixed |
-| B11 | Community Bijdragen | Na aanbieden sprong statusfilter naar Pending; knop bleef bruikbaar in flow | ja | medium | fixed |
-| B12 | Community Bijdragen | “Filters wissen” overbodig naast Status→Alles | ja | low | fixed |
-| B13 | Community Bijdragen | Afgekeurd opnieuw aanbieden zonder wijziging; afkeurreden/historie onduidelijk | ja | high | fixed |
-| B14 | Leren Flashcards | Klik Topic → crash: `useState is not defined` in `useQuizSelectionMode` | ja | blocker | fixed |
-| B15 | Leren Flashcards | Shortcuts/header/score-UX: Enter flip, Ctrl+Alt grades, Reset score, overkill pills, geen vorige | ja | high | fixed |
-| B16 | Leren (alle modi) | Chrome inconsistent: Terug naar overzicht (Esc) alleen op playing-flashcards; Typen/Sorteren/topic-picker achter | ja | high | fixed |
-| B17 | Leren Flashcards | Shortcuts: Vorige=V, Goed=G; Overslaan weg (verstoort topic-voortgang) | ja | medium | fixed |
-| B18 | Leren (alle modi) | Esc mid-sessie: bevestigingsmodal; 2e Esc / “Toch verlaten” = echt weg | ja | medium | fixed |
-| B19 | Leren Typen | Look/feel anders dan Flashcards; Ctrl+Alt/F-keys onhandig; layout sprong na feedback | ja | medium | fixed |
-| B20 | Leren chat | Chat-styling week af; chat ontbrak bij Flashcards | ja | medium | fixed |
-| B21 | Leren | Test-plooien (OpenAI-debug, Recente pogingen) geen meerwaarde meer | ja | low | fixed |
-| B22 | Leren SRS | “Niet meer tonen” / suspend-UI+API-client verwijderd → nice to have | ja | low | fixed |
-| B23 | Leren Sorteren | Look/feel week af van Flashcards/Typen | ja | medium | fixed |
-| B24 | Leren Vorige | Bij herhaalschema (SRS) was Vorige altijd disabled; historie toegevoegd | ja | medium | fixed |
-| B26 | Exercises zoeken | Zoeken crashte: PostgREST parse-fout op `alternative_translations::text` in `.or()` | ja | high | fixed |
-| B27 | Exercises navigatie | “← Terug naar leerplan” week af van Oefenen-knopstijl | ja | low | fixed |
-| B28 | Exercises leeg topic | Alles-verwijderen vraagt meteen of oefeningen + topic weg mogen; lege staat: Topic verwijderen (geen Generator) | ja | medium | fixed |
-| B29 | Leerplan mutations | Actief/Verwijderen faalde stil; geen error-UI; checkbox snapte terug | ja | high | fixed |
-| B30 | Leerplan cache | Na oefening-CRUD bleef overzicht ~30s stale (counts/Bewerkt) | ja | high | fixed |
-| B31 | Exercises zoeken | Zoekveld vocht met browser Back (draft schreef URL terug) | ja | high | fixed |
-| B32 | Exercises paginering | Te hoge `?page=` toonde valse “Topic verwijderen”-empty | ja | high | fixed |
-| B33 | Voortgang topic-modal | Groot % (ladder) strookte niet met “X van Y beheerst” | ja | high | fixed |
-| B34 | Voortgang Herhaalschema | “Alles bij” botste met Vandaag-staaf (later vandaag) | ja | high | fixed |
-| B35 | Voortgang cache | Geen invalidate na oefenen → stale cijfers ~30s | ja | high | fixed |
-| B36 | Voortgang Per topic | Empty/tooltip suggereerde elke oefenvorm; alleen herhaalschema telt | ja | medium | fixed |
-| B37 | Voortgang gestart | Topic bleef verborgen na alleen foute SRS-antwoorden | ja | medium | fixed |
-| B38 | Voortgang error | “Dashboard…” zonder retry | ja | medium | fixed |
-| B39 | Voortgang status | Badge “Bezig” bij ~67% terwijl verdeling “Gevorderd” | ja | low | fixed |
-| B40 | Admin Gebruikers | Na Deactiveer bleef bestaande sessie bruikbaar tot JWT-expiry | ja | high | fixed |
-| B41 | Admin Gebruikers | Login na deactivatie gaf generieke fout i.p.v. “gedeactiveerd” | ja | medium | fixed |
-| B42 | Admin Gebruikers | Geen Verwijderen-actie (account + data) | ja | high | fixed |
-| B43 | Admin Gebruikers | Rol wisselen (user↔admin) i.p.v. aparte Admin aanmaken | ja | medium | fixed |
-| B44 | Admin Deactiveren | PATCH /api/admin/users → 500 (thrown Response 401 + proxy getUser race) | ja | blocker | fixed |
-| B45 | Leren Typen/Sorteren | Overslaan weg (UI+recordSkip); N in “X van N” steeg door queue-append | ja | medium | fixed |
-| B46 | Leren Topic + Voortgang | Queue/dashboard telden global+eigen (topicnaam); alleen `owner_id` = user | ja | high | fixed |
-| B47 | Leren SRS | Geen “x van N”; N = due-snapshot bij picker, vast tot sessie-einde | ja | medium | fixed |
-| B48 | Leren Sorteren | Controleren onder de fold op korte viewport (media-query te mild) | ja | high | superseded |
-| B49 | Leren Oefenen | Speel-UI: flex + `100dvh`-band; midden scrollt; Controleren in flow (geen sticky); alle modi | ja | high | fixed |
-| B50 | Leren SRS | Geen “Fouten opnieuw doen” / main-complete na ronde (alleen SrsCompleteState) | ja | medium | fixed |
-| B51 | Exercises detail | Na Generator audio→bestaand topic crashte `/leerplan/[id]`: gedeelde `learningTopic`-key, Generator cachete groep-object, edit-page verwachtte string → React “Objects are not valid as a React child” | ja | blocker | fixed |
+| ID  | Feature                 | Symptoom                                                                                                                                                                                               | Reproduceerbaar? | Ernst                   | Status     |
+| --- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- | ----------------------- | ---------- |
+| B1  |                         |                                                                                                                                                                                                        | ja/nee           | blocker/high/medium/low | open       |
+| B7  | Community               | Bijdragen: 4 status-tabs + count-strip i.p.v. één tabel met filter; Overnemen niet eerste tab; “Oefeningengroep” i.p.v. Topic                                                                          | ja               | high                    | fixed      |
+| B8  | Community Overnemen     | Geen dropdown-filters zoals Leerplan; opnieuw overnemen geblokkeerd als topic al in leerplan stond                                                                                                     | ja               | high                    | fixed      |
+| B9  | Community Overnemen     | Naamconflict-modal verscheen niet: sluiten groep-modal wiste `nameConflict` via `onClose`; bulk hernoemde stil                                                                                         | ja               | high                    | fixed      |
+| B10 | Community Bijdragen     | Kolommen versprongen bij wisselen statusfilter (auto table layout)                                                                                                                                     | ja               | medium                  | fixed      |
+| B11 | Community Bijdragen     | Na aanbieden sprong statusfilter naar Pending; knop bleef bruikbaar in flow                                                                                                                            | ja               | medium                  | fixed      |
+| B12 | Community Bijdragen     | “Filters wissen” overbodig naast Status→Alles                                                                                                                                                          | ja               | low                     | fixed      |
+| B13 | Community Bijdragen     | Afgekeurd opnieuw aanbieden zonder wijziging; afkeurreden/historie onduidelijk                                                                                                                         | ja               | high                    | fixed      |
+| B14 | Leren Flashcards        | Klik Topic → crash: `useState is not defined` in `useQuizSelectionMode`                                                                                                                                | ja               | blocker                 | fixed      |
+| B15 | Leren Flashcards        | Shortcuts/header/score-UX: Enter flip, Ctrl+Alt grades, Reset score, overkill pills, geen vorige                                                                                                       | ja               | high                    | fixed      |
+| B16 | Leren (alle modi)       | Chrome inconsistent: Terug naar overzicht (Esc) alleen op playing-flashcards; Typen/Sorteren/topic-picker achter                                                                                       | ja               | high                    | fixed      |
+| B17 | Leren Flashcards        | Shortcuts: Vorige=V, Goed=G; Overslaan weg (verstoort topic-voortgang)                                                                                                                                 | ja               | medium                  | fixed      |
+| B18 | Leren (alle modi)       | Esc mid-sessie: bevestigingsmodal; 2e Esc / “Toch verlaten” = echt weg                                                                                                                                 | ja               | medium                  | fixed      |
+| B19 | Leren Typen             | Look/feel anders dan Flashcards; Ctrl+Alt/F-keys onhandig; layout sprong na feedback                                                                                                                   | ja               | medium                  | fixed      |
+| B20 | Leren chat              | Chat-styling week af; chat ontbrak bij Flashcards                                                                                                                                                      | ja               | medium                  | fixed      |
+| B21 | Leren                   | Test-plooien (OpenAI-debug, Recente pogingen) geen meerwaarde meer                                                                                                                                     | ja               | low                     | fixed      |
+| B22 | Leren SRS               | “Niet meer tonen” / suspend-UI+API-client verwijderd → nice to have                                                                                                                                    | ja               | low                     | fixed      |
+| B23 | Leren Sorteren          | Look/feel week af van Flashcards/Typen                                                                                                                                                                 | ja               | medium                  | fixed      |
+| B24 | Leren Vorige            | Bij herhaalschema (SRS) was Vorige altijd disabled; historie toegevoegd                                                                                                                                | ja               | medium                  | fixed      |
+| B26 | Exercises zoeken        | Zoeken crashte: PostgREST parse-fout op `alternative_translations::text` in `.or()`                                                                                                                    | ja               | high                    | fixed      |
+| B27 | Exercises navigatie     | “← Terug naar leerplan” week af van Oefenen-knopstijl                                                                                                                                                  | ja               | low                     | fixed      |
+| B28 | Exercises leeg topic    | Alles-verwijderen vraagt meteen of oefeningen + topic weg mogen; lege staat: Topic verwijderen (geen Generator)                                                                                        | ja               | medium                  | fixed      |
+| B29 | Leerplan mutations      | Actief/Verwijderen faalde stil; geen error-UI; checkbox snapte terug                                                                                                                                   | ja               | high                    | fixed      |
+| B30 | Leerplan cache          | Na oefening-CRUD bleef overzicht ~30s stale (counts/Bewerkt)                                                                                                                                           | ja               | high                    | fixed      |
+| B31 | Exercises zoeken        | Zoekveld vocht met browser Back (draft schreef URL terug)                                                                                                                                              | ja               | high                    | fixed      |
+| B32 | Exercises paginering    | Te hoge `?page=` toonde valse “Topic verwijderen”-empty                                                                                                                                                | ja               | high                    | fixed      |
+| B33 | Voortgang topic-modal   | Groot % (ladder) strookte niet met “X van Y beheerst”                                                                                                                                                  | ja               | high                    | fixed      |
+| B34 | Voortgang Herhaalschema | “Alles bij” botste met Vandaag-staaf (later vandaag)                                                                                                                                                   | ja               | high                    | fixed      |
+| B35 | Voortgang cache         | Geen invalidate na oefenen → stale cijfers ~30s                                                                                                                                                        | ja               | high                    | fixed      |
+| B36 | Voortgang Per topic     | Empty/tooltip suggereerde elke oefenvorm; alleen herhaalschema telt                                                                                                                                    | ja               | medium                  | fixed      |
+| B37 | Voortgang gestart       | Topic bleef verborgen na alleen foute SRS-antwoorden                                                                                                                                                   | ja               | medium                  | fixed      |
+| B38 | Voortgang error         | “Dashboard…” zonder retry                                                                                                                                                                              | ja               | medium                  | fixed      |
+| B39 | Voortgang status        | Badge “Bezig” bij ~67% terwijl verdeling “Gevorderd”                                                                                                                                                   | ja               | low                     | fixed      |
+| B40 | Admin Gebruikers        | Na Deactiveer bleef bestaande sessie bruikbaar tot JWT-expiry                                                                                                                                          | ja               | high                    | fixed      |
+| B41 | Admin Gebruikers        | Login na deactivatie gaf generieke fout i.p.v. “gedeactiveerd”                                                                                                                                         | ja               | medium                  | fixed      |
+| B42 | Admin Gebruikers        | Geen Verwijderen-actie (account + data)                                                                                                                                                                | ja               | high                    | fixed      |
+| B43 | Admin Gebruikers        | Rol wisselen (user↔admin) i.p.v. aparte Admin aanmaken                                                                                                                                                 | ja               | medium                  | fixed      |
+| B44 | Admin Deactiveren       | PATCH /api/admin/users → 500 (thrown Response 401 + proxy getUser race)                                                                                                                                | ja               | blocker                 | fixed      |
+| B45 | Leren Typen/Sorteren    | Overslaan weg (UI+recordSkip); N in “X van N” steeg door queue-append                                                                                                                                  | ja               | medium                  | fixed      |
+| B46 | Leren Topic + Voortgang | Queue/dashboard telden global+eigen (topicnaam); alleen `owner_id` = user                                                                                                                              | ja               | high                    | fixed      |
+| B47 | Leren SRS               | Geen “x van N”; N = due-snapshot bij picker, vast tot sessie-einde                                                                                                                                     | ja               | medium                  | fixed      |
+| B48 | Leren Sorteren          | Controleren onder de fold op korte viewport (media-query te mild)                                                                                                                                      | ja               | high                    | superseded |
+| B49 | Leren Oefenen           | Speel-UI: flex + `100dvh`-band; midden scrollt; Controleren in flow (geen sticky); alle modi                                                                                                           | ja               | high                    | fixed      |
+| B50 | Leren SRS               | Geen “Fouten opnieuw doen” / main-complete na ronde (alleen SrsCompleteState)                                                                                                                          | ja               | medium                  | fixed      |
+| B51 | Exercises detail        | Na Generator audio→bestaand topic crashte `/leerplan/[id]`: gedeelde `learningTopic`-key, Generator cachete groep-object, edit-page verwachtte string → React “Objects are not valid as a React child” | ja               | blocker                 | fixed      |
+| B52 | Admin Deactiveren       | Intermittent `bad_jwt` / `unrecognized JWT kid` (ES256) bij ban — admin-client stuurde opaque `sb_secret_` in Authorization; GoTrue verwacht JWT → prefer `SUPABASE_SERVICE_ROLE_KEY`                  | ja               | high                    | fixed      |
+| B53 | Exercises list          | Na Query-migratie: infinite re-render (`data?.rows ?? []` + setState in render) → error boundary bij openen topic/oefening                                                                             | ja               | blocker                 | fixed      |
 
 
 **Ernst:**
@@ -343,47 +288,39 @@ Korte startnotities — vul aan terwijl je de checklists afwerkt.
 - **medium** — irritant maar omzeilbaar
 - **low** — polish/copy/layout
 
-
-
 ### 0.2 Fetch-inventory (migratie-backlog)
 
 Alles hieronder is (was) `useState`/`useEffect` + `fetch`.
 
 #### Tier 1 (eenvoudig)
 
-- [ ] `app/_components/features/dashboard/use-dashboard-stats.ts`
-- [ ] Quiz progress/due:
-  - [ ] `app/_components/features/quiz/exercises-quiz-page.tsx`
-  - [ ] `app/_components/features/quiz/srs-topic-picker-section.tsx`
-- [ ] Topics in 3 decks:
-  - [ ] `app/_components/features/quiz/flashcard-deck.tsx`
-  - [ ] `app/_components/features/quiz/typing-quiz-deck.tsx`
-  - [ ] `app/_components/features/quiz/sort-quiz-deck.tsx`
-- [ ] `app/_components/features/topics/leerplan-group-edit-page.tsx`
-- [ ] `app/_components/features/tatoeba/audio-stats-panel.tsx`
-- [ ] AI-quota in generator-bestanden
-
-
+- [x] `app/_components/features/dashboard/use-dashboard-stats.ts`
+- [x] Quiz progress/due:
+  - [x] `app/_components/features/quiz/exercises-quiz-page.tsx` — hub alleen; progress via hooks elders
+  - [x] `app/_components/features/quiz/srs-topic-picker-section.tsx` → `useExerciseProgress`
+- [x] Topics in 3 decks:
+  - [x] `app/_components/features/quiz/flashcard-deck.tsx` → `useQuizTopics`
+  - [x] `app/_components/features/quiz/typing-quiz-deck.tsx` → `useQuizTopics`
+  - [x] `app/_components/features/quiz/sort-quiz-deck.tsx` → `useQuizTopics`
+- [x] `app/_components/features/topics/leerplan-group-edit-page.tsx`
+- [x] `app/_components/features/tatoeba/audio-stats-panel.tsx`
+- [x] AI-quota in generator-bestanden (`use-ai-quota.ts`)
 
 #### Tier 2 (lijst + mutations)
 
-- [ ] `app/_components/features/topics/leerplan-groups-page.tsx`
-- [ ] `app/_components/features/admin/admin-users-table.tsx`
-- [ ] `app/_components/features/community/community-adopt-panel.tsx`
-- [ ] `app/_components/features/quiz/use-quiz-storage.ts`
-- [ ] `app/_components/features/exercises/exercises-list-page.tsx`
-- [ ] `app/_components/features/admin/admin-review-queue.tsx`
-- [ ] `app/_components/features/community/community-bijdragen-panel.tsx`
-
-
+- [x] `app/_components/features/topics/leerplan-groups-page.tsx`
+- [x] `app/_components/features/admin/admin-users-table.tsx`
+- [x] `app/_components/features/community/community-adopt-panel.tsx`
+- [x] `app/_components/features/quiz/use-quiz-storage.ts`
+- [x] `app/_components/features/exercises/exercises-list-page.tsx`
+- [x] `app/_components/features/admin/admin-review-queue.tsx`
+- [x] `app/_components/features/community/community-bijdragen-panel.tsx`
 
 #### Tier 3 (laatst)
 
 - [ ] Generator persist + invalidate (houd `useChat` van AI SDK)
 - [ ] `app/_components/features/quiz/hooks/use-quiz-session.ts` — alleen progress-mutations waar zinvol; sessie-state machine niet forceren in Query
 - [ ] `app/_components/features/tatoeba/audio-search-page.tsx`
-
-
 
 #### Niet migreren
 
@@ -394,8 +331,6 @@ Alles hieronder is (was) `useState`/`useEffect` + `fetch`.
 **Klaar als:** D1/D2-checklists deels ingevuld + buglijst + tiers hierboven bekend.
 
 ---
-
-
 
 ## Fase 1 — Alleen blocker-bugs (vóór grote Query-migratie)
 
@@ -409,8 +344,6 @@ Voor elke **blocker**:
 **Klaar als:** geen bekende blockers meer, of elke resterende blocker heeft een bewuste workaround + ticket.
 
 ---
-
-
 
 ## Fase 2 — Query-fundament (één keer goed)
 
@@ -427,8 +360,6 @@ Dekking: start van criterium **2.2** / quickscan React Query.
 **Klaar als:** app boot, provider hangt.
 
 ---
-
-
 
 ## Fase 3 — Tier 1 migreren (template zetten)
 
@@ -450,8 +381,6 @@ Per item:
 
 ---
 
-
-
 ## Fase 4 — Tier 2: lists + mutations
 
 Per feature **verticaal** (query + mutations + invalidate in één sessie) — dit is de kern van **CRUD + React Query**:
@@ -461,8 +390,8 @@ Per feature **verticaal** (query + mutations + invalidate in één sessie) — d
 3. [ ] Community adopt
 4. [ ] Exercise picker (filters in query key)
 5. [ ] Quiz storage (optimistic waar het al zo was)
-6. [ ] Exercises list (page/search in query key; refresh-in-place = content laten staan + `isFetching` dimmen)
-7. [ ] Admin review queue (parallel queries per status)
+6. [x] Exercises list (page/search in query key; refresh-in-place = content laten staan + `isFetching` dimmen)
+7. [x] Admin review queue (parallel queries per status)
 8. [ ] Community bijdragen
 
 Patroon voor writes:
@@ -474,8 +403,6 @@ Patroon voor writes:
 
 ---
 
-
-
 ## Fase 5 — Tier 3 (bewust beperkt)
 
 - [ ] Generator: persist-mutations invalidaten leerplan/exercises-lijsten; **laat AI SDK** `useChat` **staan**
@@ -485,8 +412,6 @@ Patroon voor writes:
 **Klaar als:** je kunt uitleggen wat wél/niet in Query zit en waarom (assessment-vriendelijk).
 
 ---
-
-
 
 ## Fase 6 — Verificatie
 
@@ -498,16 +423,14 @@ Handmatige smoke (product + D1/D2):
 - [x] Leren: flashcards / typen / sorteren + progress
 - [x] Exercises CRUD
 - [x] Dashboard / voortgang
-- [ ] Admin: users + review (als beheerder)  ← **nu** (zie Handoff → Stap 7)
-- [ ] Generator / AI-agent (quota + opslaan + streaming)
-- [ ] Geen `useEffect`-fetch meer op Tier 1/2 kandidaten (grep op `setLoading` in die files)
-- [ ] D1- en D2-eisenchecklists opnieuw nalopen; open gaps noteren
+- [x] Admin: users + review (als beheerder)
+- [x] Generator / AI-agent (quota + opslaan + streaming)
+- [x] Geen `useEffect`-fetch meer op Tier 1/2 kandidaten (grep op `setLoading` in die files)
+- [x] D1- en D2-eisenchecklists nagelopen; open gaps genoteerd (zie Gaps-tabel)
 
 Optioneel: React Query Devtools — cache keys kloppen, geen eindeloze refetches.
 
 ---
-
-
 
 ## Werkregels
 
@@ -519,8 +442,6 @@ Optioneel: React Query Devtools — cache keys kloppen, geen eindeloze refetches
 - UI-copy Nederlands en canoniek (`.cursor/rules/ui-terminology.mdc`).
 
 ---
-
-
 
 ## Geschatte volgorde in dagen (richtlijn)
 
@@ -538,15 +459,11 @@ Pas aan op jouw deadline. Snijd Tier 3 in als tijd op is — Tier 1+2 + geen blo
 
 ---
 
-
-
 ## Notities / uitbreidingen
 
 *(Hier kun je extra eisen, bugs, beslissingen en links kwijt.)*
 
 ---
-
-
 
 ## Nice to haves
 
