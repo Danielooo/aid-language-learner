@@ -1,8 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { DeleteConfirmDialog } from "@/app/_components/features/exercises/delete-confirm-dialog";
 import {
@@ -13,6 +17,7 @@ import {
 import { MyExercisesTable } from "@/app/_components/features/exercises/my-exercises-table";
 import { PaginationBar } from "@/app/_components/features/exercises/pagination-bar";
 import { DeleteAllExercisesDialog } from "@/app/_components/features/topics/delete-all-exercises-dialog";
+import { fetchJson } from "@/lib/api/fetch-json";
 import { queryKeys } from "@/lib/query-keys";
 
 import type {
@@ -21,6 +26,8 @@ import type {
 } from "@/lib/exercises/types";
 
 const PAGE_SIZE = 10;
+/** Stabiele lege array — `?? []` in render veroorzaakt infinite setState-loops. */
+const EMPTY_ROWS: AdminExerciseRow[] = [];
 
 type ListSuccess = {
   ok: true;
@@ -40,23 +47,14 @@ type DeleteSuccess = {
   errors: string[];
 };
 
-type DeleteFailure = { ok: false; error: string };
-
 type PatchSuccess = { ok: true; row: AdminExerciseRow };
-type PatchFailure = { ok: false; error: string };
 
-type LoadState =
-  | { status: "idle" }
-  | { status: "loading" }
-  | {
-    status: "loaded";
-    rows: AdminExerciseRow[];
-    total: number;
-    page: number;
-    pageSize: number;
-    isRefreshing?: boolean;
-  }
-  | { status: "error"; error: string };
+type ListData = {
+  rows: AdminExerciseRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
 
 export type ExercisesListPageProps = {
   apiBase: string;
@@ -93,10 +91,44 @@ export function ExercisesListPage({
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const q = searchParams.get("q") ?? "";
 
+  const listParams = useMemo(
+    () => ({
+      page: String(page),
+      pageSize: String(PAGE_SIZE),
+      sortDir: "desc",
+      groupId,
+      ...(q ? { q } : {}),
+    }),
+    [page, groupId, q],
+  );
+
+  const listKey = queryKeys.exercises(listParams);
+
+  const {
+    data,
+    isLoading: isInitialLoading,
+    isFetching,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: listKey,
+    queryFn: async (): Promise<ListData> => {
+      const params = new URLSearchParams(listParams);
+      const json = await fetchJson<ListSuccess | ListFailure>(
+        `${apiBase}?${params}`,
+      );
+      if (!json.ok) throw new Error(json.error);
+      return {
+        rows: json.rows,
+        total: json.total,
+        page: json.page,
+        pageSize: json.pageSize,
+      };
+    },
+  });
+
   const [searchDraft, setSearchDraft] = useState(q);
-  const [load, setLoad] = useState<LoadState>({ status: "idle" });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [deleting, setDeleting] = useState(false);
   const [deletePrompt, setDeletePrompt] = useState<{
     ids: string[];
     hasAudio: boolean;
@@ -105,22 +137,16 @@ export function ExercisesListPage({
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [editRow, setEditRow] = useState<AdminExerciseRow | null>(null);
-  const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  const loadRef = useRef(load);
-  useEffect(() => {
-    loadRef.current = load;
-  }, [load]);
-
-  const rows = useMemo(
-    () => (load.status === "loaded" ? load.rows : []),
-    [load],
-  );
-  const total = load.status === "loaded" ? load.total : 0;
-  const isRefreshing = load.status === "loaded" && Boolean(load.isRefreshing);
-  const isInitialLoading = load.status === "loading";
-  const busy = isInitialLoading || isRefreshing || deleting;
+  const rows = data?.rows ?? EMPTY_ROWS;
+  const total = data?.total ?? 0;
+  const isRefreshing = isFetching && !isInitialLoading;
+  const listError = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Laden mislukt."
+    : null;
 
   const invalidateLeerplanOverview = useCallback(() => {
     void queryClient.invalidateQueries({
@@ -128,11 +154,13 @@ export function ExercisesListPage({
     });
   }, [queryClient]);
 
+  const invalidateList = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ["exercises"] });
+  }, [queryClient]);
+
   useEffect(() => {
-    if (load.status === "loaded") {
-      onTotalChange?.(load.total);
-    }
-  }, [load, onTotalChange]);
+    if (data) onTotalChange?.(data.total);
+  }, [data, onTotalChange]);
 
   // URL (browser Back/Forward) is bron van waarheid voor het zoekveld.
   useEffect(() => {
@@ -157,76 +185,18 @@ export function ExercisesListPage({
     [router, searchParams, pagePath],
   );
 
-  const fetchList = useCallback(
-    async (refresh = false) => {
-      const prev = loadRef.current;
-      if (!refresh || prev.status !== "loaded") {
-        setLoad({ status: "loading" });
-      } else {
-        setLoad({ ...prev, isRefreshing: true });
-      }
-      setActionError(null);
-      try {
-        const params = new URLSearchParams({
-          page: String(page),
-          pageSize: String(PAGE_SIZE),
-          sortDir: "desc",
-          groupId,
-        });
-        if (q) params.set("q", q);
-
-        const res = await fetch(`${apiBase}?${params}`, {
-          cache: "no-store",
-        });
-        const json = (await res.json()) as ListSuccess | ListFailure;
-        if (!res.ok || !json.ok) {
-          const err = json.ok ? `HTTP ${res.status}` : json.error;
-          if (refresh && prev.status === "loaded") {
-            setLoad({ ...prev, isRefreshing: false });
-            setActionError(err);
-          } else {
-            setLoad({ status: "error", error: err });
-          }
-          return;
-        }
-        setLoad({
-          status: "loaded",
-          rows: json.rows,
-          total: json.total,
-          page: json.page,
-          pageSize: json.pageSize,
-          isRefreshing: false,
-        });
-      } catch (e) {
-        const err = e instanceof Error ? e.message : "Onbekende fout.";
-        if (refresh && prev.status === "loaded") {
-          setLoad({ ...prev, isRefreshing: false });
-          setActionError(err);
-        } else {
-          setLoad({ status: "error", error: err });
-        }
-      }
-    },
-    [apiBase, page, q, groupId],
-  );
-
-  useEffect(() => {
-    void fetchList(false);
-  }, [fetchList]);
-
   // Te hoge ?page= terugzetten i.p.v. valse “lege topic”-CTA.
   useEffect(() => {
-    if (load.status !== "loaded" || load.isRefreshing) return;
-    if (load.total === 0) return;
-    const maxPages = Math.max(1, Math.ceil(load.total / PAGE_SIZE));
+    if (!data || isRefreshing) return;
+    if (data.total === 0) return;
+    const maxPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
     if (page > maxPages) {
       updateParams({ page: String(maxPages) });
     }
-  }, [load, page, updateParams]);
+  }, [data, isRefreshing, page, updateParams]);
 
-  const [prevRows, setPrevRows] = useState(rows);
-  if (rows !== prevRows) {
-    setPrevRows(rows);
+  // Selectie opschonen als rijen van de pagina verdwijnen (niet in render).
+  useEffect(() => {
     const scope = new Set(rows.map((r) => r.exercise_id));
     setSelectedIds((prev) => {
       let changed = false;
@@ -237,7 +207,7 @@ export function ExercisesListPage({
       }
       return changed ? next : prev;
     });
-  }
+  }, [rows]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -248,30 +218,91 @@ export function ExercisesListPage({
     return () => window.clearTimeout(t);
   }, [searchDraft, q, updateParams]);
 
-  const patchRow = useCallback(
-    async (exerciseId: string, fields: ExercisePatchFields) => {
-      const res = await fetch(`${apiBase}/${exerciseId}`, {
+  const patchMutation = useMutation({
+    mutationFn: async ({
+      exerciseId,
+      fields,
+    }: {
+      exerciseId: string;
+      fields: ExercisePatchFields;
+    }) => {
+      const json = await fetchJson<PatchSuccess>(`${apiBase}/${exerciseId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(fields),
       });
-      const json = (await res.json()) as PatchSuccess | PatchFailure;
-      if (!res.ok || !json.ok) {
-        throw new Error(json.ok ? `HTTP ${res.status}` : json.error);
-      }
-      setLoad((prev) => {
-        if (prev.status !== "loaded") return prev;
+      return json.row;
+    },
+    onSuccess: (row, { exerciseId }) => {
+      queryClient.setQueryData<ListData>(listKey, (prev) => {
+        if (!prev) return prev;
         return {
           ...prev,
           rows: prev.rows.map((r) =>
-            r.exercise_id === exerciseId ? json.row : r,
+            r.exercise_id === exerciseId ? row : r,
           ),
         };
       });
       invalidateLeerplanOverview();
+      setEditRow(null);
+      setEditError(null);
     },
-    [apiBase, invalidateLeerplanOverview],
-  );
+    onError: (e) => {
+      setEditError(e instanceof Error ? e.message : "Opslaan mislukt.");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (prompt: {
+      ids: string[];
+      emptiesTopic: boolean;
+    }) => {
+      const json = await fetchJson<DeleteSuccess>(apiBase, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          exercise_ids: prompt.ids,
+          delete_audio: true,
+        }),
+      });
+      return { json, prompt };
+    },
+    onSuccess: async ({ json, prompt }) => {
+      setDeletePrompt(null);
+      setSelectedIds(new Set());
+      setActionError(null);
+
+      if (prompt.emptiesTopic) {
+        try {
+          await onDeleteTopic?.();
+        } catch (topicErr) {
+          invalidateList();
+          invalidateLeerplanOverview();
+          setActionError(
+            topicErr instanceof Error
+              ? topicErr.message
+              : "Topic verwijderen mislukt.",
+          );
+          return;
+        }
+        invalidateLeerplanOverview();
+        return;
+      }
+
+      setActionMessage(
+        `${json.deleted} verwijderd${json.audio_removed > 0 ? `, ${json.audio_removed} audiobestand(en)` : ""}.`,
+      );
+      invalidateLeerplanOverview();
+      if (page > 1 && rows.length <= prompt.ids.length) {
+        updateParams({ page: String(page - 1) });
+      } else {
+        invalidateList();
+      }
+    },
+    onError: (e) => {
+      setActionError(e instanceof Error ? e.message : "Verwijderen mislukt.");
+    },
+  });
 
   const selectedRows = useMemo(
     () => rows.filter((r) => selectedIds.has(r.exercise_id)),
@@ -290,90 +321,47 @@ export function ExercisesListPage({
     });
   }, [selectedRows, q, total]);
 
-  const handleConfirmDelete = useCallback(async () => {
+  const handleConfirmDelete = useCallback(() => {
     if (!deletePrompt) return;
-    setDeleting(true);
-    setActionError(null);
     setActionMessage(null);
-    try {
-      const res = await fetch(apiBase, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          exercise_ids: deletePrompt.ids,
-          delete_audio: true,
-        }),
-      });
-      const json = (await res.json()) as DeleteSuccess | DeleteFailure;
-      if (!res.ok || !json.ok) {
-        throw new Error(json.ok ? `HTTP ${res.status}` : json.error);
-      }
-
-      if (deletePrompt.emptiesTopic) {
-        setDeletePrompt(null);
-        setSelectedIds(new Set());
-        try {
-          await onDeleteTopic?.();
-        } catch (topicErr) {
-          // Oefeningen zijn weg; toon lege staat + fout i.p.v. stale rijen.
-          await fetchList(true);
-          invalidateLeerplanOverview();
-          throw topicErr;
-        }
-        invalidateLeerplanOverview();
-        return;
-      }
-
-      setActionMessage(
-        `${json.deleted} verwijderd${json.audio_removed > 0 ? `, ${json.audio_removed} audiobestand(en)` : ""}.`,
-      );
-      setDeletePrompt(null);
-      setSelectedIds(new Set());
-      invalidateLeerplanOverview();
-      if (page > 1 && rows.length <= deletePrompt.ids.length) {
-        updateParams({ page: String(page - 1) });
-      } else {
-        await fetchList(true);
-      }
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Verwijderen mislukt.");
-    } finally {
-      setDeleting(false);
-    }
-  }, [
-    apiBase,
-    deletePrompt,
-    page,
-    rows.length,
-    updateParams,
-    fetchList,
-    onDeleteTopic,
-    invalidateLeerplanOverview,
-  ]);
+    deleteMutation.mutate(deletePrompt);
+  }, [deletePrompt, deleteMutation]);
 
   const handleModalSave = useCallback(
     async (values: ExerciseEditValues) => {
       if (!editRow) return;
-      setEditSaving(true);
       setEditError(null);
       try {
-        await patchRow(editRow.exercise_id, {
-          source_text: values.sourceText,
-          target_text: values.targetText,
-          tags: values.tags.join(","),
-          alternative_translations: values.alternatives,
+        await patchMutation.mutateAsync({
+          exerciseId: editRow.exercise_id,
+          fields: {
+            source_text: values.sourceText,
+            target_text: values.targetText,
+            tags: values.tags.join(","),
+            alternative_translations: values.alternatives,
+          },
         });
-        setEditRow(null);
-      } catch (e) {
-        setEditError(e instanceof Error ? e.message : "Opslaan mislukt.");
-      } finally {
-        setEditSaving(false);
+      } catch {
+        // Fout staat al in editError via onError.
       }
     },
-    [editRow, patchRow],
+    [editRow, patchMutation],
   );
 
+  const deleting = deleteMutation.isPending;
+  const editSaving = patchMutation.isPending;
+  const busy = isInitialLoading || isRefreshing || deleting;
   const hasActiveFilters = Boolean(q);
+
+  const editInitial = useMemo(() => {
+    if (!editRow) return null;
+    return {
+      sourceText: editRow.sentence_text,
+      targetText: editRow.target_text,
+      tags: parseTagsCsv(editRow.tags ?? ""),
+      alternatives: [...(editRow.alternative_translations ?? [])],
+    };
+  }, [editRow]);
 
   return (
     <div className="space-y-4">
@@ -394,7 +382,10 @@ export function ExercisesListPage({
         <button
           type="button"
           disabled={busy}
-          onClick={() => void fetchList(true)}
+          onClick={() => {
+            setActionError(null);
+            void refetch();
+          }}
           className="ml-auto inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-foreground disabled:opacity-50"
         >
           {isRefreshing ? "Verversen…" : "Ververs"}
@@ -438,12 +429,12 @@ export function ExercisesListPage({
         <p className="text-sm text-muted-foreground">{actionMessage}</p>
       )}
 
-      {load.status === "error" && (
+      {listError && (
         <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {load.error}{" "}
+          {listError}{" "}
           <button
             type="button"
-            onClick={() => void fetchList(false)}
+            onClick={() => void refetch()}
             className="underline"
           >
             Opnieuw
@@ -453,7 +444,7 @@ export function ExercisesListPage({
 
       {isInitialLoading && rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">Laden…</p>
-      ) : load.status === "loaded" && rows.length === 0 ? (
+      ) : data && rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           {total === 0
             ? hasActiveFilters
@@ -506,16 +497,7 @@ export function ExercisesListPage({
 
       <ExerciseEditModal
         open={editRow !== null}
-        initial={
-          editRow
-            ? {
-              sourceText: editRow.sentence_text,
-              targetText: editRow.target_text,
-              tags: parseTagsCsv(editRow.tags),
-              alternatives: [...editRow.alternative_translations],
-            }
-            : null
-        }
+        initial={editInitial}
         mp3Url={
           editRow?.has_audio && editRow.mp3_url ? editRow.mp3_url : null
         }
@@ -535,7 +517,7 @@ export function ExercisesListPage({
         count={deletePrompt?.ids.length ?? 0}
         hasAudio={deletePrompt?.hasAudio ?? false}
         onCancel={() => setDeletePrompt(null)}
-        onConfirm={() => void handleConfirmDelete()}
+        onConfirm={handleConfirmDelete}
         deleting={deleting}
       />
 
@@ -545,7 +527,7 @@ export function ExercisesListPage({
         count={deletePrompt?.ids.length ?? 0}
         hasAudio={deletePrompt?.hasAudio ?? false}
         onCancel={() => setDeletePrompt(null)}
-        onConfirm={() => void handleConfirmDelete()}
+        onConfirm={handleConfirmDelete}
         deleting={deleting}
       />
     </div>
