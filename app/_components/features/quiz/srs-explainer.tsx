@@ -58,10 +58,6 @@ export function SrsExplainer({ compact = false }: SrsExplainerProps) {
             </div>
           );
         })}
-
-        <p className="text-xs">
-          Overslaan telt niet mee voor je herhaalschema.
-        </p>
       </div>
     </details>
   );

@@ -12,12 +12,7 @@ import {
 } from "@/app/_components/features/quiz/constants";
 import { ExerciseErrorState } from "@/app/_components/features/quiz/exercise-error-state";
 import { ExerciseChat } from "@/app/_components/features/quiz/exercise-chat";
-import { ScoreBar } from "@/app/_components/features/quiz/score-bar";
 import { useQuizStorage } from "@/app/_components/features/quiz/use-quiz-storage";
-import {
-  FLASHCARD_SHORTCUTS,
-  isPlainLetterShortcut,
-} from "@/lib/keyboard/quiz-shortcuts";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
 import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
 
@@ -109,7 +104,7 @@ export function FlashcardDeck() {
     canGoPrevious,
   } = useQuizSession();
 
-  const { score, recordAttempt, hydrated } = useQuizStorage();
+  const { recordAttempt } = useQuizStorage();
   const getResponseTimeMs = useItemResponseTime(item?.id);
 
   useEffect(() => {
@@ -129,7 +124,7 @@ export function FlashcardDeck() {
 
   useEffect(() => {
     if (screen === "playing" && !loading && item) {
-      containerRef.current?.focus();
+      containerRef.current?.focus({ preventScroll: true });
     }
   }, [screen, loading, item]);
 
@@ -305,7 +300,7 @@ export function FlashcardDeck() {
   }, [sessionPhase, mistakeCount, finishSession, handleChangeSetup]);
 
   const progressLabel =
-    (selectionMode === "topic" || selectionMode === "custom") && queueTotal > 0
+    queueTotal > 0
       ? formatQueueProgressLabel(
           queueProgress,
           queueTotal,
@@ -315,66 +310,15 @@ export function FlashcardDeck() {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      const target = e.target;
-      const inInput =
-        target instanceof HTMLElement &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.tagName === "SELECT" ||
-          target.isContentEditable);
-
-      if (e.key === "Escape") {
-        e.preventDefault();
-        handleEscape();
-        return;
-      }
-
-      if (leaveConfirmOpen) return;
-
-      if (inInput) return;
-      if (screen !== "playing" || loading || animating || !item) return;
-
-      if (isPlainLetterShortcut(e, FLASHCARD_SHORTCUTS.previous)) {
-        e.preventDefault();
-        handlePrevious();
-        return;
-      }
-
-      if (phase === "back") {
-        if (isPlainLetterShortcut(e, FLASHCARD_SHORTCUTS.gradeCorrect)) {
-          e.preventDefault();
-          void handleGrade(true);
-          return;
-        }
-        if (isPlainLetterShortcut(e, FLASHCARD_SHORTCUTS.gradeIncorrect)) {
-          e.preventDefault();
-          void handleGrade(false);
-          return;
-        }
-      }
-
-      // Alleen Spatie — Enter triggert geen omdraaien.
-      if (e.key === " ") {
-        e.preventDefault();
-        handleFlip();
-      }
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      handleEscape();
     }
 
     window.addEventListener("keydown", onKeyDown, { capture: true });
     return () =>
       window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, [
-    screen,
-    loading,
-    animating,
-    item,
-    phase,
-    handleGrade,
-    handleFlip,
-    handlePrevious,
-    handleEscape,
-    leaveConfirmOpen,
-  ]);
+  }, [handleEscape]);
 
   const headerTitle =
     screen === "playing"
@@ -469,13 +413,12 @@ export function FlashcardDeck() {
 
       {screen === "playing" && (
         <>
-          <ScoreBar
-            score={score}
-            hydrated={hydrated}
-            progressLabel={progressLabel}
-          />
-
-          <section className="rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
+          <section className="relative rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 pt-10 sm:p-8 sm:pt-10">
+            {progressLabel ? (
+              <span className="absolute right-4 top-3 text-sm font-medium tabular-nums text-foreground sm:right-6 sm:top-4">
+                {progressLabel}
+              </span>
+            ) : null}
             {sessionComplete && (
               <div className="mx-auto max-w-lg space-y-4 text-center">
                 <p className="text-lg font-semibold text-foreground">

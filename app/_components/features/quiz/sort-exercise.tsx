@@ -17,7 +17,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ExerciseAudioAttribution } from "@/app/_components/features/quiz/exercise-audio-attribution";
 import { ExerciseAudioControls } from "@/app/_components/features/quiz/exercise-audio-controls";
 import { useSortWordPlacementAnimation } from "@/app/_components/features/quiz/hooks/use-sort-word-placement-animation";
-import { TYPING_SHORTCUTS } from "@/lib/keyboard/quiz-shortcuts";
 import {
   createInitialSortState,
   getSortExerciseData,
@@ -51,12 +50,9 @@ type SortExerciseProps = {
   direction: TranslationDirection;
   feedback: SortFeedback | null;
   onSubmit: (userAnswer: string, feedback: SortFeedback) => void;
-  onSkip: () => void;
   onNext: () => void;
   onPrevious?: () => void;
   canGoPrevious?: boolean;
-  /** Uit bij leave-dialog zodat Enter = blijven oefenen. */
-  shortcutsEnabled?: boolean;
 };
 
 export function SortExercise({
@@ -64,11 +60,9 @@ export function SortExercise({
   direction,
   feedback,
   onSubmit,
-  onSkip,
   onNext,
   onPrevious,
   canGoPrevious = false,
-  shortcutsEnabled = true,
 }: SortExerciseProps) {
   const exerciseData = useMemo(
     () => getSortExerciseData(item, direction),
@@ -101,7 +95,7 @@ export function SortExercise({
 
   useEffect(() => {
     if (!feedback) {
-      inputRef.current?.focus();
+      inputRef.current?.focus({ preventScroll: true });
     }
   }, [feedback, item.id, sortState.activeSlotIndex]);
 
@@ -158,12 +152,8 @@ export function SortExercise({
   function handlePrefixKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key !== "Enter" || feedback || isAnimating) return;
 
-    // Alle slots vol → Enter = controleren (niet proberen te plaatsen)
-    if (isAllSlotsFilled(sortState.slots)) {
-      e.preventDefault();
-      handleCheck();
-      return;
-    }
+    // Volle slots: Enter plaatst niets; controleren gaat via de knop.
+    if (isAllSlotsFilled(sortState.slots)) return;
 
     e.preventDefault();
 
@@ -210,16 +200,12 @@ export function SortExercise({
   function handleSlotClick(index: number) {
     if (feedback) return;
     setSortState((prev) => ({ ...prev, activeSlotIndex: index, typePrefix: "" }));
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   }
 
   function handleFormSubmit(e: React.FormEvent<HTMLFormElement>) {
+    // Geen Enter-submit: controleren/volgende alleen via knoppen.
     e.preventDefault();
-    if (feedback) {
-      onNext();
-      return;
-    }
-    handleCheck();
   }
 
   const activeDragItem = activeDragId
@@ -228,51 +214,6 @@ export function SortExercise({
   const allFilled = isAllSlotsFilled(sortState.slots);
   const hasFeedback = feedback !== null;
   const showPrevious = Boolean(onPrevious);
-
-  // Enter: controleren als alles geplaatst is, of volgende na feedback —
-  // ook als focus niet (meer) in het prefix-veld zit.
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (!shortcutsEnabled) return;
-      if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) {
-        return;
-      }
-      if (isAnimating) return;
-
-      if (feedback) {
-        e.preventDefault();
-        e.stopPropagation();
-        onNext();
-        return;
-      }
-
-      if (!isAllSlotsFilled(sortState.slots)) return;
-
-      e.preventDefault();
-      e.stopPropagation();
-      const userWords = getWordsFromSlots(sortState.slots, poolById);
-      const result = evaluateSortOrder(
-        userWords,
-        exerciseData.correctSequences,
-        exerciseData.primaryAnswer,
-      );
-      onSubmit(userWords.join(" "), result);
-    }
-
-    window.addEventListener("keydown", onKeyDown, { capture: true });
-    return () =>
-      window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, [
-    shortcutsEnabled,
-    feedback,
-    isAnimating,
-    sortState.slots,
-    poolById,
-    exerciseData.correctSequences,
-    exerciseData.primaryAnswer,
-    onSubmit,
-    onNext,
-  ]);
 
   return (
     <form onSubmit={handleFormSubmit} className="mx-auto w-full max-w-lg">
@@ -396,29 +337,21 @@ export function SortExercise({
         </div>
       ) : null}
 
-      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="mt-2 grid grid-cols-1 gap-2">
         {hasFeedback ? (
           <FlashcardActionButton
             label="Volgende oefening"
-            shortcut="Enter"
             onClick={onNext}
             variant="accent"
           />
         ) : (
           <FlashcardActionButton
             label="Controleren"
-            shortcut="Enter"
             onClick={handleCheck}
             disabled={!allFilled}
             variant="accent"
           />
         )}
-        <FlashcardActionButton
-          label="Overslaan"
-          shortcut={TYPING_SHORTCUTS.skip}
-          onClick={onSkip}
-          disabled={hasFeedback}
-        />
       </div>
     </form>
   );

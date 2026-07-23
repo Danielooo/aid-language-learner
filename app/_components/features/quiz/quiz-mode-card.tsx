@@ -18,7 +18,6 @@ type QuizModeCardProps = {
   description: string;
   icon?: ReactNode;
   href?: string;
-  badge?: string;
   selected?: boolean;
   onSelect?: () => void;
   comingSoon?: boolean;
@@ -30,7 +29,6 @@ export function QuizModeCard({
   description,
   icon,
   href,
-  badge,
   selected = false,
   onSelect,
   comingSoon = false,
@@ -55,11 +53,6 @@ export function QuizModeCard({
           )}
           <h3 className="text-base font-semibold text-foreground">{title}</h3>
         </div>
-        {badge && (
-          <span className="shrink-0 rounded-md bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent">
-            {badge}
-          </span>
-        )}
         {comingSoon && (
           <span className="shrink-0 rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
             Binnenkort

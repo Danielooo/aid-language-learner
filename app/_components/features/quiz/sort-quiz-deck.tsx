@@ -7,13 +7,8 @@ import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 
 import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
 import { ExerciseErrorState } from "@/app/_components/features/quiz/exercise-error-state";
-import { ScoreBar } from "@/app/_components/features/quiz/score-bar";
 import { ExerciseChat } from "@/app/_components/features/quiz/exercise-chat";
 import { useQuizStorage } from "@/app/_components/features/quiz/use-quiz-storage";
-import {
-  isTypingBracketShortcut,
-  TYPING_SHORTCUTS,
-} from "@/lib/keyboard/quiz-shortcuts";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
 import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
 import {
@@ -114,14 +109,13 @@ export function SortQuizDeck() {
     fetchPrevious,
     fetchNextValidated,
     recordAnswer,
-    recordSkip,
     startMistakeReview,
     finishSession,
     recordSrsReview,
     canGoPrevious,
   } = useQuizSession();
 
-  const { score, recordAttempt, hydrated } = useQuizStorage();
+  const { recordAttempt } = useQuizStorage();
   const getResponseTimeMs = useItemResponseTime(item?.id);
 
   const isSortEligible = useCallback(
@@ -198,7 +192,7 @@ export function SortQuizDeck() {
 
   useEffect(() => {
     if (screen === "playing" && !loading && item) {
-      containerRef.current?.focus();
+      containerRef.current?.focus({ preventScroll: true });
     }
   }, [screen, loading, item]);
 
@@ -317,14 +311,6 @@ export function SortQuizDeck() {
     void fetchPrevious();
   }, [loading, canGoPrevious, resetExerciseState, fetchPrevious]);
 
-  const handleSkip = useCallback(() => {
-    if (loading || !item) return;
-    if (selectionMode === "topic") {
-      recordSkip(item.id);
-    }
-    loadNext();
-  }, [loading, item, selectionMode, recordSkip, loadNext]);
-
   const handleSubmit = useCallback(
     (userAnswer: string, result: SortFeedback) => {
       if (!item) return;
@@ -378,7 +364,7 @@ export function SortQuizDeck() {
   }, [sessionPhase, mistakeCount, finishSession, handleChangeSetup]);
 
   const progressLabel =
-    (selectionMode === "topic" || selectionMode === "custom") && queueTotal > 0
+    queueTotal > 0
       ? formatQueueProgressLabel(
           queueProgress,
           queueTotal,
@@ -388,37 +374,15 @@ export function SortQuizDeck() {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        handleEscape();
-        return;
-      }
-
-      if (leaveConfirmOpen) return;
-
-      if (screen !== "playing" || loading || !item) return;
-
-      if (
-        !feedback &&
-        isTypingBracketShortcut(e, TYPING_SHORTCUTS.skip)
-      ) {
-        e.preventDefault();
-        handleSkip();
-      }
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      handleEscape();
     }
 
     window.addEventListener("keydown", onKeyDown, { capture: true });
     return () =>
       window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, [
-    screen,
-    loading,
-    item,
-    feedback,
-    handleEscape,
-    handleSkip,
-    leaveConfirmOpen,
-  ]);
+  }, [handleEscape]);
 
   const headerTitle =
     screen === "playing"
@@ -522,13 +486,12 @@ export function SortQuizDeck() {
 
       {screen === "playing" && (
         <>
-          <ScoreBar
-            score={score}
-            hydrated={hydrated}
-            progressLabel={progressLabel}
-          />
-
-          <section className="rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
+          <section className="relative rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 pt-10 sm:p-8 sm:pt-10">
+            {progressLabel ? (
+              <span className="absolute right-4 top-3 text-sm font-medium tabular-nums text-foreground sm:right-6 sm:top-4">
+                {progressLabel}
+              </span>
+            ) : null}
             {sessionComplete && (
               <div className="mx-auto max-w-lg space-y-4 text-center">
                 <p className="text-lg font-semibold text-foreground">
@@ -577,11 +540,9 @@ export function SortQuizDeck() {
                 direction={direction}
                 feedback={feedback}
                 onSubmit={handleSubmit}
-                onSkip={handleSkip}
                 onNext={handleNext}
                 onPrevious={handlePrevious}
                 canGoPrevious={canGoPrevious && !loading}
-                shortcutsEnabled={!leaveConfirmOpen}
               />
             )}
           </section>

@@ -11,7 +11,7 @@ type QuizLeaveSessionDialogProps = {
 /**
  * Waarschuwing bij verlaten mid-sessie.
  * Esc (2e keer via parent) / “Toch verlaten” = weg;
- * Enter / “Blijven oefenen” = blijven.
+ * “Blijven oefenen” = blijven (alleen knop).
  */
 export function QuizLeaveSessionDialog({
   open,
@@ -26,22 +26,6 @@ export function QuizLeaveSessionDialog({
     if (open && !node.open) node.showModal();
     else if (!open && node.open) node.close();
   }, [open]);
-
-  // Enter = blijven; capture vóór deck-handlers (typen/submit).
-  useEffect(() => {
-    if (!open) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) {
-        return;
-      }
-      e.preventDefault();
-      e.stopPropagation();
-      onStay();
-    }
-    window.addEventListener("keydown", onKeyDown, { capture: true });
-    return () =>
-      window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, [open, onStay]);
 
   return (
     <dialog
@@ -76,9 +60,6 @@ export function QuizLeaveSessionDialog({
             className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-accent-foreground hover:bg-accent/90"
           >
             Blijven oefenen
-            <kbd className="rounded border border-accent-foreground/30 bg-accent-foreground/10 px-1.5 py-0.5 font-mono text-[10px]">
-              Enter
-            </kbd>
           </button>
         </footer>
       </div>

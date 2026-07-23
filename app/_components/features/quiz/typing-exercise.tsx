@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { ExerciseAudioAttribution } from "@/app/_components/features/quiz/exercise-audio-attribution";
 import { ExerciseAudioControls } from "@/app/_components/features/quiz/exercise-audio-controls";
-import { TYPING_SHORTCUTS } from "@/lib/keyboard/quiz-shortcuts";
 import { shuffleAnagram } from "@/lib/quiz/anagram";
 import { pickBlankWord } from "@/lib/quiz/blank-word";
 import { isAnswerCorrect, normalizeForCompare } from "@/lib/quiz/compare";
@@ -32,7 +31,6 @@ type TypingExerciseProps = {
   hintVisible: boolean;
   onAnswerChange: (value: string) => void;
   onSubmit: () => void;
-  onSkip: () => void;
   onNext: () => void;
   onShowHint: () => void;
   onPrevious?: () => void;
@@ -48,7 +46,6 @@ export function TypingExercise({
   hintVisible,
   onAnswerChange,
   onSubmit,
-  onSkip,
   onNext,
   onShowHint,
   onPrevious,
@@ -72,18 +69,13 @@ export function TypingExercise({
 
   useEffect(() => {
     if (!feedback) {
-      inputRef.current?.focus();
+      inputRef.current?.focus({ preventScroll: true });
     }
   }, [feedback, item.id]);
 
   function handleFormSubmit(e: React.FormEvent<HTMLFormElement>) {
+    // Geen Enter-submit: controleren/volgende alleen via knoppen.
     e.preventDefault();
-    if (feedback) {
-      onNext();
-      return;
-    }
-    if (answer.trim().length === 0) return;
-    onSubmit();
   }
 
   const showPrevious = Boolean(onPrevious);
@@ -183,32 +175,29 @@ export function TypingExercise({
         <div className="mt-4">
           <FlashcardActionButton
             label="Vorige oefening"
-            shortcut={TYPING_SHORTCUTS.previous.toUpperCase()}
             onClick={() => onPrevious?.()}
             disabled={!canGoPrevious}
           />
         </div>
       ) : null}
 
-      {/* Vaste grid: Controleren ↔ Volgende in dezelfde cel; Hint/Skip blijven staan */}
+      {/* Controleren/Volgende + optioneel Hint */}
       <div
         className={`mt-2 grid gap-2 ${
           mode === "blank"
-            ? "grid-cols-1 sm:grid-cols-3"
-            : "grid-cols-1 sm:grid-cols-2"
+            ? "grid-cols-1 sm:grid-cols-2"
+            : "grid-cols-1"
         }`}
       >
         {hasFeedback ? (
           <FlashcardActionButton
             label="Volgende oefening"
-            shortcut="Enter"
             onClick={onNext}
             variant="accent"
           />
         ) : (
           <FlashcardActionButton
             label="Controleren"
-            shortcut="Enter"
             onClick={onSubmit}
             disabled={!canCheck}
             variant="accent"
@@ -217,17 +206,10 @@ export function TypingExercise({
         {mode === "blank" && (
           <FlashcardActionButton
             label="Hint"
-            shortcut={TYPING_SHORTCUTS.hint}
             onClick={onShowHint}
             disabled={hasFeedback || hintVisible}
           />
         )}
-        <FlashcardActionButton
-          label="Overslaan"
-          shortcut={TYPING_SHORTCUTS.skip}
-          onClick={onSkip}
-          disabled={hasFeedback}
-        />
       </div>
     </form>
   );

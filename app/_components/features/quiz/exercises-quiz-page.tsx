@@ -4,7 +4,6 @@ import { useState } from "react";
 
 import { AppPageHeader } from "@/app/_components/ui/app-page-header";
 
-import { useExerciseProgress } from "./hooks/use-exercise-progress";
 import {
   FlashcardsIcon,
   QuizModeCard,
@@ -39,15 +38,6 @@ const QUIZ_MODES = [
 
 export function ExercisesQuizPage() {
   const [selection, setSelection] = useState<HubSelection | null>(null);
-  const { data: progress } = useExerciseProgress();
-  const dueCount = progress?.dueCount ?? null;
-
-  const dueBadge =
-    dueCount !== null && dueCount > 0
-      ? dueCount === 1
-        ? "1 klaar"
-        : `${dueCount} klaar`
-      : undefined;
 
   return (
     <div className="space-y-6">
@@ -77,7 +67,6 @@ export function ExercisesQuizPage() {
             <QuizModeCard
               title="Herhaalschema"
               description="Alleen wat nu aan herhaling toe is."
-              badge={dueBadge}
               selected={selection === "srs"}
               onSelect={() => setSelection("srs")}
             />

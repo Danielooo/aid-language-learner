@@ -405,17 +405,6 @@ export function useQuizSession() {
     }
   }, []);
 
-  const recordSkip = useCallback(
-    (exerciseId: string) => {
-      const config = configRef.current;
-      if (!config || config.selectionMode !== "topic") return;
-
-      queueRef.current = [...queueRef.current, exerciseId];
-      syncQueueState(queueRef.current.length, queueIndexRef.current);
-    },
-    [syncQueueState],
-  );
-
   const startMistakeReview = useCallback(() => {
     const config = configRef.current;
     if (!config || config.selectionMode !== "topic") return;
@@ -576,7 +565,6 @@ export function useQuizSession() {
     fetchPrevious,
     fetchNextValidated,
     recordAnswer,
-    recordSkip,
     startMistakeReview,
     finishSession,
     recordSrsReview,

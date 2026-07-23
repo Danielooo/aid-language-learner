@@ -4,8 +4,6 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useEffect, useRef } from "react";
 
-import { FLASHCARD_SHORTCUTS } from "@/lib/keyboard/quiz-shortcuts";
-
 import { ExerciseAudioAttribution } from "./exercise-audio-attribution";
 import { ExerciseAudioControls } from "./exercise-audio-controls";
 import { FlashcardActionButton } from "./flashcard-action-button";
@@ -161,7 +159,7 @@ export function Flashcard({
               )}
             </div>
             <p className="absolute bottom-4 text-[11px] text-muted-foreground/80">
-              Klik of druk Spatie om te draaien
+              Klik om te draaien
             </p>
           </div>
 
@@ -181,9 +179,6 @@ export function Flashcard({
                 {item.target_text}
               </p>
             </div>
-            <p className="absolute bottom-4 text-[11px] text-muted-foreground/80">
-              Wist je het? Geef jezelf een score
-            </p>
           </div>
         </div>
       </div>
@@ -192,7 +187,6 @@ export function Flashcard({
         <div className="mt-4">
           <FlashcardActionButton
             label="Vorige oefening"
-            shortcut={FLASHCARD_SHORTCUTS.previous.toUpperCase()}
             onClick={() => onPrevious?.()}
             disabled={animating || !canGoPrevious}
           />
@@ -207,7 +201,6 @@ export function Flashcard({
         {!isBack && (
           <FlashcardActionButton
             label="Omdraaien"
-            shortcut="Spatie"
             onClick={onFlip}
             disabled={animating}
             variant="accent"
@@ -217,21 +210,18 @@ export function Flashcard({
           <>
             <FlashcardActionButton
               label="Omdraaien"
-              shortcut="Spatie"
               onClick={onFlip}
               disabled={animating}
               variant="accent"
             />
             <FlashcardActionButton
               label="Goed"
-              shortcut={FLASHCARD_SHORTCUTS.gradeCorrect.toUpperCase()}
               onClick={onGradeCorrect}
               disabled={animating}
               variant="success"
             />
             <FlashcardActionButton
               label="Fout"
-              shortcut={FLASHCARD_SHORTCUTS.gradeIncorrect.toUpperCase()}
               onClick={onGradeIncorrect}
               disabled={animating}
               variant="danger"
