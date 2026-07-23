@@ -13,8 +13,6 @@ import {
 
 import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
 
-type HubSelection = Extract<QuizSelectionMode, "topic" | "srs">;
-
 const QUIZ_MODES = [
   {
     title: "Flashcards",
@@ -37,7 +35,7 @@ const QUIZ_MODES = [
 ] as const;
 
 export function ExercisesQuizPage() {
-  const [selection, setSelection] = useState<HubSelection | null>(null);
+  const [selection, setSelection] = useState<QuizSelectionMode | null>(null);
 
   return (
     <div className="space-y-6">

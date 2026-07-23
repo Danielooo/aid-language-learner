@@ -7,7 +7,7 @@ import { fetchTopicExerciseIds } from "@/lib/quiz/fetch-topic-exercise-ids";
 import { fisherYatesShuffle } from "@/lib/quiz/shuffle";
 import { queryKeys } from "@/lib/query-keys";
 
-import type { ExercisePickerItem } from "@/types/quiz";
+import type { ExerciseListItem } from "@/types/quiz";
 import type { ExerciseQuizItem } from "@/types/quiz";
 import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
 
@@ -20,11 +20,10 @@ export type QuizSessionPhase =
 export type QuizSessionConfig = {
   selectionMode: QuizSelectionMode;
   topic: string;
-  customExerciseIds?: string[];
 };
 
 export type StartSessionOptions = {
-  exerciseFilter?: (item: ExercisePickerItem) => boolean;
+  exerciseFilter?: (item: ExerciseListItem) => boolean;
 };
 
 function buildFetchUrl(config: QuizSessionConfig, exerciseId?: string): string {
@@ -48,12 +47,12 @@ function buildFetchUrl(config: QuizSessionConfig, exerciseId?: string): string {
 }
 
 function usesQueue(mode: QuizSelectionMode): boolean {
-  return mode === "custom" || mode === "topic";
+  return mode === "topic";
 }
 
 /**
- * Beheert de oefening-queue voor topic, SRS en custom selectie.
- * Decks roepen `startSession` aan na topic/picker-keuze en `fetchNext`
+ * Beheert de oefening-queue voor topic- en SRS-selectie.
+ * Decks roepen `startSession` aan na topic-keuze en `fetchNext`
  * voor elke volgende kaart.
  */
 export function useQuizSession() {
@@ -66,10 +65,7 @@ export function useQuizSession() {
   const mistakeIdsRef = useRef<Set<string>>(new Set());
   const skippedIneligibleRef = useRef(0);
   const sessionPhaseRef = useRef<QuizSessionPhase>("playing");
-  /** Bezochte oefeningen (SRS e.d.) zodat Vorige ook zonder queue werkt. */
-  const visitHistoryRef = useRef<string[]>([]);
   const currentItemIdRef = useRef<string | null>(null);
-  const navigatingBackRef = useRef(false);
 
   // Spiegel van configRef.current.selectionMode als state, omdat refs
   // niet tijdens render gelezen mogen worden (react-hooks/refs).
@@ -81,7 +77,6 @@ export function useQuizSession() {
   const [sessionLoading, setSessionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
-  const [sessionComplete, setSessionComplete] = useState(false);
   const [srsComplete, setSrsComplete] = useState(false);
   const [sessionPhase, setSessionPhaseState] = useState<QuizSessionPhase>("playing");
 
@@ -96,18 +91,6 @@ export function useQuizSession() {
   const [correctCount, setCorrectCount] = useState(0);
   const [mistakeCount, setMistakeCount] = useState(0);
   const [skippedIneligible, setSkippedIneligible] = useState(0);
-  const [visitHistoryLength, setVisitHistoryLength] = useState(0);
-
-  const rememberCurrentBeforeAdvance = useCallback(() => {
-    if (navigatingBackRef.current) {
-      navigatingBackRef.current = false;
-      return;
-    }
-    const currentId = currentItemIdRef.current;
-    if (!currentId) return;
-    visitHistoryRef.current.push(currentId);
-    setVisitHistoryLength(visitHistoryRef.current.length);
-  }, []);
 
   const adoptItem = useCallback((data: ExerciseQuizItem) => {
     currentItemIdRef.current = data.id;
@@ -130,14 +113,10 @@ export function useQuizSession() {
     initialQueueTotalRef.current = 0;
     mistakeIdsRef.current = new Set();
     skippedIneligibleRef.current = 0;
-    visitHistoryRef.current = [];
     currentItemIdRef.current = null;
-    navigatingBackRef.current = false;
-    setVisitHistoryLength(0);
     setItem(null);
     setError(null);
     setErrorStatus(null);
-    setSessionComplete(false);
     setSrsComplete(false);
     setSessionLoading(false);
     setSessionPhase("playing");
@@ -156,11 +135,6 @@ export function useQuizSession() {
 
     setItem(null);
     setQueueRemaining(0);
-
-    if (config.selectionMode === "custom") {
-      setSessionComplete(true);
-      return;
-    }
 
     if (config.selectionMode === "topic") {
       if (sessionPhaseRef.current === "review") {
@@ -183,11 +157,7 @@ export function useQuizSession() {
       queueIndexRef.current = 0;
       mistakeIdsRef.current = new Set();
       skippedIneligibleRef.current = 0;
-      visitHistoryRef.current = [];
       currentItemIdRef.current = null;
-      navigatingBackRef.current = false;
-      setVisitHistoryLength(0);
-      setSessionComplete(false);
       setSrsComplete(false);
       setSessionPhase("playing");
       setError(null);
@@ -197,16 +167,6 @@ export function useQuizSession() {
       setMistakeCount(0);
       setSkippedIneligible(0);
       syncQueueState(0, 0);
-
-      if (config.selectionMode === "custom" && config.customExerciseIds) {
-        const shuffled = fisherYatesShuffle([...config.customExerciseIds]);
-        queueRef.current = shuffled;
-        queueIndexRef.current = 0;
-        initialQueueTotalRef.current = shuffled.length;
-        setInitialQueueTotal(shuffled.length);
-        syncQueueState(shuffled.length, 0);
-        return true;
-      }
 
       if (config.selectionMode === "topic") {
         setSessionLoading(true);
@@ -271,7 +231,6 @@ export function useQuizSession() {
         const exerciseId = queue[index];
         queueIndexRef.current = index + 1;
         syncQueueState(queue.length, index + 1);
-        rememberCurrentBeforeAdvance();
 
         const url = buildFetchUrl(config, exerciseId);
         const res = await fetch(url, { cache: "no-store" });
@@ -287,7 +246,6 @@ export function useQuizSession() {
         return;
       }
 
-      rememberCurrentBeforeAdvance();
       const url = buildFetchUrl(config);
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) {
@@ -317,7 +275,7 @@ export function useQuizSession() {
     } finally {
       setLoading(false);
     }
-  }, [completeQueue, syncQueueState, rememberCurrentBeforeAdvance, adoptItem]);
+  }, [completeQueue, syncQueueState, adoptItem]);
 
   /** Haalt oefeningen op met optionele validatie (bijv. sort-eligibility). */
   const fetchNextValidated = useCallback(
@@ -365,7 +323,6 @@ export function useQuizSession() {
           }
           const data = (await res.json()) as ExerciseQuizItem;
           if (isValid(data)) {
-            rememberCurrentBeforeAdvance();
             adoptItem(data);
             return;
           }
@@ -387,7 +344,7 @@ export function useQuizSession() {
         setLoading(false);
       }
     },
-    [fetchNext, rememberCurrentBeforeAdvance, adoptItem],
+    [fetchNext, adoptItem],
   );
 
   const recordAnswer = useCallback((exerciseId: string, isCorrect: boolean) => {
@@ -457,85 +414,11 @@ export function useQuizSession() {
     [queryClient],
   );
 
-  /**
-   * Ga één oefening terug.
-   * Topic/custom: queue-index. SRS: bezoekhistorie van deze sessie.
-   * Score wordt niet teruggedraaid; alleen navigatie.
-   */
-  const fetchPrevious = useCallback(async () => {
-    const config = configRef.current;
-    if (!config) return false;
-
-    setSessionComplete(false);
-    setSrsComplete(false);
-    if (
-      sessionPhaseRef.current === "main-complete" ||
-      sessionPhaseRef.current === "all-complete"
-    ) {
-      setSessionPhase("playing");
-    }
-
-    if (usesQueue(config.selectionMode)) {
-      // queueIndex staat voorbij de huidige kaart; vorige = index - 2.
-      if (queueIndexRef.current <= 1) return false;
-
-      queueIndexRef.current -= 2;
-      // Huidige kaart niet opnieuw op de historie pushen.
-      navigatingBackRef.current = true;
-      if (visitHistoryRef.current.length > 0) {
-        visitHistoryRef.current.pop();
-        setVisitHistoryLength(visitHistoryRef.current.length);
-      }
-      await fetchNext();
-      return true;
-    }
-
-    if (visitHistoryRef.current.length === 0) return false;
-
-    const previousId = visitHistoryRef.current.pop()!;
-    setVisitHistoryLength(visitHistoryRef.current.length);
-    navigatingBackRef.current = true;
-
-    setLoading(true);
-    setError(null);
-    setErrorStatus(null);
-    try {
-      const url = buildFetchUrl(config, previousId);
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        setErrorStatus(res.status);
-        throw new Error(body.error ?? `Status ${res.status}`);
-      }
-      const data = (await res.json()) as ExerciseQuizItem;
-      adoptItem(data);
-      navigatingBackRef.current = false;
-      return true;
-    } catch (e) {
-      navigatingBackRef.current = false;
-      setError(e instanceof Error ? e.message : "Onbekende fout");
-      setItem(null);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchNext, setSessionPhase, adoptItem]);
-
-  const canGoPrevious =
-    sessionPhase !== "main-complete" &&
-    sessionPhase !== "all-complete" &&
-    (activeSelectionMode === "topic" || activeSelectionMode === "custom"
-      ? queueProgress > 1
-      : activeSelectionMode === "srs" && visitHistoryLength > 0);
-
   const isTopicSessionActive =
     activeSelectionMode === "topic" &&
     (sessionPhase === "playing" || sessionPhase === "review");
 
   const showPlayingUi =
-    !sessionComplete &&
     !srsComplete &&
     sessionPhase !== "main-complete" &&
     sessionPhase !== "all-complete";
@@ -546,7 +429,6 @@ export function useQuizSession() {
     sessionLoading,
     error,
     errorStatus,
-    sessionComplete,
     srsComplete,
     sessionPhase,
     queueRemaining,
@@ -556,13 +438,11 @@ export function useQuizSession() {
     correctCount,
     mistakeCount,
     skippedIneligible,
-    canGoPrevious,
     isTopicSessionActive,
     showPlayingUi,
     startSession,
     resetSession,
     fetchNext,
-    fetchPrevious,
     fetchNextValidated,
     recordAnswer,
     startMistakeReview,

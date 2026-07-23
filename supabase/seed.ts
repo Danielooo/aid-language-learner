@@ -206,7 +206,7 @@ const OWNED_EXERCISES: ExerciseSpec[] = [
 ];
 
 const PRACTICE_TYPES = ["flashcard", "typing", "sort"] as const;
-const SELECTION_MODES = ["topic", "srs", "custom"] as const;
+const SELECTION_MODES = ["topic", "srs"] as const;
 const DIRECTIONS = ["es-to-nl", "nl-to-es"] as const;
 
 type ProgressSpec = {

@@ -16,15 +16,11 @@ import { useQuizStorage } from "@/app/_components/features/quiz/use-quiz-storage
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
 import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
 
-import { ExercisePicker } from "./exercise-picker";
 import { QuizBackToOverviewButton } from "./quiz-back-to-overview-button";
 import { QuizLeaveSessionDialog } from "./quiz-leave-session-dialog";
 import { ActiveTopicsEmptyBanner } from "./active-topics-empty-banner";
 import { animateCardExit, Flashcard } from "./flashcard";
-import {
-  QuizSelectionScreen,
-  useQuizSelectionMode,
-} from "./quiz-selection-screen";
+import { useQuizSelectionMode } from "./hooks/use-quiz-selection-mode";
 import {
   formatQueueProgressLabel,
   SessionCompleteState,
@@ -38,18 +34,12 @@ import { useItemResponseTime } from "./hooks/use-item-response-time";
 import { useQuizTopics } from "./hooks/use-quiz-topics";
 
 import type { FlashcardPhase } from "./flashcard";
-import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
 
 const TOPIC_KEY = "aid:exercises-quiz-flashcards:topic";
 
-type DeckScreen =
-  | "selection"
-  | "topic-picker"
-  | "exercise-picker"
-  | "playing";
+type DeckScreen = "topic-picker" | "playing";
 
-function topicDisplayLabel(topic: string, mode: QuizSelectionMode): string {
-  if (mode === "custom") return "Zelf kiezen";
+function topicDisplayLabel(topic: string): string {
   return topic === ALL_TOPICS ? "Alle topics" : topic;
 }
 
@@ -58,7 +48,7 @@ export function FlashcardDeck() {
   const containerRef = useRef<HTMLDivElement>(null);
   const cardContainerRef = useRef<HTMLDivElement>(null);
 
-  const [screen, setScreen] = useState<DeckScreen>("selection");
+  const [screen, setScreen] = useState<DeckScreen>("topic-picker");
   const [phase, setPhase] = useState<FlashcardPhase>("front");
   const [animating, setAnimating] = useState(false);
 
@@ -66,13 +56,9 @@ export function FlashcardDeck() {
   const topicStats = topicsData?.stats ?? [];
   const [selectedTopic, setSelectedTopic] = useState<string>(ALL_TOPICS);
   const [topicHydrated, setTopicHydrated] = useState(false);
-  const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(
-    new Set(),
-  );
 
   const {
     mode: selectionMode,
-    setMode: setSelectionMode,
     hydrated: selectionHydrated,
     fromQuery: selectionFromQuery,
   } = useQuizSelectionMode();
@@ -83,7 +69,6 @@ export function FlashcardDeck() {
     sessionLoading,
     error,
     errorStatus,
-    sessionComplete,
     srsComplete,
     sessionPhase,
     queueProgress,
@@ -96,12 +81,10 @@ export function FlashcardDeck() {
     startSession,
     resetSession,
     fetchNext,
-    fetchPrevious,
     recordAnswer,
     startMistakeReview,
     finishSession,
     recordSrsReview,
-    canGoPrevious,
   } = useQuizSession();
 
   const { recordAttempt } = useQuizStorage();
@@ -122,20 +105,19 @@ export function FlashcardDeck() {
     setTopicHydrated(true);
   }, []);
 
+  // Zonder ?modus= vanaf de hub → terug naar overzicht.
+  useEffect(() => {
+    if (!selectionHydrated) return;
+    if (!selectionFromQuery) {
+      router.replace("/oefenen");
+    }
+  }, [selectionHydrated, selectionFromQuery, router]);
+
   useEffect(() => {
     if (screen === "playing" && !loading && item) {
       containerRef.current?.focus({ preventScroll: true });
     }
   }, [screen, loading, item]);
-
-  // Hub-deeplink (?modus=) → sla de selectiestap over.
-  useEffect(() => {
-    if (!selectionHydrated || !selectionFromQuery) return;
-    if (selectionMode === "custom") return;
-    setScreen((current) =>
-      current === "selection" ? "topic-picker" : current,
-    );
-  }, [selectionHydrated, selectionFromQuery, selectionMode]);
 
   function persistTopic(topic: string) {
     setSelectedTopic(topic);
@@ -148,53 +130,25 @@ export function FlashcardDeck() {
     }
   }
 
-  async function beginSession(
-    mode: typeof selectionMode,
-    topic: string,
-    customIds?: string[],
-  ) {
+  async function beginSession(topic: string) {
     setPhase("front");
     setAnimating(false);
     setScreen("playing");
     const ok = await startSession({
-      selectionMode: mode,
+      selectionMode,
       topic,
-      customExerciseIds: customIds,
     });
     if (ok) void fetchNext();
   }
 
-  function handleSelectMode(mode: QuizSelectionMode) {
-    setSelectionMode(mode);
-    if (mode === "custom") {
-      setScreen("exercise-picker");
-      return;
-    }
-    setScreen("topic-picker");
-  }
-
   function handleTopicSelect(topic: string) {
     persistTopic(topic);
-    beginSession(selectionMode, topic);
-  }
-
-  function handleCustomStart() {
-    if (selectedExerciseIds.size === 0) return;
-    beginSession(selectionMode, selectedTopic, [...selectedExerciseIds]);
-  }
-
-  function toggleExerciseId(id: string) {
-    setSelectedExerciseIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    void beginSession(topic);
   }
 
   const handleChangeSetup = useCallback(() => {
     resetSession();
-    setScreen("selection");
+    setScreen("topic-picker");
     setPhase("front");
     setAnimating(false);
   }, [resetSession]);
@@ -258,13 +212,6 @@ export function FlashcardDeck() {
     ],
   );
 
-  const handlePrevious = useCallback(() => {
-    if (animating || loading || !canGoPrevious) return;
-    setPhase("front");
-    setAnimating(false);
-    void fetchPrevious();
-  }, [animating, loading, canGoPrevious, fetchPrevious]);
-
   const handleBackToOverview = useCallback(() => {
     resetSession();
     router.push("/oefenen");
@@ -320,10 +267,9 @@ export function FlashcardDeck() {
       window.removeEventListener("keydown", onKeyDown, { capture: true });
   }, [handleEscape]);
 
+  const ready = selectionHydrated && selectionFromQuery;
   const headerTitle =
-    screen === "playing"
-      ? topicDisplayLabel(selectedTopic, selectionMode)
-      : "Flashcards";
+    screen === "playing" ? topicDisplayLabel(selectedTopic) : "Flashcards";
 
   return (
     <div ref={containerRef} tabIndex={-1} className="space-y-6 outline-none">
@@ -332,7 +278,7 @@ export function FlashcardDeck() {
         description={
           screen === "playing"
             ? "Bekijk de Spaanse zin, draai de kaart om en beoordeel jezelf."
-            : "Kies hoe en welke oefeningen je wilt oefenen."
+            : "Kies een topic om te oefenen."
         }
         actions={<QuizBackToOverviewButton onClick={requestLeave} />}
       />
@@ -343,30 +289,23 @@ export function FlashcardDeck() {
         onLeave={confirmLeave}
       />
 
-      {screen === "selection" && selectionHydrated && (
-        <QuizSelectionScreen
-          selectedMode={selectionMode}
-          onSelect={handleSelectMode}
-        />
-      )}
-
-      {screen === "topic-picker" && selectionMode === "srs" && (
+      {ready && screen === "topic-picker" && selectionMode === "srs" && (
         <div className="space-y-4">
           <ActiveTopicsEmptyBanner
             topicStats={topicStats}
             loading={!topicHydrated || topicsLoading}
           />
           <SrsTopicPickerSection
-          topicStats={topicStats}
-          topicsLoading={!topicHydrated || topicsLoading}
-          selectedTopic={selectedTopic}
-          onSelect={handleTopicSelect}
-          onBack={() => setScreen("selection")}
-        />
+            topicStats={topicStats}
+            topicsLoading={!topicHydrated || topicsLoading}
+            selectedTopic={selectedTopic}
+            onSelect={handleTopicSelect}
+            onBack={handleBackToOverview}
+          />
         </div>
       )}
 
-      {screen === "topic-picker" && selectionMode !== "srs" && (
+      {ready && screen === "topic-picker" && selectionMode === "topic" && (
         <section className="space-y-4 rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
           <div className="space-y-1">
             <h2 className="text-sm font-semibold text-foreground">
@@ -389,28 +328,6 @@ export function FlashcardDeck() {
         </section>
       )}
 
-      {screen === "exercise-picker" && (
-        <div className="space-y-4">
-          <ActiveTopicsEmptyBanner
-            topicStats={topicStats}
-            loading={!topicHydrated || topicsLoading}
-          />
-          <ExercisePicker
-          topicStats={topicStats}
-          topicsLoading={!topicHydrated || topicsLoading}
-          selectedTopic={selectedTopic}
-          onTopicChange={persistTopic}
-          selectedIds={selectedExerciseIds}
-          onToggle={toggleExerciseId}
-          onSelectAll={(ids) =>
-            setSelectedExerciseIds((prev) => new Set([...prev, ...ids]))
-          }
-          onClear={() => setSelectedExerciseIds(new Set())}
-          onStart={handleCustomStart}
-        />
-        </div>
-      )}
-
       {screen === "playing" && (
         <>
           <section className="relative rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 pt-10 sm:p-8 sm:pt-10">
@@ -419,20 +336,6 @@ export function FlashcardDeck() {
                 {progressLabel}
               </span>
             ) : null}
-            {sessionComplete && (
-              <div className="mx-auto max-w-lg space-y-4 text-center">
-                <p className="text-lg font-semibold text-foreground">
-                  Alle geselecteerde oefeningen voltooid!
-                </p>
-                <button
-                  type="button"
-                  onClick={handleChangeSetup}
-                  className="cursor-pointer rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground"
-                >
-                  Nieuwe sessie starten
-                </button>
-              </div>
-            )}
             {(sessionPhase === "main-complete" ||
               sessionPhase === "all-complete") && (
               <SessionCompleteState
@@ -468,8 +371,6 @@ export function FlashcardDeck() {
                   onFlip={handleFlip}
                   onGradeCorrect={() => void handleGrade(true)}
                   onGradeIncorrect={() => void handleGrade(false)}
-                  onPrevious={handlePrevious}
-                  canGoPrevious={canGoPrevious}
                   animating={animating}
                 />
               </div>

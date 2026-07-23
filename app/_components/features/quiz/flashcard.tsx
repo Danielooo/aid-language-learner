@@ -20,8 +20,6 @@ type FlashcardProps = {
   onFlip: () => void;
   onGradeCorrect: () => void;
   onGradeIncorrect: () => void;
-  onPrevious?: () => void;
-  canGoPrevious?: boolean;
   animating?: boolean;
 };
 
@@ -38,8 +36,6 @@ export function Flashcard({
   onFlip,
   onGradeCorrect,
   onGradeIncorrect,
-  onPrevious,
-  canGoPrevious = false,
   animating = false,
 }: FlashcardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -109,7 +105,6 @@ export function Flashcard({
   }
 
   const isBack = phase === "back";
-  const showPrevious = Boolean(onPrevious);
 
   return (
     <div className="mx-auto w-full max-w-lg">
@@ -182,16 +177,6 @@ export function Flashcard({
           </div>
         </div>
       </div>
-
-      {showPrevious ? (
-        <div className="mt-4">
-          <FlashcardActionButton
-            label="Vorige oefening"
-            onClick={() => onPrevious?.()}
-            disabled={animating || !canGoPrevious}
-          />
-        </div>
-      ) : null}
 
       <div
         className={`mt-2 grid gap-2 ${

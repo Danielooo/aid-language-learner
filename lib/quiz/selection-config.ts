@@ -1,16 +1,18 @@
-/** Hoe oefeningen worden gekozen in de quiz-flow. */
+/** Hoe oefeningen worden gekozen in de quiz-flow (hub → subpagina). */
 
-export const QUIZ_SELECTION_MODES = ["topic", "srs", "custom"] as const;
+export const QUIZ_SELECTION_MODES = ["topic", "srs"] as const;
 
 export type QuizSelectionMode = (typeof QUIZ_SELECTION_MODES)[number];
 
 export const QUIZ_SELECTION_MODE_KEY = "aid:exercises-quiz:selection-mode";
 
-/** Legacy waarde uit eerdere versies. */
+/** Legacy waarden uit eerdere versies (worden genegeerd → redirect naar hub). */
 const LEGACY_RANDOM_MODE = "random";
+const LEGACY_CUSTOM_MODE = "custom";
 
 export function normalizeQuizSelectionMode(value: string): QuizSelectionMode | null {
   if (value === LEGACY_RANDOM_MODE) return "topic";
+  if (value === LEGACY_CUSTOM_MODE) return null;
   return isValidQuizSelectionMode(value) ? value : null;
 }
 
@@ -23,21 +25,8 @@ export function isValidQuizSelectionMode(
 export function selectionModeLabel(mode: QuizSelectionMode): string {
   switch (mode) {
     case "topic":
-      return "Topic oefenen";
+      return "Topic";
     case "srs":
       return "Herhaalschema";
-    case "custom":
-      return "Zelf kiezen";
-  }
-}
-
-export function selectionModeDescription(mode: QuizSelectionMode): string {
-  switch (mode) {
-    case "topic":
-      return "Kies een topic en oefen alle oefeningen één keer. Daarna kun je fouten opnieuw doen.";
-    case "srs":
-      return "Herhaal alleen oefeningen die nu aan herhaling toe zijn.";
-    case "custom":
-      return "Selecteer zelf welke oefeningen je wilt doen.";
   }
 }

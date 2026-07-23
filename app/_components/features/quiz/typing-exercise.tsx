@@ -33,8 +33,6 @@ type TypingExerciseProps = {
   onSubmit: () => void;
   onNext: () => void;
   onShowHint: () => void;
-  onPrevious?: () => void;
-  canGoPrevious?: boolean;
 };
 
 export function TypingExercise({
@@ -48,8 +46,6 @@ export function TypingExercise({
   onSubmit,
   onNext,
   onShowHint,
-  onPrevious,
-  canGoPrevious = false,
 }: TypingExerciseProps) {
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const promptAndAnswer = useMemo(
@@ -78,7 +74,6 @@ export function TypingExercise({
     e.preventDefault();
   }
 
-  const showPrevious = Boolean(onPrevious);
   const canCheck = answer.trim().length > 0;
   const hasFeedback = feedback !== null;
 
@@ -170,16 +165,6 @@ export function TypingExercise({
       <div className="mt-4 min-h-[4.75rem]">
         {feedback ? <FeedbackBanner feedback={feedback} /> : null}
       </div>
-
-      {showPrevious ? (
-        <div className="mt-4">
-          <FlashcardActionButton
-            label="Vorige oefening"
-            onClick={() => onPrevious?.()}
-            disabled={!canGoPrevious}
-          />
-        </div>
-      ) : null}
 
       {/* Controleren/Volgende + optioneel Hint */}
       <div

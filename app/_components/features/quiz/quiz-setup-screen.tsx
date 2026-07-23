@@ -75,7 +75,7 @@ export function QuizSetupScreen({
           Stel je oefening in
         </h2>
         <p className="text-xs text-muted-foreground">
-          Kies modus en vertaalrichting. Daarna selecteer je een topic.
+          Kies typvorm en vertaalrichting. Daarna selecteer je een topic.
         </p>
       </div>
 

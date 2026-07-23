@@ -145,7 +145,7 @@ function BackToOefenenLink() {
   );
 }
 
-/** Voortgangstekst voor topic- en custom-sessies. */
+/** Voortgangstekst voor topic-sessies. */
 export function formatQueueProgressLabel(
   progress: number,
   total: number,

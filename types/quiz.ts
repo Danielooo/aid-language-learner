@@ -12,8 +12,8 @@ export type ExerciseQuizItem = {
   tatoeba_attribution_url: string | null;
 };
 
-/** Lichte rij voor de custom exercise-picker. */
-export type ExercisePickerItem = {
+/** Lichte rij voor topic-lijsten / queue-opbouw. */
+export type ExerciseListItem = {
   id: string;
   source_text: string;
   target_text: string;
@@ -21,7 +21,7 @@ export type ExercisePickerItem = {
 };
 
 export type ExerciseListResponse = {
-  exercises: ExercisePickerItem[];
+  exercises: ExerciseListItem[];
   total: number;
   page: number;
   pageSize: number;

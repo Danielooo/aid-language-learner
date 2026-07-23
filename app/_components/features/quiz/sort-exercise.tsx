@@ -51,8 +51,6 @@ type SortExerciseProps = {
   feedback: SortFeedback | null;
   onSubmit: (userAnswer: string, feedback: SortFeedback) => void;
   onNext: () => void;
-  onPrevious?: () => void;
-  canGoPrevious?: boolean;
 };
 
 export function SortExercise({
@@ -61,8 +59,6 @@ export function SortExercise({
   feedback,
   onSubmit,
   onNext,
-  onPrevious,
-  canGoPrevious = false,
 }: SortExerciseProps) {
   const exerciseData = useMemo(
     () => getSortExerciseData(item, direction),
@@ -213,7 +209,6 @@ export function SortExercise({
     : undefined;
   const allFilled = isAllSlotsFilled(sortState.slots);
   const hasFeedback = feedback !== null;
-  const showPrevious = Boolean(onPrevious);
 
   return (
     <form onSubmit={handleFormSubmit} className="mx-auto w-full max-w-lg">
@@ -326,16 +321,6 @@ export function SortExercise({
       <div className="mt-4 min-h-[4.75rem]">
         {feedback ? <FeedbackBanner feedback={feedback} /> : null}
       </div>
-
-      {showPrevious ? (
-        <div className="mt-4">
-          <FlashcardActionButton
-            label="Vorige oefening"
-            onClick={() => onPrevious?.()}
-            disabled={!canGoPrevious}
-          />
-        </div>
-      ) : null}
 
       <div className="mt-2 grid grid-cols-1 gap-2">
         {hasFeedback ? (
