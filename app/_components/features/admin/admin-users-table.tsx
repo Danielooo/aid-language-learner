@@ -296,7 +296,7 @@ export function AdminUsersTable() {
           <>
             Weet je zeker dat je “{pendingLabel}” wilt deactiveren? Een
             nieuwe login wordt geblokkeerd. Een sessie die nu al openstaat
-            blijft bruikbaar tot die gebruiker opnieuw moet inloggen.
+            wordt meteen onbruikbaar.
           </>
         ),
         confirmLabel: "Deactiveren",

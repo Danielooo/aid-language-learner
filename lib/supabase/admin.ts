@@ -2,6 +2,8 @@ import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
 
+import { getSupabaseAdminKey } from "@/lib/supabase/admin-key";
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Service-role client. Omzeilt RLS — gebruik UITSLUITEND na assertAdmin
@@ -17,13 +19,13 @@ export function getSupabaseAdmin(): SupabaseClient {
   if (cached) return cached;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const secretKey = process.env.SUPABASE_SECRET_KEY;
-
-  if (!url || !secretKey) {
+  if (!url) {
     throw new Error(
-      "Supabase env vars ontbreken. Zet NEXT_PUBLIC_SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY in .env.local.",
+      "Supabase env vars ontbreken. Zet NEXT_PUBLIC_SUPABASE_URL in .env.local.",
     );
   }
+
+  const secretKey = getSupabaseAdminKey();
 
   cached = createClient(url, secretKey, {
     auth: {
