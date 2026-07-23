@@ -24,6 +24,8 @@ export type QuizSessionConfig = {
 
 export type StartSessionOptions = {
   exerciseFilter?: (item: ExerciseListItem) => boolean;
+  /** Due-count snapshot bij picker-klik (Herhaalschema); N blijft vast tot sessie-einde. */
+  srsDueTotal?: number;
 };
 
 function buildFetchUrl(config: QuizSessionConfig, exerciseId?: string): string {
@@ -46,8 +48,14 @@ function buildFetchUrl(config: QuizSessionConfig, exerciseId?: string): string {
     : "/api/quiz";
 }
 
-function usesQueue(mode: QuizSelectionMode): boolean {
-  return mode === "topic";
+/** Topic altijd via ID-queue; SRS alleen tijdens fouten-review. */
+function shouldUseIdQueue(
+  mode: QuizSelectionMode,
+  phase: QuizSessionPhase,
+): boolean {
+  if (mode === "topic") return true;
+  if (mode === "srs" && phase === "review") return true;
+  return false;
 }
 
 /**
@@ -62,6 +70,8 @@ export function useQuizSession() {
   const queueIndexRef = useRef(0);
   const queueTotalRef = useRef(0);
   const initialQueueTotalRef = useRef(0);
+  /** Aantal beoordeelde due-oefeningen in deze SRS-sessie (goed of fout). */
+  const srsGradedCountRef = useRef(0);
   const mistakeIdsRef = useRef<Set<string>>(new Set());
   const skippedIneligibleRef = useRef(0);
   const sessionPhaseRef = useRef<QuizSessionPhase>("playing");
@@ -104,6 +114,34 @@ export function useQuizSession() {
     setQueueRemaining(Math.max(0, queueLength - index));
   }, []);
 
+  /** Label tijdens SRS-play: graded + 1 (1-based), N = vaste snapshot. */
+  const syncSrsPlayingProgress = useCallback(() => {
+    const total = queueTotalRef.current;
+    if (total <= 0) return;
+    const progress = Math.min(srsGradedCountRef.current + 1, total);
+    setQueueProgress(progress);
+    setQueueRemaining(Math.max(0, total - progress));
+  }, []);
+
+  /**
+   * Einde SRS-hoofdrond: score + Fouten opnieuw doen (main-complete),
+   * of empty-state als er niets beoordeeld is.
+   */
+  const completeSrsMainRound = useCallback(() => {
+    currentItemIdRef.current = null;
+    setItem(null);
+    setError(null);
+    setErrorStatus(null);
+
+    if (srsGradedCountRef.current === 0) {
+      setSrsComplete(true);
+      return;
+    }
+
+    setMistakeCount(mistakeIdsRef.current.size);
+    setSessionPhase("main-complete");
+  }, [setSessionPhase]);
+
   const resetSession = useCallback(() => {
     configRef.current = null;
     setActiveSelectionMode(null);
@@ -111,6 +149,7 @@ export function useQuizSession() {
     queueIndexRef.current = 0;
     queueTotalRef.current = 0;
     initialQueueTotalRef.current = 0;
+    srsGradedCountRef.current = 0;
     mistakeIdsRef.current = new Set();
     skippedIneligibleRef.current = 0;
     currentItemIdRef.current = null;
@@ -136,13 +175,14 @@ export function useQuizSession() {
     setItem(null);
     setQueueRemaining(0);
 
+    if (sessionPhaseRef.current === "review") {
+      setSessionPhase("all-complete");
+      return;
+    }
+
     if (config.selectionMode === "topic") {
-      if (sessionPhaseRef.current === "review") {
-        setSessionPhase("all-complete");
-      } else {
-        setMistakeCount(mistakeIdsRef.current.size);
-        setSessionPhase("main-complete");
-      }
+      setMistakeCount(mistakeIdsRef.current.size);
+      setSessionPhase("main-complete");
     }
   }, [setSessionPhase]);
 
@@ -155,6 +195,7 @@ export function useQuizSession() {
       setActiveSelectionMode(config.selectionMode);
       queueRef.current = [];
       queueIndexRef.current = 0;
+      srsGradedCountRef.current = 0;
       mistakeIdsRef.current = new Set();
       skippedIneligibleRef.current = 0;
       currentItemIdRef.current = null;
@@ -167,6 +208,8 @@ export function useQuizSession() {
       setMistakeCount(0);
       setSkippedIneligible(0);
       syncQueueState(0, 0);
+      setInitialQueueTotal(0);
+      initialQueueTotalRef.current = 0;
 
       if (config.selectionMode === "topic") {
         setSessionLoading(true);
@@ -205,6 +248,16 @@ export function useQuizSession() {
         }
       }
 
+      if (config.selectionMode === "srs") {
+        const due = Math.max(0, options?.srsDueTotal ?? 0);
+        if (due > 0) {
+          initialQueueTotalRef.current = due;
+          setInitialQueueTotal(due);
+          // Progress 0 tot de eerste kaart geladen is (dan → 1 van N).
+          syncQueueState(due, 0);
+        }
+      }
+
       return true;
     },
     [syncQueueState, setSessionPhase],
@@ -214,12 +267,29 @@ export function useQuizSession() {
     const config = configRef.current;
     if (!config) return;
 
+    const phase = sessionPhaseRef.current;
+
+    if (
+      config.selectionMode === "srs" &&
+      phase === "playing" &&
+      queueTotalRef.current > 0 &&
+      srsGradedCountRef.current >= queueTotalRef.current
+    ) {
+      completeSrsMainRound();
+      return;
+    }
+
+    // Toon “x van N” al tijdens laden (zelfde ritme als topic-queue).
+    if (config.selectionMode === "srs" && phase === "playing") {
+      syncSrsPlayingProgress();
+    }
+
     setLoading(true);
     setError(null);
     setErrorStatus(null);
 
     try {
-      if (usesQueue(config.selectionMode)) {
+      if (shouldUseIdQueue(config.selectionMode, phase)) {
         const queue = queueRef.current;
         const index = queueIndexRef.current;
 
@@ -257,11 +327,7 @@ export function useQuizSession() {
           config.selectionMode === "srs" &&
           body.code === "SRS_NOTHING_DUE"
         ) {
-          setSrsComplete(true);
-          currentItemIdRef.current = null;
-          setItem(null);
-          setError(null);
-          setErrorStatus(null);
+          completeSrsMainRound();
           return;
         }
         setErrorStatus(res.status);
@@ -269,13 +335,22 @@ export function useQuizSession() {
       }
       const data = (await res.json()) as ExerciseQuizItem;
       adoptItem(data);
+      if (config.selectionMode === "srs" && phase === "playing") {
+        syncSrsPlayingProgress();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Onbekende fout");
       setItem(null);
     } finally {
       setLoading(false);
     }
-  }, [completeQueue, syncQueueState, adoptItem]);
+  }, [
+    completeQueue,
+    completeSrsMainRound,
+    syncQueueState,
+    syncSrsPlayingProgress,
+    adoptItem,
+  ]);
 
   /** Haalt oefeningen op met optionele validatie (bijv. sort-eligibility). */
   const fetchNextValidated = useCallback(
@@ -287,9 +362,25 @@ export function useQuizSession() {
       const config = configRef.current;
       if (!config) return;
 
-      if (usesQueue(config.selectionMode)) {
+      const phase = sessionPhaseRef.current;
+
+      if (shouldUseIdQueue(config.selectionMode, phase)) {
         await fetchNext();
         return;
+      }
+
+      if (
+        config.selectionMode === "srs" &&
+        phase === "playing" &&
+        queueTotalRef.current > 0 &&
+        srsGradedCountRef.current >= queueTotalRef.current
+      ) {
+        completeSrsMainRound();
+        return;
+      }
+
+      if (config.selectionMode === "srs" && phase === "playing") {
+        syncSrsPlayingProgress();
       }
 
       setLoading(true);
@@ -311,11 +402,7 @@ export function useQuizSession() {
               config.selectionMode === "srs" &&
               body.code === "SRS_NOTHING_DUE"
             ) {
-              setSrsComplete(true);
-              currentItemIdRef.current = null;
-              setItem(null);
-              setError(null);
-              setErrorStatus(null);
+              completeSrsMainRound();
               return;
             }
             setErrorStatus(res.status);
@@ -324,6 +411,9 @@ export function useQuizSession() {
           const data = (await res.json()) as ExerciseQuizItem;
           if (isValid(data)) {
             adoptItem(data);
+            if (config.selectionMode === "srs" && phase === "playing") {
+              syncSrsPlayingProgress();
+            }
             return;
           }
           lastInvalid = data;
@@ -332,7 +422,7 @@ export function useQuizSession() {
         if (lastInvalid && !isValid(lastInvalid)) {
           setError(
             invalidMessage ??
-              "Geen geschikte oefening gevonden. Probeer andere instellingen.",
+            "Geen geschikte oefening gevonden. Probeer andere instellingen.",
           );
           setItem(null);
           return;
@@ -344,12 +434,35 @@ export function useQuizSession() {
         setLoading(false);
       }
     },
-    [fetchNext, adoptItem],
+    [fetchNext, adoptItem, completeSrsMainRound, syncSrsPlayingProgress],
   );
 
   const recordAnswer = useCallback((exerciseId: string, isCorrect: boolean) => {
     const config = configRef.current;
-    if (!config || config.selectionMode !== "topic") return;
+    if (!config) return;
+
+    if (config.selectionMode === "srs") {
+      // Alleen hoofdfase telt voor score / fouten-review / N-progress.
+      if (sessionPhaseRef.current === "playing") {
+        srsGradedCountRef.current += 1;
+        const graded = srsGradedCountRef.current;
+        const total = queueTotalRef.current;
+        if (total > 0) {
+          setQueueProgress(Math.min(graded, total));
+          setQueueRemaining(Math.max(0, total - graded));
+        }
+
+        if (isCorrect) {
+          setCorrectCount((prev) => prev + 1);
+        } else {
+          mistakeIdsRef.current.add(exerciseId);
+          setMistakeCount(mistakeIdsRef.current.size);
+        }
+      }
+      return;
+    }
+
+    if (config.selectionMode !== "topic") return;
 
     if (isCorrect) {
       setCorrectCount((prev) => prev + 1);
@@ -364,7 +477,12 @@ export function useQuizSession() {
 
   const startMistakeReview = useCallback(() => {
     const config = configRef.current;
-    if (!config || config.selectionMode !== "topic") return;
+    if (
+      !config ||
+      (config.selectionMode !== "topic" && config.selectionMode !== "srs")
+    ) {
+      return;
+    }
 
     const mistakes = [...mistakeIdsRef.current];
     if (mistakes.length === 0) {
@@ -391,6 +509,8 @@ export function useQuizSession() {
     async (exerciseId: string, isCorrect: boolean) => {
       const config = configRef.current;
       if (!config || config.selectionMode !== "srs") return;
+      // Geen dubbele schedule-write tijdens fouten-review.
+      if (sessionPhaseRef.current !== "playing") return;
 
       try {
         await fetch("/api/exercise-progress", {

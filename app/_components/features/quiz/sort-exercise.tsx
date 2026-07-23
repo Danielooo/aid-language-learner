@@ -34,6 +34,16 @@ import {
 } from "@/lib/quiz/sort-validate";
 
 import { FlashcardActionButton } from "./flashcard-action-button";
+import {
+  QUIZ_FEEDBACK_SLOT_CLASS,
+  QUIZ_PLAYING_FORM_CLASS,
+  QUIZ_PLAYING_MIDDLE_CLASS,
+  QUIZ_PROMPT_CARD_MIN_CLASS,
+  QUIZ_PROMPT_SKELETON_CLASS,
+  QUIZ_PROMPT_TEXT_CLASS,
+  QUIZ_SHORT_HIDE_CLASS,
+  QUIZ_SORT_TYPE_SLOT_CLASS,
+} from "./quiz-playing-layout";
 
 import type { SortExerciseState, SortPoolItem } from "@/lib/quiz/sort-config";
 import type { ExerciseQuizItem } from "@/types/quiz";
@@ -211,44 +221,42 @@ export function SortExercise({
   const hasFeedback = feedback !== null;
 
   return (
-    <form onSubmit={handleFormSubmit} className="mx-auto w-full max-w-lg">
-      {/* Prompt-kaart — zelfde taal als flashcard / typen */}
-      <div className="relative flex min-h-64 flex-col items-center justify-center rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/15 via-accent/5 to-card p-6 text-center shadow-lg shadow-accent/10 sm:min-h-72">
-        <div className="flex w-full flex-col items-center gap-3">
+    <form onSubmit={handleFormSubmit} className={QUIZ_PLAYING_FORM_CLASS}>
+      <div className={QUIZ_PROMPT_CARD_MIN_CLASS}>
+        <div className="flex w-full flex-col items-center gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {exerciseData.promptLabel}
           </span>
-          <p className="text-2xl font-semibold leading-snug text-foreground sm:text-3xl">
-            {exerciseData.prompt}
-          </p>
+          <p className={QUIZ_PROMPT_TEXT_CLASS}>{exerciseData.prompt}</p>
           {item.mp3_url && (
-            <ExerciseAudioControls mp3Url={item.mp3_url} variant="large" />
+            <ExerciseAudioControls mp3Url={item.mp3_url} variant="compact" />
           )}
           {item.mp3_url && (
-            <ExerciseAudioAttribution
-              author={item.tatoeba_author}
-              license={item.tatoeba_license}
-              attributionUrl={item.tatoeba_attribution_url}
-            />
+            <div className={QUIZ_SHORT_HIDE_CLASS}>
+              <ExerciseAudioAttribution
+                author={item.tatoeba_author}
+                license={item.tatoeba_license}
+                attributionUrl={item.tatoeba_attribution_url}
+              />
+            </div>
           )}
         </div>
-        <p className="absolute bottom-4 text-[11px] text-muted-foreground/80">
+        <p
+          className={`absolute bottom-2 text-[11px] text-muted-foreground/80 ${QUIZ_SHORT_HIDE_CLASS}`}
+        >
           Sleep of typ de woorden ({exerciseData.answerLabel}) in volgorde
         </p>
       </div>
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div ref={sortAreaRef} className="mt-4 space-y-4">
-          <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Volgorde
-            </p>
-            <div className="flex flex-wrap gap-2">
+      <div className={QUIZ_PLAYING_MIDDLE_CLASS}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div ref={sortAreaRef} className="space-y-2">
+            <div className="flex flex-wrap gap-1.5">
               {sortState.slots.map((slotItemId, index) => (
                 <SortSlot
                   key={`slot-${index}`}
@@ -260,69 +268,82 @@ export function SortExercise({
                 />
               ))}
             </div>
+
+            <WordPool
+              items={sortState.pool}
+              typePrefix={sortState.typePrefix}
+              disabled={hasFeedback}
+            />
           </div>
 
-          <WordPool
-            items={sortState.pool}
-            typePrefix={sortState.typePrefix}
-            disabled={hasFeedback}
-          />
+          <DragOverlay>
+            {activeDragItem ? (
+              <WordChip item={activeDragItem} isDragging overlay />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+
+        <div
+          className={clsx(
+            QUIZ_SORT_TYPE_SLOT_CLASS,
+            (hasFeedback || allFilled) && "invisible pointer-events-none",
+          )}
+          aria-hidden={hasFeedback || allFilled}
+        >
+          <div className="flex flex-col gap-1">
+            <input
+              id="sort-prefix"
+              ref={inputRef}
+              type="text"
+              value={sortState.typePrefix}
+              onChange={(e) => handleTypePrefixChange(e.target.value)}
+              onKeyDown={handlePrefixKeyDown}
+              disabled={
+                hasFeedback ||
+                allFilled ||
+                sortState.pool.length === 0 ||
+                isAnimating
+              }
+              tabIndex={hasFeedback || allFilled ? -1 : undefined}
+              aria-label="Typ letters voor de actieve positie"
+              placeholder="Eerste letter(s) van het woord…"
+              autoComplete="off"
+              className={clsx(
+                "w-full rounded-xl border bg-background px-3 py-2 text-sm shadow-sm disabled:opacity-70",
+                prefixError
+                  ? "border-destructive ring-1 ring-destructive/40"
+                  : "border-input",
+              )}
+            />
+            <div className="min-h-[1rem]">
+              {ambiguousMatches.length > 1 && exactMatches.length === 1 && (
+                <p className="text-xs text-muted-foreground">
+                  Druk Enter om «{exactMatches[0]!.word}» te kiezen
+                </p>
+              )}
+              {ambiguousMatches.length > 1 && exactMatches.length !== 1 && (
+                <p className="text-xs text-muted-foreground">
+                  Meer letters typen — kandidaten:{" "}
+                  {ambiguousMatches.map((m) => m.word).join(", ")}
+                </p>
+              )}
+              {prefixError && (
+                <p className="text-xs text-destructive">
+                  Geen woord in de pool begint zo.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
-
-        <DragOverlay>
-          {activeDragItem ? (
-            <WordChip item={activeDragItem} isDragging overlay />
-          ) : null}
-        </DragOverlay>
-      </DndContext>
-
-      {!hasFeedback && !allFilled && (
-        <label htmlFor="sort-prefix" className="mt-4 flex flex-col gap-1.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Typ voor positie {sortState.activeSlotIndex + 1}
-          </span>
-          <input
-            id="sort-prefix"
-            ref={inputRef}
-            type="text"
-            value={sortState.typePrefix}
-            onChange={(e) => handleTypePrefixChange(e.target.value)}
-            onKeyDown={handlePrefixKeyDown}
-            disabled={sortState.pool.length === 0 || isAnimating}
-            placeholder="Eerste letter(s) van het woord…"
-            autoComplete="off"
-            className={clsx(
-              "w-full rounded-xl border bg-background px-4 py-3 text-sm shadow-sm disabled:opacity-70",
-              prefixError
-                ? "border-destructive ring-1 ring-destructive/40"
-                : "border-input",
-            )}
-          />
-          {ambiguousMatches.length > 1 && exactMatches.length === 1 && (
-            <p className="text-xs text-muted-foreground">
-              Druk Enter om «{exactMatches[0]!.word}» te kiezen
-            </p>
-          )}
-          {ambiguousMatches.length > 1 && exactMatches.length !== 1 && (
-            <p className="text-xs text-muted-foreground">
-              Meer letters typen — kandidaten:{" "}
-              {ambiguousMatches.map((m) => m.word).join(", ")}
-            </p>
-          )}
-          {prefixError && (
-            <p className="text-xs text-destructive">
-              Geen woord in de pool begint zo.
-            </p>
-          )}
-        </label>
-      )}
-
-      {/* Vaste feedback-hoogte zodat knoppen niet omlaag springen */}
-      <div className="mt-4 min-h-[4.75rem]">
-        {feedback ? <FeedbackBanner feedback={feedback} /> : null}
       </div>
 
-      <div className="mt-2 grid grid-cols-1 gap-2">
+      {feedback ? (
+        <div className={QUIZ_FEEDBACK_SLOT_CLASS}>
+          <FeedbackBanner feedback={feedback} />
+        </div>
+      ) : null}
+
+      <div className="mt-2 grid shrink-0 grid-cols-1 gap-2">
         {hasFeedback ? (
           <FlashcardActionButton
             label="Volgende oefening"
@@ -412,17 +433,13 @@ function WordPool({
   }, [typePrefix, items]);
 
   return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Woorden
-      </p>
-      <div
-        ref={setNodeRef}
-        className={clsx(
-          "flex min-h-12 flex-wrap gap-2 rounded-xl border border-border/60 bg-muted/20 p-3",
-          isOver && "border-accent bg-accent/5",
-        )}
-      >
+    <div
+      ref={setNodeRef}
+      className={clsx(
+        "flex min-h-12 flex-wrap gap-2 rounded-xl border border-border/60 bg-muted/20 p-3",
+        isOver && "border-accent bg-accent/5",
+      )}
+    >
         {items.length === 0 ? (
           <span className="text-xs text-muted-foreground">
             Alle woorden geplaatst
@@ -439,7 +456,6 @@ function WordPool({
             />
           ))
         )}
-      </div>
     </div>
   );
 }
@@ -558,15 +574,13 @@ function FeedbackBanner({ feedback }: { feedback: SortFeedback }) {
 
 export function SortExerciseSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-lg space-y-4">
-      <div className="h-64 animate-pulse rounded-2xl bg-muted/60 sm:h-72" />
-      <div className="h-12 animate-pulse rounded-xl bg-muted/60" />
-      <div className="h-16 animate-pulse rounded-xl bg-muted/60" />
-      <div className="h-[4.75rem]" />
-      <div className="grid grid-cols-2 gap-2">
-        <div className="h-12 animate-pulse rounded-xl bg-muted/60" />
+    <div className={QUIZ_PLAYING_FORM_CLASS}>
+      <div className={QUIZ_PROMPT_SKELETON_CLASS} />
+      <div className={QUIZ_PLAYING_MIDDLE_CLASS}>
+        <div className="h-10 animate-pulse rounded-xl bg-muted/60" />
         <div className="h-12 animate-pulse rounded-xl bg-muted/60" />
       </div>
+      <div className="mt-2 h-12 shrink-0 animate-pulse rounded-xl bg-muted/60" />
     </div>
   );
 }

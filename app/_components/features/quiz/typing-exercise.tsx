@@ -10,6 +10,15 @@ import { isAnswerCorrect, normalizeForCompare } from "@/lib/quiz/compare";
 import { getPromptAndAnswer } from "@/lib/quiz/typing-config";
 
 import { FlashcardActionButton } from "./flashcard-action-button";
+import {
+  QUIZ_FEEDBACK_SLOT_CLASS,
+  QUIZ_PLAYING_FORM_CLASS,
+  QUIZ_PLAYING_MIDDLE_CLASS,
+  QUIZ_PROMPT_CARD_MIN_CLASS,
+  QUIZ_PROMPT_SKELETON_CLASS,
+  QUIZ_PROMPT_TEXT_CLASS,
+  QUIZ_SHORT_HIDE_CLASS,
+} from "./quiz-playing-layout";
 
 import type { ExerciseQuizItem } from "@/types/quiz";
 import type {
@@ -78,101 +87,103 @@ export function TypingExercise({
   const hasFeedback = feedback !== null;
 
   return (
-    <form onSubmit={handleFormSubmit} className="mx-auto w-full max-w-lg">
-      {/* Prompt-kaart — zelfde taal als flashcard-voorkant */}
-      <div className="relative flex min-h-64 flex-col items-center justify-center rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/15 via-accent/5 to-card p-6 text-center shadow-lg shadow-accent/10 sm:min-h-72">
-        <div className="flex w-full flex-col items-center gap-3">
+    <form onSubmit={handleFormSubmit} className={QUIZ_PLAYING_FORM_CLASS}>
+      <div className={QUIZ_PROMPT_CARD_MIN_CLASS}>
+        <div className="flex w-full flex-col items-center gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {promptAndAnswer.promptLabel}
           </span>
-          <p className="text-2xl font-semibold leading-snug text-foreground sm:text-3xl">
-            {promptAndAnswer.prompt}
-          </p>
+          <p className={QUIZ_PROMPT_TEXT_CLASS}>{promptAndAnswer.prompt}</p>
           {item.mp3_url && (
-            <ExerciseAudioControls mp3Url={item.mp3_url} variant="large" />
+            <ExerciseAudioControls mp3Url={item.mp3_url} variant="compact" />
           )}
           {item.mp3_url && (
-            <ExerciseAudioAttribution
-              author={item.tatoeba_author}
-              license={item.tatoeba_license}
-              attributionUrl={item.tatoeba_attribution_url}
-            />
+            <div className={QUIZ_SHORT_HIDE_CLASS}>
+              <ExerciseAudioAttribution
+                author={item.tatoeba_author}
+                license={item.tatoeba_license}
+                attributionUrl={item.tatoeba_attribution_url}
+              />
+            </div>
           )}
         </div>
-        <p className="absolute bottom-4 text-[11px] text-muted-foreground/80">
+        <p
+          className={`absolute bottom-2 text-[11px] text-muted-foreground/80 ${QUIZ_SHORT_HIDE_CLASS}`}
+        >
           {mode === "blank"
             ? "Vul het ontbrekende woord in"
             : "Typ de vertaling hieronder"}
         </p>
       </div>
 
-      {mode === "blank" && blank && (
-        <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-center">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {promptAndAnswer.answerLabel}
-          </p>
-          <p className="text-xl font-semibold leading-snug text-foreground sm:text-2xl">
-            {blank.display}
-          </p>
-          {/* Vaste hint-hoogte zodat layout niet verspringt bij tonen */}
-          <div className="min-h-[2.75rem]">
-            {hintVisible ? (
-              <p className="rounded-md border border-border bg-background/80 px-3 py-2 text-sm text-muted-foreground">
-                Hint (anagram):{" "}
-                <span className="font-mono font-medium tracking-widest text-foreground">
-                  {anagramHint}
-                </span>
-              </p>
-            ) : null}
+      <div className={QUIZ_PLAYING_MIDDLE_CLASS}>
+        {mode === "blank" && blank && (
+          <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-center">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {promptAndAnswer.answerLabel}
+            </p>
+            <p className="text-xl font-semibold leading-snug text-foreground sm:text-2xl">
+              {blank.display}
+            </p>
+            {/* Vaste hint-hoogte zodat layout niet verspringt bij tonen */}
+            <div className="min-h-[2.75rem]">
+              {hintVisible ? (
+                <p className="rounded-md border border-border bg-background/80 px-3 py-2 text-sm text-muted-foreground">
+                  Hint (anagram):{" "}
+                  <span className="font-mono font-medium tracking-widest text-foreground">
+                    {anagramHint}
+                  </span>
+                </p>
+              ) : null}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {mode === "full" ? (
-        <label htmlFor="typing-answer" className="mt-4 flex flex-col gap-1.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {`Jouw antwoord (${promptAndAnswer.answerLabel})`}
-          </span>
-          <textarea
+        {mode === "full" ? (
+          <label htmlFor="typing-answer" className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {`Jouw antwoord (${promptAndAnswer.answerLabel})`}
+            </span>
+            <textarea
+              id="typing-answer"
+              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+              name="answer"
+              value={answer}
+              onChange={(e) => onAnswerChange(e.target.value)}
+              disabled={hasFeedback}
+              rows={2}
+              placeholder="Typ hier je vertaling…"
+              className="w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-base shadow-sm disabled:opacity-70"
+            />
+          </label>
+        ) : (
+          <input
             id="typing-answer"
-            ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+            ref={inputRef as React.RefObject<HTMLInputElement>}
             name="answer"
+            type="text"
             value={answer}
             onChange={(e) => onAnswerChange(e.target.value)}
             disabled={hasFeedback}
-            rows={2}
-            placeholder="Typ hier je vertaling…"
-            className="w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-base shadow-sm disabled:opacity-70"
+            placeholder="Typ het ontbrekende woord…"
+            aria-label="Ontbrekend woord"
+            className="w-full rounded-xl border border-input bg-background px-4 py-3 text-center text-lg font-medium shadow-sm disabled:opacity-70"
+            autoComplete="off"
           />
-        </label>
-      ) : (
-        <input
-          id="typing-answer"
-          ref={inputRef as React.RefObject<HTMLInputElement>}
-          name="answer"
-          type="text"
-          value={answer}
-          onChange={(e) => onAnswerChange(e.target.value)}
-          disabled={hasFeedback}
-          placeholder="Typ het ontbrekende woord…"
-          aria-label="Ontbrekend woord"
-          className="mt-4 w-full rounded-xl border border-input bg-background px-4 py-3 text-center text-lg font-medium shadow-sm disabled:opacity-70"
-          autoComplete="off"
-        />
-      )}
-
-      {/* Vaste feedback-hoogte zodat knoppen niet omlaag springen */}
-      <div className="mt-4 min-h-[4.75rem]">
-        {feedback ? <FeedbackBanner feedback={feedback} /> : null}
+        )}
       </div>
 
-      {/* Controleren/Volgende + optioneel Hint */}
+      {feedback ? (
+        <div className={QUIZ_FEEDBACK_SLOT_CLASS}>
+          <FeedbackBanner feedback={feedback} />
+        </div>
+      ) : null}
+
       <div
-        className={`mt-2 grid gap-2 ${
-          mode === "blank"
-            ? "grid-cols-1 sm:grid-cols-2"
-            : "grid-cols-1"
-        }`}
+        className={`mt-2 grid shrink-0 gap-2 ${mode === "blank"
+          ? "grid-cols-1 sm:grid-cols-2"
+          : "grid-cols-1"
+          }`}
       >
         {hasFeedback ? (
           <FlashcardActionButton
@@ -252,15 +263,12 @@ function FeedbackBanner({ feedback }: { feedback: TypingFeedback }) {
 
 export function TypingExerciseSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-lg space-y-4">
-      <div className="h-64 animate-pulse rounded-2xl bg-muted/60 sm:h-72" />
-      <div className="h-12 animate-pulse rounded-xl bg-muted/60" />
-      <div className="h-[4.75rem]" />
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    <div className={QUIZ_PLAYING_FORM_CLASS}>
+      <div className={QUIZ_PROMPT_SKELETON_CLASS} />
+      <div className={QUIZ_PLAYING_MIDDLE_CLASS}>
         <div className="h-12 animate-pulse rounded-xl bg-muted/60" />
-        <div className="h-12 animate-pulse rounded-xl bg-muted/60" />
-        <div className="hidden h-12 animate-pulse rounded-xl bg-muted/60 sm:block" />
       </div>
+      <div className="mt-2 h-12 shrink-0 animate-pulse rounded-xl bg-muted/60" />
     </div>
   );
 }

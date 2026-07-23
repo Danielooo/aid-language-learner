@@ -30,6 +30,7 @@ type Props = {
 export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
   const [input, setInput] = useState("");
   const [open, setOpen] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
 
   const mode: QuizChatMode = feedback ? "after" : "before";
   const chatId = `quiz-chat-${exercise.id}`;
@@ -83,7 +84,26 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
 
   function applySuggestion(s: string) {
     setInput(s);
+    openChat();
+  }
+
+  function openChat() {
     setOpen(true);
+    // Na paint: toon dat chat onder de fold zit (document-scroll).
+    requestAnimationFrame(() => {
+      sectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+  }
+
+  function handleToggleOpen() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    openChat();
   }
 
   function handleClearConversation() {
@@ -92,10 +112,13 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
-      <div className="mx-auto w-full max-w-5xl space-y-4">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
+    <section
+      ref={sectionRef}
+      className="rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-3 sm:p-4"
+    >
+      <div className="mx-auto w-full max-w-5xl space-y-3">
+        <header className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0 space-y-0.5">
             <h3 className="text-sm font-semibold text-foreground">
               {mode === "before" ? "Hulp bij deze zin" : "Uitleg over je antwoord"}
             </h3>
@@ -105,20 +128,20 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
                 : "Vraag uitleg, vervoegingen of of een alternatief ook geldig was."}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             {messages.length > 0 && (
               <button
                 type="button"
                 onClick={handleClearConversation}
-                className="cursor-pointer rounded-xl border border-input bg-background px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="cursor-pointer rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 Gesprek wissen
               </button>
             )}
             <button
               type="button"
-              onClick={() => setOpen((v) => !v)}
-              className="cursor-pointer rounded-xl border border-accent/30 bg-accent px-3 py-2 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+              onClick={handleToggleOpen}
+              className="cursor-pointer rounded-lg border border-accent/30 bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90"
             >
               {open ? "Verberg chat" : "Open chat"}
             </button>
@@ -126,12 +149,13 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
         </header>
 
         {open && (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <Suggestions mode={mode} onPick={applySuggestion} />
 
             <ChatThread
               messages={messages}
               status={status}
+              className="min-h-[3.5rem] max-h-[min(12rem,30vh)] px-4 py-2.5"
               emptyState={
                 <p className="text-xs text-muted-foreground">
                   Nog geen berichten. Stel een vraag of klik een suggestie.

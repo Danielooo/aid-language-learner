@@ -13,7 +13,8 @@ type SrsTopicPickerSectionProps = {
   topicStats: TopicStat[];
   topicsLoading: boolean;
   selectedTopic: string;
-  onSelect: (topic: string) => void;
+  /** dueCount = snapshot op klikmoment (picker-weergave). */
+  onSelect: (topic: string, dueCount: number) => void;
   onBack: () => void;
 };
 
@@ -53,7 +54,9 @@ export function SrsTopicPickerSection({
           stats={topicStats}
           loading={loading}
           selectedTopic={selectedTopic}
-          onSelect={onSelect}
+          onSelect={(topic) =>
+            onSelect(topic, getDueCountForTopic(dueByTopic, topic))
+          }
           srsMode
           dueByTopic={dueByTopic}
         />

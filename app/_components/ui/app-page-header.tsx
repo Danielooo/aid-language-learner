@@ -18,6 +18,9 @@ type AppPageHeaderProps = {
   actions?: ReactNode;
   stats?: AppPageHeaderStat[];
   hideStats?: boolean;
+  className?: string;
+  titleClassName?: string;
+  descriptionClassName?: string;
 };
 
 function StatItem({
@@ -58,13 +61,21 @@ export function AppPageHeader({
   actions,
   stats,
   hideStats = false,
+  className,
+  titleClassName,
+  descriptionClassName,
 }: AppPageHeaderProps) {
   const showStats = !hideStats && stats && stats.length > 0;
 
   return (
-    <header className="space-y-4">
+    <header className={cn("space-y-4", className)}>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        <h1
+          className={cn(
+            "text-2xl font-semibold tracking-tight text-foreground",
+            titleClassName,
+          )}
+        >
           {title}
         </h1>
         <div className="flex flex-wrap items-center gap-3">
@@ -84,7 +95,9 @@ export function AppPageHeader({
       )}
 
       {description && (
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className={cn("text-sm text-muted-foreground", descriptionClassName)}>
+          {description}
+        </p>
       )}
 
       {showStats && (

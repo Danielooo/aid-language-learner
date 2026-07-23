@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { cn } from "@/lib/utils";
+
 import { ChatBubble, ChatTypingIndicator } from "./chat-bubble";
 import { getMessageText } from "./message-text";
 
@@ -14,6 +16,7 @@ type ChatThreadProps = {
   status: ChatStatus;
   emptyState?: React.ReactNode;
   getAssistantFallbackText?: (message: UIMessage) => string | null;
+  className?: string;
 };
 
 function resolveMessageText(
@@ -32,6 +35,7 @@ export function ChatThread({
   status,
   emptyState,
   getAssistantFallbackText,
+  className,
 }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isBusy = status === "submitted" || status === "streaming";
@@ -57,7 +61,10 @@ export function ChatThread({
   return (
     <div
       ref={scrollRef}
-      className="min-h-[4.5rem] max-h-[min(16rem,40vh)] space-y-2 overflow-y-auto rounded-xl bg-chat-thread-bg px-7 py-3"
+      className={cn(
+        "min-h-[4.5rem] max-h-[min(16rem,40vh)] space-y-2 overflow-y-auto rounded-xl bg-chat-thread-bg px-7 py-3",
+        className,
+      )}
       aria-live="polite"
       aria-busy={isBusy}
     >

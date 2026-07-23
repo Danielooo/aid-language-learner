@@ -21,6 +21,15 @@ import {
 
 import { QuizBackToOverviewButton } from "./quiz-back-to-overview-button";
 import { QuizLeaveSessionDialog } from "./quiz-leave-session-dialog";
+import {
+  QUIZ_PLAYING_DECK_CLASS,
+  QUIZ_PLAYING_DESCRIPTION_CLASS,
+  QUIZ_PLAYING_HEADER_CLASS,
+  QUIZ_PLAYING_SECTION_CLASS,
+  QUIZ_PLAYING_TITLE_CLASS,
+  useQuizScrollToTop,
+} from "./quiz-playing-layout";
+import { QuizQueueProgressBadge } from "./quiz-queue-progress-badge";
 import { ActiveTopicsEmptyBanner } from "./active-topics-empty-banner";
 import { QuizSetupScreen } from "./quiz-setup-screen";
 import { useQuizSelectionMode } from "./hooks/use-quiz-selection-mode";
@@ -186,13 +195,16 @@ export function TypingQuizDeck() {
     }
   }
 
-  async function beginSession(topic: string) {
+  async function beginSession(topic: string, srsDueTotal?: number) {
     resetExerciseState();
     setScreen("playing");
-    const ok = await startSession({
-      selectionMode,
-      topic,
-    });
+    const ok = await startSession(
+      {
+        selectionMode,
+        topic,
+      },
+      selectionMode === "srs" ? { srsDueTotal: srsDueTotal ?? 0 } : undefined,
+    );
     if (ok) void fetchNext();
   }
 
@@ -200,9 +212,9 @@ export function TypingQuizDeck() {
     setScreen("topic-picker");
   }
 
-  function handleTopicSelect(topic: string) {
+  function handleTopicSelect(topic: string, srsDueTotal?: number) {
     persistTopic(topic);
-    void beginSession(topic);
+    void beginSession(topic, srsDueTotal);
   }
 
   const handleChangeSetup = useCallback(() => {
@@ -250,7 +262,7 @@ export function TypingQuizDeck() {
       }),
     );
     recordAnswer(item.id, result.isCorrect);
-    if (selectionMode === "srs") {
+    if (selectionMode === "srs" && sessionPhase === "playing") {
       void recordSrsReview(item.id, result.isCorrect);
     }
   }, [
@@ -297,10 +309,10 @@ export function TypingQuizDeck() {
   const progressLabel =
     queueTotal > 0
       ? formatQueueProgressLabel(
-          queueProgress,
-          queueTotal,
-          sessionPhase === "review",
-        )
+        queueProgress,
+        queueTotal,
+        sessionPhase === "review",
+      )
       : null;
 
   useEffect(() => {
@@ -328,10 +340,25 @@ export function TypingQuizDeck() {
         ? "Kies typvorm en vertaalrichting."
         : "Kies een topic om te oefenen.";
 
+  useQuizScrollToTop(screen === "playing", item?.id ?? null);
+
   return (
-    <div ref={containerRef} tabIndex={-1} className="space-y-6 outline-none">
+    <div
+      ref={containerRef}
+      tabIndex={-1}
+      className={
+        screen === "playing" ? QUIZ_PLAYING_DECK_CLASS : "space-y-6 outline-none"
+      }
+    >
       <AppPageHeader
         title={headerTitle}
+        className={screen === "playing" ? QUIZ_PLAYING_HEADER_CLASS : undefined}
+        titleClassName={
+          screen === "playing" ? QUIZ_PLAYING_TITLE_CLASS : undefined
+        }
+        descriptionClassName={
+          screen === "playing" ? QUIZ_PLAYING_DESCRIPTION_CLASS : undefined
+        }
         description={playingDescription}
         actions={<QuizBackToOverviewButton onClick={requestLeave} />}
       />
@@ -393,54 +420,52 @@ export function TypingQuizDeck() {
 
       {screen === "playing" && (
         <>
-          <section className="relative rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 pt-10 sm:p-8 sm:pt-10">
-            {progressLabel ? (
-              <span className="absolute right-4 top-3 text-sm font-medium tabular-nums text-foreground sm:right-6 sm:top-4">
-                {progressLabel}
-              </span>
-            ) : null}
+          <section className={QUIZ_PLAYING_SECTION_CLASS}>
+            <QuizQueueProgressBadge label={progressLabel} />
             {(sessionPhase === "main-complete" ||
               sessionPhase === "all-complete") && (
-              <SessionCompleteState
-                phase={sessionPhase}
-                correctCount={correctCount}
-                totalCount={initialQueueTotal}
-                mistakeCount={mistakeCount}
-                skippedIneligible={skippedIneligible}
-                onStartMistakeReview={handleStartMistakeReview}
-                onFinish={handleFinishSession}
-              />
-            )}
+                <SessionCompleteState
+                  phase={sessionPhase}
+                  correctCount={correctCount}
+                  totalCount={initialQueueTotal}
+                  mistakeCount={mistakeCount}
+                  skippedIneligible={skippedIneligible}
+                  onStartMistakeReview={handleStartMistakeReview}
+                  onFinish={handleFinishSession}
+                />
+              )}
             {srsComplete && (
               <SrsCompleteState
                 topic={selectedTopic}
                 onBack={handleChangeSetup}
               />
             )}
-            {showPlayingUi && sessionLoading && <TypingExerciseSkeleton />}
-            {showPlayingUi && !sessionLoading && loading && (
-              <TypingExerciseSkeleton />
-            )}
-            {showPlayingUi && !sessionLoading && !loading && error && (
-              <ExerciseErrorState
-                message={error}
-                status={errorStatus}
-                onRetry={loadNext}
-              />
-            )}
-            {showPlayingUi && !sessionLoading && !loading && !error && item && (
-              <TypingExercise
-                item={item}
-                mode={mode}
-                direction={direction}
-                answer={answer}
-                feedback={feedback}
-                hintVisible={hintVisible}
-                onAnswerChange={setAnswer}
-                onSubmit={handleSubmit}
-                onNext={handleNext}
-                onShowHint={handleShowHint}
-              />
+            {showPlayingUi && (
+              <div>
+                {sessionLoading && <TypingExerciseSkeleton />}
+                {!sessionLoading && loading && <TypingExerciseSkeleton />}
+                {!sessionLoading && !loading && error && (
+                  <ExerciseErrorState
+                    message={error}
+                    status={errorStatus}
+                    onRetry={loadNext}
+                  />
+                )}
+                {!sessionLoading && !loading && !error && item && (
+                  <TypingExercise
+                    item={item}
+                    mode={mode}
+                    direction={direction}
+                    answer={answer}
+                    feedback={feedback}
+                    hintVisible={hintVisible}
+                    onAnswerChange={setAnswer}
+                    onSubmit={handleSubmit}
+                    onNext={handleNext}
+                    onShowHint={handleShowHint}
+                  />
+                )}
+              </div>
             )}
           </section>
 

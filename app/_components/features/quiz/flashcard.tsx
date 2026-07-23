@@ -7,6 +7,13 @@ import { useEffect, useRef } from "react";
 import { ExerciseAudioAttribution } from "./exercise-audio-attribution";
 import { ExerciseAudioControls } from "./exercise-audio-controls";
 import { FlashcardActionButton } from "./flashcard-action-button";
+import {
+  QUIZ_PLAYING_FORM_CLASS,
+  QUIZ_PROMPT_CARD_FIXED_CLASS,
+  QUIZ_PROMPT_SKELETON_CLASS,
+  QUIZ_PROMPT_TEXT_CLASS,
+  QUIZ_SHORT_HIDE_CLASS,
+} from "./quiz-playing-layout";
 
 import type { ExerciseQuizItem } from "@/types/quiz";
 
@@ -107,7 +114,7 @@ export function Flashcard({
   const isBack = phase === "back";
 
   return (
-    <div className="mx-auto w-full max-w-lg">
+    <div className={QUIZ_PLAYING_FORM_CLASS}>
       <div
         ref={cardRef}
         data-flashcard-root
@@ -117,71 +124,73 @@ export function Flashcard({
         onPointerDown={handleCardPointerDown}
         onPointerUp={handleCardPointerUp}
         onPointerLeave={handleCardPointerUp}
-        className={`relative h-64 cursor-pointer [perspective:1000px] sm:h-72 ${
-          animating ? "pointer-events-none" : ""
-        }`}
+        className={`relative cursor-pointer [perspective:1000px] ${animating ? "pointer-events-none" : ""
+          }`}
         style={{ perspective: "1000px" }}
       >
         <div
-          ref={innerRef}
-          className="relative h-full w-full [transform-style:preserve-3d]"
-          style={{ transformStyle: "preserve-3d" }}
+          className={`${QUIZ_PROMPT_CARD_FIXED_CLASS} mx-auto w-full`}
         >
-          {/* Voorkant */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/15 via-accent/5 to-card p-6 text-center shadow-lg shadow-accent/10 [backface-visibility:hidden]"
-            style={{ backfaceVisibility: "hidden" }}
+            ref={innerRef}
+            className="relative h-full w-full [transform-style:preserve-3d]"
+            style={{ transformStyle: "preserve-3d" }}
           >
-            <div className="flex w-full flex-col items-center gap-3">
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Spaans
-              </span>
-              <p className="text-2xl font-semibold leading-snug text-foreground sm:text-3xl">
-                {item.source_text}
+            {/* Voorkant */}
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/15 via-accent/5 to-card p-3 text-center shadow-lg shadow-accent/10 [backface-visibility:hidden]"
+              style={{ backfaceVisibility: "hidden" }}
+            >
+              <div className="flex w-full flex-col items-center gap-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Spaans
+                </span>
+                <p className={QUIZ_PROMPT_TEXT_CLASS}>{item.source_text}</p>
+                {item.mp3_url && (
+                  <ExerciseAudioControls
+                    mp3Url={item.mp3_url}
+                    variant="compact"
+                  />
+                )}
+                {item.mp3_url && (
+                  <div className={QUIZ_SHORT_HIDE_CLASS}>
+                    <ExerciseAudioAttribution
+                      author={item.tatoeba_author}
+                      license={item.tatoeba_license}
+                      attributionUrl={item.tatoeba_attribution_url}
+                    />
+                  </div>
+                )}
+              </div>
+              <p
+                className={`absolute bottom-2 text-[11px] text-muted-foreground/80 ${QUIZ_SHORT_HIDE_CLASS}`}
+              >
+                Klik om te draaien
               </p>
-              {item.mp3_url && (
-                <ExerciseAudioControls
-                  mp3Url={item.mp3_url}
-                  variant="large"
-                />
-              )}
-              {item.mp3_url && (
-                <ExerciseAudioAttribution
-                  author={item.tatoeba_author}
-                  license={item.tatoeba_license}
-                  attributionUrl={item.tatoeba_attribution_url}
-                />
-              )}
             </div>
-            <p className="absolute bottom-4 text-[11px] text-muted-foreground/80">
-              Klik om te draaien
-            </p>
-          </div>
 
-          {/* Achterkant */}
-          <div
-            className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-card to-muted/30 p-6 text-center shadow-lg shadow-emerald-500/10 [backface-visibility:hidden] [transform:rotateX(180deg)]"
-            style={{
-              backfaceVisibility: "hidden",
-              transform: "rotateX(180deg)",
-            }}
-          >
-            <div className="flex flex-col items-center gap-3">
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Nederlands
-              </span>
-              <p className="text-2xl font-semibold leading-snug text-foreground sm:text-3xl">
-                {item.target_text}
-              </p>
+            {/* Achterkant */}
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-card to-muted/30 p-3 text-center shadow-lg shadow-emerald-500/10 [backface-visibility:hidden] [transform:rotateX(180deg)]"
+              style={{
+                backfaceVisibility: "hidden",
+                transform: "rotateX(180deg)",
+              }}
+            >
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Nederlands
+                </span>
+                <p className={QUIZ_PROMPT_TEXT_CLASS}>{item.target_text}</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div
-        className={`mt-2 grid gap-2 ${
-          isBack ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1"
-        }`}
+        className={`mt-2 grid shrink-0 gap-2 ${isBack ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1"
+          }`}
       >
         {!isBack && (
           <FlashcardActionButton
