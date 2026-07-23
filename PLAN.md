@@ -18,11 +18,10 @@ Bron van de eisen: `[EINDOPDRACHT.md](EINDOPDRACHT.md)` (alleen D1, D2 + relevan
 
 ### Exact hervatten (nu)
 
-- **Ronde:** **H — Generator** (UI-align gedaan; smoke nog open vanaf stap 1).
-- **Eerste antwoord in nieuwe chat:** kondig **H stap 1/6** aan (checklist hieronder) en wacht op feedback. Niet opnieuw G openen tenzij de developer dat vraagt.
+- **Ronde:** **Fase 6 — Verificatie** (product-smoke D1/D2; H Generator klaar).
+- **Eerste antwoord in nieuwe chat:** kondig **Fase 6 stap 1** aan (checklist hieronder) en wacht op feedback.
 - **Branch:** `feature/user-panels`.
-- **Rol voor H:** inloggen als **Gebruiker** (niet Admin) — Generator zit in de user-nav.
-- **UI-align (vóór smoke):** tabs via `?tab=audio` (zoals Community); chat via gedeelde `ChatThread`/`ChatComposer`; text/audio-parity; Leerplan-terminologie.
+- **Rol:** wissel per stap (Gebruiker vs Admin) zoals de checklist vraagt.
 
 ### Waar we zijn
 
@@ -34,46 +33,42 @@ Bron van de eisen: `[EINDOPDRACHT.md](EINDOPDRACHT.md)` (alleen D1, D2 + relevan
 | D Leren | Klaar |
 | E Exercises | Klaar |
 | F Voortgang | Klaar |
-| G Admin | Klaar (B40–B44 fixed; smoke door developer gedaan) |
-| **H Generator** | **Volgende — start bij checklist-stap 1 (na UI-align)** |
+| G Admin | Klaar |
+| H Generator | Klaar (smoke + pre-smoke bugs; developer gedaan) |
+| **Fase 6 Verificatie** | **Volgende — start bij checklist-stap 1** |
 
-### Admin (G) — afgerond (kort)
+### Generator (H) — afgerond (kort)
 
-- Beheer alleen Admin; niet-admin → `/oefenen`
-- Gebruikers: deactiveren (sessies + kick), Verwijderen, **Admin aanmaken** op `/admin/admin-aanmaken`
-- Bijdragen beoordelen: `/admin/bijdragen`
+- Tabs Tekst/Audio via `?tab=`; gedeelde chat-chrome; Topic/Leerplan-copy
+- Nieuw topic / toevoegen aan bestaand; draft (chat + batches + destinationMode) over refresh
+- Pre-smoke fixes: selectie/deletes/edits in draft, dupe-fallback, audio partial persist, retry+blocked
 
-### Generator (H) — open voor developer-check
+### Fase 6 — open voor developer-check
 
-Smoke van **Generator** (`/generator`): AI-tekstchat + Audio (Tatoeba). Scope = bestaand pad stabiel; geen pipeline-herontwerp.
+Eindverificatie over het hele product (zie ook sectie **Fase 6 — Verificatie** hieronder). Geen nieuwe features; alleen bevestigen + bugs fixen.
 
-**UI-align (2026-07-23):** chrome gelijk aan andere tabs — `ChatThread`/`ChatComposer`, muted tablist + URL-tab, voorstel-knoppen text≈audio, copy **Leerplan**/**Topic**.
+Checklist Fase 6 (nog open):
 
-Scope (geen nieuwe features):
-- Pagina laadt; tabs **Tekst** / **Audio**; quota zichtbaar of nette empty/fout
-- Tekst: chat streamt; tool `proposeExercises` → voorsteltabel; selectie + **Topic opslaan** → topic in Leerplan
-- Audio: zoek/preview + opslaan zonder crash (diepe Tatoeba-import blijft admin)
-- Foutpaden: geen stille leegte; quota-limiet begrijpelijk
-- Terminologie: Generator, Topic, Oefening, Leerplan (geen “Set”/“Globaal”/“Groep”)
-
-Checklist voor smoke (H) — nog allemaal open:
-
-1. ☐ Nav → Generator → laadt; tabs Tekst / Audio wisselbaar (`?tab=audio`)
-2. ☐ Tekst: prompt → streaming antwoord + voorstelregels (of nette fout)
-3. ☐ Selectie + Topic opslaan → succesmodal / zichtbaar in Leerplan
-4. ☐ Audio-tab: zoeken of preview zonder crash (of nette empty/fout)
-5. ☐ Quota: label klopt; bij limiet begrijpelijke melding (geen stille fail)
-6. ☐ Soft-nav weg/terug of refresh: draft/tab-gedrag acceptabel (geen crash)
+1. ☐ Inloggen / registreren / rollen
+2. ☐ Leerplan: lijst, toggle, bewerken, verwijderen
+3. ☐ Community: overnemen + bijdragen
+4. ☐ Leren: flashcards / typen / sorteren + progress
+5. ☐ Exercises CRUD
+6. ☐ Dashboard / voortgang
+7. ☐ Admin: users + Bijdragen beoordelen (als Admin)
+8. ☐ Generator / AI (quota + opslaan + streaming) — hercheck kort na H
+9. ☐ Geen `useEffect`-fetch meer op Tier 1/2 kandidaten (grep)
+10. ☐ D1- en D2-eisenchecklists opnieuw nalopen; open gaps noteren
 
 ### Volgende actie
 
-1. Start **H stap 1** (checklist hierboven); door naar 2…6 pas na “klaar/ok” per stap.
-2. Bij feedback → triage → fix → noteer in §0.1 (volgende vrije ID na B44).
-3. Na hele H-checklist groen: markeer H klaar in deze handoff; daarna Fase 6 / D1–D2 of Nice to haves **alleen op verzoek**.
+1. Start **Fase 6 stap 1** (checklist hierboven); door naar 2…10 pas na “klaar/ok” per stap.
+2. Bij feedback → triage → fix → noteer in §0.1 (volgende vrije ID na B45).
+3. Na hele Fase 6 groen: D1/D2 finaliseren; Nice to haves **alleen op verzoek**.
 
 ### Startprompt (plakken in nieuwe chat)
 
-> Lees `PLAN.md` sectie **Handoff** (esp. **Exact hervatten**) en §0.1. Start meteen smoke **H — Generator stap 1/6**; wacht op mijn feedback per stap. Geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`. **Scope-guard:** voer uit wat gevraagd wordt; noem achteraf kort als het een nieuwe/grote feature was buiten de afrond-focus.
+> Lees `PLAN.md` sectie **Handoff** (esp. **Exact hervatten**) en §0.1. Start meteen **Fase 6 stap 1** (inloggen/registreren/rollen); wacht op mijn feedback per stap. Geen commits tenzij gevraagd. UI-termen: `.cursor/rules/ui-terminology.mdc`. NOOIT `IDEEFASE.md`. **Scope-guard:** voer uit wat gevraagd wordt; noem achteraf kort als het een nieuwe/grote feature was buiten de afrond-focus.
 
 ### Regels (kort)
 
@@ -83,7 +78,7 @@ Checklist voor smoke (H) — nog allemaal open:
 
 ### Scope-guard — focus bewaken, niet blokkeren
 
-**Focus nu:** bestaande flows stabiel en afronden (smoke → bugs → volgende ronde).
+**Focus nu:** bestaande flows stabiel en afronden (smoke → bugs → Fase 6).
 
 De agent moet **altijd uitvoeren wat de developer vraagt**. Geen weigering, geen “zal ik dit wel bouwen?”-gate vooraf.
 
@@ -299,6 +294,7 @@ Korte startnotities — vul aan terwijl je de checklists afwerkt.
 | B42 | Admin Gebruikers | Geen Verwijderen-actie (account + data) | ja | high | fixed |
 | B43 | Admin Gebruikers | Rol wisselen (user↔admin) i.p.v. aparte Admin aanmaken | ja | medium | fixed |
 | B44 | Admin Deactiveren | PATCH /api/admin/users → 500 (thrown Response 401 + proxy getUser race) | ja | blocker | fixed |
+| B45 | Leren Typen/Sorteren | Overslaan weg (UI+recordSkip); N in “X van N” steeg door queue-append | ja | medium | fixed |
 
 
 **Ernst:**
@@ -527,3 +523,4 @@ Geen assessment-eisen — pas doen als D1/D2 en blockers af zijn. Agent pakt ze 
 - [ ] Oefening uitsluiten van herhaalschema (“Niet meer tonen” / suspend) — bij voorkeur vanuit Leerplan of oefeningenbeheer, niet mid-sessie in Oefenen
 - [ ] Alternatieve vertalingen toevoegen tijdens het oefenen (bv. na feedback een geldig antwoord opslaan als alternatief)
 - [ ] Voortgang → topic-detail: doorlink naar Oefenen voor dat specifieke topic
+- [ ] Oefenen keyboard-shortcuts terugzetten (Spatie/G/F/V; typen/sorteren Enter/[ /]; audio Ctrl+Alt+P; leave Enter; labels + gedeelde module) — Esc blijft al in product
