@@ -13,6 +13,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { APP_ROUTES, leerplanGroupPath } from "@/lib/routes";
 
 import type {
+  ExerciseGroupDetail,
   ExerciseGroupDetailSuccess,
   ExerciseGroupsDeleteSuccess,
 } from "@/types/exercise-groups";
@@ -23,6 +24,7 @@ type LeerplanGroupEditPageProps = {
 
 /**
  * Bewerkpagina voor één persoonlijk topic onder /leerplan/[id].
+ * Query-data = volledige groep (zelfde shape als Generator-preview).
  */
 export function LeerplanGroupEditPage({ groupId }: LeerplanGroupEditPageProps) {
   const router = useRouter();
@@ -30,21 +32,23 @@ export function LeerplanGroupEditPage({ groupId }: LeerplanGroupEditPageProps) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const {
-    data: groupName = null,
+    data: group = null,
     isPending: groupLoading,
     error,
   } = useQuery({
     queryKey: queryKeys.learningTopic(groupId),
-    queryFn: async () => {
+    queryFn: async (): Promise<ExerciseGroupDetail> => {
       const body = await fetchJson<
         ExerciseGroupDetailSuccess & { error?: string }
       >(`/api/exercise-groups/mine/${groupId}`);
       if (!body.ok) {
         throw new Error(body.error ?? "Kon topic niet laden.");
       }
-      return body.group.name;
+      return body.group;
     },
   });
+
+  const groupName = group?.name ?? null;
 
   const deleteTopicMutation = useMutation({
     mutationFn: async () => {

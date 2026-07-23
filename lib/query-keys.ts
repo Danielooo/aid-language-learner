@@ -19,6 +19,7 @@ export const queryKeys = {
 
   learningTopics: () => ["learning-topics"] as const,
 
+  /** Detail = `ExerciseGroupDetail` (niet alleen de naam). */
   learningTopic: (groupId: string) =>
     ["learning-topics", groupId] as const,
 
