@@ -13,6 +13,7 @@ import {
 import type { AudioRow } from "@/types/tatoeba";
 import { useTranslationCache } from "@/lib/hooks/use-translation-cache";
 
+import { ProposalTopicDestination } from "./proposal-topic-destination";
 import {
   getLastAudioBatchExerciseCount,
   mapAudioBatchToRows,
@@ -36,6 +37,9 @@ const EXCLUDED_COLUMNS: ColumnKey[] = [
   "reason",
 ];
 
+const EMPTY_TABLE_MESSAGE =
+  "Nog geen oefeningen — genereer via chat hierboven.";
+
 type PersistState = {
   status: "idle" | "saving" | "success" | "error";
   response: { ok: true; inserted: number } | { ok: false } | null;
@@ -44,7 +48,7 @@ type PersistState = {
 
 type AudioProposalTableProps = {
   batches: AudioProposalBatch[];
-  proposal: ProposeAudioExercisesOutput;
+  proposal: ProposeAudioExercisesOutput | null;
   persistState: PersistState;
   onSave: (body: AudioPersistBody) => void;
   /** Herstelde selectie uit localStorage-draft. */
@@ -78,9 +82,11 @@ export function AudioProposalTable({
     () => new Set(initialSelectedIds ?? []),
   );
   const [topic, setTopic] = useState(
-    () => initialTopic?.trim() || proposal.topic || "",
+    () => initialTopic?.trim() || proposal?.topic || "",
   );
   const topicInitializedRef = useRef(Boolean(initialTopic?.trim()));
+  const topicRef = useRef(topic);
+  topicRef.current = topic;
 
   const prevBatchCountRef = useRef(0);
   const prevBatchesRef = useRef<AudioProposalBatch[]>([]);
@@ -97,15 +103,22 @@ export function AudioProposalTable({
     if (nextCount === 0) {
       setRows([]);
       setSelectedIds(new Set());
-      setTopic("");
-      topicInitializedRef.current = false;
+      if (prevCount > 0) {
+        setTopic("");
+        topicInitializedRef.current = false;
+      } else if (initialTopic?.trim() && !topicInitializedRef.current) {
+        setTopic(initialTopic.trim());
+        topicInitializedRef.current = true;
+      }
       prevBatchCountRef.current = 0;
       prevBatchesRef.current = [];
       return;
     }
 
     if (!topicInitializedRef.current) {
-      setTopic(initialTopic?.trim() || proposal.topic);
+      if (!topicRef.current.trim()) {
+        setTopic(initialTopic?.trim() || proposal?.topic || "");
+      }
       topicInitializedRef.current = true;
     }
 
@@ -150,7 +163,7 @@ export function AudioProposalTable({
 
     prevBatchCountRef.current = nextCount;
     prevBatchesRef.current = batches;
-  }, [batches, proposal.topic, initialTopic]);
+  }, [batches, proposal?.topic, initialTopic]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Draft-meta naar parent voor localStorage.
@@ -232,104 +245,95 @@ export function AudioProposalTable({
   }, [onSave, topic, rows, selectedIds, translationLookup]);
 
   const selectedCount = selectedIds.size;
-  const saveLabel =
-    selectedCount > 0
-      ? `Groep opslaan (${selectedCount} geselecteerd)`
-      : "Groep opslaan";
 
-  const accentButtonClass =
-    "rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50";
+  const countLabel = `${rows.length} oefening${rows.length === 1 ? "" : "en"}${
+    selectedCount > 0 ? ` · ${selectedCount} geselecteerd` : ""
+  }${batches.length > 1 ? ` · ${batches.length} batches` : ""}`;
 
   return (
-    <section className="space-y-3 rounded-lg border border-border bg-card p-5 text-card-foreground">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div className="space-y-1.5">
-          <h2 className="text-sm font-semibold">
-            Audio-voorstel: {rows.length} oefening
-            {rows.length === 1 ? "" : "en"}
-            {batches.length > 1 && (
-              <span className="font-normal text-muted-foreground">
-                {" "}
-                ({batches.length} batches)
-              </span>
-            )}
-          </h2>
-          <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>Onderwerp:</span>
-            <input
-              type="text"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              className="min-w-[12rem] flex-1 rounded-md border border-input bg-background px-2 py-1 font-mono text-xs text-foreground"
-              aria-label="Onderwerp van de oefeningengroep"
-            />
-            {selectedCount > 0 && (
-              <span className="text-muted-foreground">
-                · {selectedCount} geselecteerd
-              </span>
-            )}
-          </label>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleDeleteSelected}
-            disabled={selectedCount === 0}
-            className={accentButtonClass}
-          >
-            Verwijder geselecteerd
-          </button>
-          <SaveButton
-            persistState={persistState}
-            onSave={handleSave}
-            label={saveLabel}
-            disabled={rows.length === 0 || !topic.trim()}
-            className={accentButtonClass}
-          />
-        </div>
-      </header>
-
-      <AudioResultTable
-        rows={rows}
-        translation={{
-          cache: translationLookup,
-          state: {},
-          onTranslateRow: () => { },
+    <section className="space-y-4">
+      <ProposalTopicDestination
+        suggestedTopic={proposal?.topic ?? ""}
+        topic={topic}
+        onTopicChange={setTopic}
+        actions={({ blocked, existingTopicName }) => {
+          const saveLabel = existingTopicName
+            ? selectedCount > 0
+              ? `Toevoegen aan “${existingTopicName}” (${selectedCount} geselecteerd)`
+              : `Toevoegen aan “${existingTopicName}”`
+            : selectedCount > 0
+              ? `Topic opslaan (${selectedCount} geselecteerd)`
+              : "Topic opslaan";
+          return (
+            <>
+              <button
+                type="button"
+                onClick={handleDeleteSelected}
+                disabled={selectedCount === 0}
+                className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-foreground disabled:opacity-50"
+              >
+                Verwijder geselecteerd
+              </button>
+              <SaveButton
+                persistState={persistState}
+                onSave={handleSave}
+                label={saveLabel}
+                disabled={blocked || rows.length === 0}
+              />
+            </>
+          );
         }}
-        selection={{
-          selectedIds,
-          onToggle: (audioId) => {
-            setSelectedIds((prev) => {
-              const next = new Set(prev);
-              if (next.has(audioId)) next.delete(audioId);
-              else next.add(audioId);
-              return next;
-            });
-          },
-          onToggleAllVisible: (visibleIds) => {
-            setSelectedIds((prev) => {
-              const allSelected = visibleIds.every((id) => prev.has(id));
-              const next = new Set(prev);
-              if (allSelected) {
-                for (const id of visibleIds) next.delete(id);
-              } else {
-                for (const id of visibleIds) next.add(id);
-              }
-              return next;
-            });
-          },
-        }}
-        tableScope="audio-exercise-generator"
-        excludedColumns={EXCLUDED_COLUMNS}
-        hideEnrichActions
-        showFilterBar={false}
-        showColumnMenu={false}
-        mp3ColumnPlacement="after-selection"
-        compactMp3Controls
-        highlightAudioIds={highlightAudioIds}
-        serverSorted
-        onRowDoubleClick={handleRowDoubleClick}
       />
+
+      <p className="text-xs text-muted-foreground">{countLabel}</p>
+
+      {rows.length === 0 ? (
+        <EmptyAudioProposalTableChrome message={EMPTY_TABLE_MESSAGE} />
+      ) : (
+        <AudioResultTable
+          rows={rows}
+          translation={{
+            cache: translationLookup,
+            state: {},
+            onTranslateRow: () => { },
+          }}
+          selection={{
+            selectedIds,
+            onToggle: (audioId) => {
+              setSelectedIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(audioId)) next.delete(audioId);
+                else next.add(audioId);
+                return next;
+              });
+            },
+            onToggleAllVisible: (visibleIds) => {
+              setSelectedIds((prev) => {
+                const allSelected = visibleIds.every((id) => prev.has(id));
+                const next = new Set(prev);
+                if (allSelected) {
+                  for (const id of visibleIds) next.delete(id);
+                } else {
+                  for (const id of visibleIds) next.add(id);
+                }
+                return next;
+              });
+            },
+          }}
+          tableScope="audio-exercise-generator"
+          excludedColumns={EXCLUDED_COLUMNS}
+          hideEnrichActions
+          showFilterBar={false}
+          showColumnMenu={false}
+          mp3ColumnPlacement="after-selection"
+          compactMp3Controls
+          highlightAudioIds={highlightAudioIds}
+          serverSorted
+          onRowDoubleClick={handleRowDoubleClick}
+          density="list"
+          hideRowCount
+        />
+      )}
 
       <ExerciseEditModal
         open={editRow !== null}
@@ -361,18 +365,45 @@ export function AudioProposalTable({
   );
 }
 
+function EmptyAudioProposalTableChrome({ message }: { message: string }) {
+  return (
+    <div className="overflow-auto rounded-md border border-border">
+      <table className="w-full border-collapse text-left text-sm">
+        <thead className="sticky top-0 border-b bg-muted/40 text-sm text-muted-foreground">
+          <tr>
+            <th className="w-10 px-3 py-2" aria-label="Selectie" />
+            <th className="px-3 py-2 font-semibold" aria-label="Audio" />
+            <th className="px-3 py-2 font-semibold">Brontaal (SPA)</th>
+            <th className="px-3 py-2 font-semibold">Vertaling (NL)</th>
+            <th className="px-3 py-2 font-semibold">alternatieven</th>
+            <th className="px-3 py-2 font-semibold">tags</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td
+              colSpan={6}
+              className="px-3 py-8 text-center text-sm text-muted-foreground"
+            >
+              {message}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function SaveButton({
   persistState,
   onSave,
   label,
   disabled,
-  className,
 }: {
   persistState: PersistState;
   onSave: () => void;
   label: string;
   disabled: boolean;
-  className: string;
 }) {
   if (persistState.status === "error") {
     return (
@@ -380,7 +411,11 @@ function SaveButton({
         <span className="text-xs text-destructive">
           Fout: {persistState.error}
         </span>
-        <button type="button" onClick={onSave} className={className}>
+        <button
+          type="button"
+          onClick={onSave}
+          className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+        >
           Opnieuw proberen
         </button>
       </div>
@@ -392,7 +427,7 @@ function SaveButton({
       type="button"
       onClick={onSave}
       disabled={disabled || persistState.status === "saving"}
-      className={className}
+      className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
     >
       {persistState.status === "saving" ? "Opslaan…" : label}
     </button>

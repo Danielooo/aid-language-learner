@@ -68,7 +68,7 @@ export function GeneratorSavedGroupModal({
           <h2 className="text-base font-semibold">{name}</h2>
           <p className="text-xs text-muted-foreground">
             {members.length} oefening{members.length === 1 ? "" : "en"}{" "}
-            opgeslagen in deze oefeningengroep
+            opgeslagen in dit topic
           </p>
           <button
             type="button"
@@ -83,7 +83,7 @@ export function GeneratorSavedGroupModal({
         <div className="flex-1 space-y-3 overflow-auto px-5 py-3">
           {members.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Geen oefeningen in deze oefeningengroep.
+              Geen oefeningen in dit topic.
             </p>
           ) : (
             members.map((ex) => (
@@ -110,7 +110,7 @@ export function GeneratorSavedGroupModal({
             href="/leerplan"
             className="text-sm font-medium text-accent underline-offset-2 hover:underline"
           >
-            Naar mijn leerplan
+            Naar Leerplan
           </Link>
           <button
             type="button"

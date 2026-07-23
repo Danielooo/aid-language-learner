@@ -4,23 +4,16 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 
 import type { ProposalBatch } from "@/app/_components/features/generator/proposal-table-adapter";
 
-// Client-only draft voor tekst-generator (tabel + chatgeschiedenis).
+// Client-only draft voor tekst-generator (batches + topic/selectie).
 // Overleeft refresh/navigatie; wordt gewist na opslaan of “Wis chat”.
 
 const STORAGE_KEY = "aid-text-generator-draft-v1";
 const DRAFT_UPDATED_EVENT = "aid-text-generator-draft-updated";
 
-export type PersistedChatMessage = {
-  id: string;
-  role: "user" | "status";
-  text: string;
-};
-
 export type TextGeneratorDraftSnapshot = {
   batches: ProposalBatch[];
   selectedAudioIds: number[];
   topic: string;
-  messages: PersistedChatMessage[];
 };
 
 type CacheEntry = {
@@ -49,16 +42,6 @@ function isValidBatch(value: unknown): value is ProposalBatch {
   });
 }
 
-function isValidPersistedMessage(value: unknown): value is PersistedChatMessage {
-  if (typeof value !== "object" || value === null) return false;
-  const msg = value as Record<string, unknown>;
-  return (
-    typeof msg.id === "string" &&
-    (msg.role === "user" || msg.role === "status") &&
-    typeof msg.text === "string"
-  );
-}
-
 function parseSnapshot(raw: string | null): TextGeneratorDraftSnapshot | null {
   if (!raw) return null;
   try {
@@ -72,15 +55,10 @@ function parseSnapshot(raw: string | null): TextGeneratorDraftSnapshot | null {
     if (!draft.selectedAudioIds.every((id) => typeof id === "number")) {
       return null;
     }
-    // Oude drafts zonder messages blijven geldig.
-    const messages = Array.isArray(draft.messages)
-      ? draft.messages.filter(isValidPersistedMessage)
-      : [];
     return {
       batches: draft.batches,
       selectedAudioIds: draft.selectedAudioIds,
       topic: draft.topic,
-      messages,
     };
   } catch {
     return null;
@@ -115,7 +93,7 @@ function writeSnapshot(snapshot: TextGeneratorDraftSnapshot | null): void {
 }
 
 function subscribe(callback: () => void): () => void {
-  if (typeof window === "undefined") return () => {};
+  if (typeof window === "undefined") return () => { };
   const onStorage = (e: StorageEvent) => {
     if (e.key === STORAGE_KEY) callback();
   };
@@ -145,7 +123,7 @@ export function useTextGeneratorDraft(): UseTextGeneratorDraft {
   );
 
   const save = useCallback((next: TextGeneratorDraftSnapshot) => {
-    if (next.batches.length === 0 && next.messages.length === 0) {
+    if (next.batches.length === 0 && !next.topic.trim()) {
       writeSnapshot(null);
       return;
     }

@@ -13,6 +13,7 @@ import {
 import type { AudioRow } from "@/types/tatoeba";
 import { useTranslationCache } from "@/lib/hooks/use-translation-cache";
 
+import { ProposalTopicDestination } from "./proposal-topic-destination";
 import {
   getLastBatchExerciseCount,
   mapBatchToRows,
@@ -33,7 +34,12 @@ const DEFAULT_HIDDEN_COLUMNS: ColumnKey[] = [
   "reason",
 ];
 
-const EXCLUDED_COLUMNS: ColumnKey[] = ["audio_id", "sentence_id"];
+const EXCLUDED_COLUMNS: ColumnKey[] = [
+  "audio_id",
+  "sentence_id",
+  "topic",
+  "edited",
+];
 
 type PersistState = {
   status: "idle" | "saving" | "success" | "error";
@@ -43,7 +49,7 @@ type PersistState = {
 
 type ProposalTableProps = {
   batches: ProposalBatch[];
-  proposal: ProposeExercisesOutput;
+  proposal: ProposeExercisesOutput | null;
   persistState: PersistState;
   onSave: (body: ExercisesPersistBody) => void;
   /** Herstelde selectie uit localStorage-draft. */
@@ -56,6 +62,9 @@ type ProposalTableProps = {
     topic: string;
   }) => void;
 };
+
+const EMPTY_TABLE_MESSAGE =
+  "Nog geen oefeningen — genereer via chat hierboven.";
 
 export function ProposalTable({
   batches,
@@ -79,9 +88,11 @@ export function ProposalTable({
     () => new Set(initialSelectedIds ?? []),
   );
   const [topic, setTopic] = useState(
-    () => initialTopic?.trim() || proposal.topic || "",
+    () => initialTopic?.trim() || proposal?.topic || "",
   );
   const topicInitializedRef = useRef(Boolean(initialTopic?.trim()));
+  const topicRef = useRef(topic);
+  topicRef.current = topic;
 
   const prevBatchCountRef = useRef(0);
   const prevBatchesRef = useRef<ProposalBatch[]>([]);
@@ -101,15 +112,25 @@ export function ProposalTable({
     if (nextCount === 0) {
       setRows([]);
       setSelectedIds(new Set());
-      setTopic("");
-      topicInitializedRef.current = false;
+      // Alleen topic wissen na clear/save (had batches → leeg), niet bij
+      // initiële lege staat of als de user al een bestemming koos.
+      if (prevCount > 0) {
+        setTopic("");
+        topicInitializedRef.current = false;
+      } else if (initialTopic?.trim() && !topicInitializedRef.current) {
+        setTopic(initialTopic.trim());
+        topicInitializedRef.current = true;
+      }
       prevBatchCountRef.current = 0;
       prevBatchesRef.current = [];
       return;
     }
 
     if (!topicInitializedRef.current) {
-      setTopic(initialTopic?.trim() || proposal.topic);
+      // Behoud handmatig gekozen topic; anders AI-/draft-naam.
+      if (!topicRef.current.trim()) {
+        setTopic(initialTopic?.trim() || proposal?.topic || "");
+      }
       topicInitializedRef.current = true;
     }
 
@@ -152,7 +173,7 @@ export function ProposalTable({
 
     prevBatchCountRef.current = nextCount;
     prevBatchesRef.current = batches;
-  }, [batches, proposal.topic, initialTopic]);
+  }, [batches, proposal?.topic, initialTopic]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Draft-meta naar parent voor localStorage.
@@ -228,99 +249,97 @@ export function ProposalTable({
   }, [onSave, topic, rows, selectedIds, translationLookup]);
 
   const selectedCount = selectedIds.size;
-  const saveLabel =
-    selectedCount > 0
-      ? `Groep opslaan (${selectedCount} geselecteerd)`
-      : "Groep opslaan";
+
+  const countLabel = `${rows.length} oefening${rows.length === 1 ? "" : "en"}${
+    selectedCount > 0 ? ` · ${selectedCount} geselecteerd` : ""
+  }${batches.length > 1 ? ` · ${batches.length} batches` : ""}`;
 
   return (
-    <section className="space-y-3 rounded-lg border border-border bg-card p-5 text-card-foreground">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div className="space-y-1.5">
-          <h2 className="text-sm font-semibold">
-            Voorstel: {rows.length} oefening
-            {rows.length === 1 ? "" : "en"}
-            {batches.length > 1 && (
-              <span className="font-normal text-muted-foreground">
-                {" "}
-                ({batches.length} batches)
-              </span>
-            )}
-          </h2>
-          <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>Onderwerp:</span>
-            <input
-              type="text"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              className="min-w-[12rem] flex-1 rounded-md border border-input bg-background px-2 py-1 font-mono text-xs text-foreground"
-              aria-label="Onderwerp van de oefeningengroep"
-            />
-            {selectedCount > 0 && (
-              <span className="text-muted-foreground">
-                · {selectedCount} geselecteerd
-              </span>
-            )}
-          </label>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleDeleteSelected}
-            disabled={selectedCount === 0}
-            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
-          >
-            Verwijder geselecteerd
-          </button>
-          <SaveButton
-            persistState={persistState}
-            onSave={handleSave}
-            label={saveLabel}
-            disabled={rows.length === 0 || !topic.trim()}
-          />
-        </div>
-      </header>
-
-      <AudioResultTable
-        rows={rows}
-        translation={{
-          cache: translationLookup,
-          state: {},
-          onTranslateRow: () => { },
+    <section className="space-y-4">
+      <ProposalTopicDestination
+        suggestedTopic={proposal?.topic ?? ""}
+        topic={topic}
+        onTopicChange={setTopic}
+        actions={({ blocked, existingTopicName }) => {
+          const saveLabel = existingTopicName
+            ? selectedCount > 0
+              ? `Toevoegen aan “${existingTopicName}” (${selectedCount} geselecteerd)`
+              : `Toevoegen aan “${existingTopicName}”`
+            : selectedCount > 0
+              ? `Topic opslaan (${selectedCount} geselecteerd)`
+              : "Topic opslaan";
+          return (
+            <>
+              <button
+                type="button"
+                onClick={handleDeleteSelected}
+                disabled={selectedCount === 0}
+                className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-foreground disabled:opacity-50"
+              >
+                Verwijder geselecteerd
+              </button>
+              <SaveButton
+                persistState={persistState}
+                onSave={handleSave}
+                label={saveLabel}
+                disabled={blocked || rows.length === 0}
+              />
+            </>
+          );
         }}
-        selection={{
-          selectedIds,
-          onToggle: (audioId) => {
-            setSelectedIds((prev) => {
-              const next = new Set(prev);
-              if (next.has(audioId)) next.delete(audioId);
-              else next.add(audioId);
-              return next;
-            });
-          },
-          onToggleAllVisible: (visibleIds) => {
-            setSelectedIds((prev) => {
-              const allSelected = visibleIds.every((id) => prev.has(id));
-              const next = new Set(prev);
-              if (allSelected) {
-                for (const id of visibleIds) next.delete(id);
-              } else {
-                for (const id of visibleIds) next.add(id);
-              }
-              return next;
-            });
-          },
-        }}
-        tableScope="exercise-generator"
-        defaultHiddenColumns={DEFAULT_HIDDEN_COLUMNS}
-        excludedColumns={EXCLUDED_COLUMNS}
-        hideMp3Column
-        hideEnrichActions
-        showFilterBar={false}
-        showColumnMenu={false}
-        serverSorted
-        onRowDoubleClick={handleRowDoubleClick}
       />
+
+      <p className="text-xs text-muted-foreground">{countLabel}</p>
+
+      {rows.length === 0 ? (
+        <EmptyProposalTableChrome
+          message={EMPTY_TABLE_MESSAGE}
+          showMp3={false}
+        />
+      ) : (
+        <AudioResultTable
+          rows={rows}
+          translation={{
+            cache: translationLookup,
+            state: {},
+            onTranslateRow: () => { },
+          }}
+          selection={{
+            selectedIds,
+            onToggle: (audioId) => {
+              setSelectedIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(audioId)) next.delete(audioId);
+                else next.add(audioId);
+                return next;
+              });
+            },
+            onToggleAllVisible: (visibleIds) => {
+              setSelectedIds((prev) => {
+                const allSelected = visibleIds.every((id) => prev.has(id));
+                const next = new Set(prev);
+                if (allSelected) {
+                  for (const id of visibleIds) next.delete(id);
+                } else {
+                  for (const id of visibleIds) next.add(id);
+                }
+                return next;
+              });
+            },
+          }}
+          tableScope="exercise-generator"
+          defaultHiddenColumns={DEFAULT_HIDDEN_COLUMNS}
+          excludedColumns={EXCLUDED_COLUMNS}
+          hideMp3Column
+          hideEnrichActions
+          showFilterBar={false}
+          showColumnMenu={false}
+          serverSorted
+          onRowDoubleClick={handleRowDoubleClick}
+          density="list"
+          hideRowCount
+        />
+      )}
 
       <ExerciseEditModal
         open={editRow !== null}
@@ -349,6 +368,45 @@ export function ProposalTable({
         onSave={handleModalSave}
       />
     </section>
+  );
+}
+
+/** Lege voorstel-tabel met dezelfde headers als na genereren. */
+function EmptyProposalTableChrome({
+  message,
+  showMp3,
+}: {
+  message: string;
+  showMp3: boolean;
+}) {
+  const colSpan = showMp3 ? 6 : 5;
+  return (
+    <div className="overflow-auto rounded-md border border-border">
+      <table className="w-full border-collapse text-left text-sm">
+        <thead className="sticky top-0 border-b bg-muted/40 text-sm text-muted-foreground">
+          <tr>
+            <th className="w-10 px-3 py-2" aria-label="Selectie" />
+            {showMp3 && (
+              <th className="px-3 py-2 font-semibold" aria-label="Audio" />
+            )}
+            <th className="px-3 py-2 font-semibold">Brontaal (SPA)</th>
+            <th className="px-3 py-2 font-semibold">Vertaling (NL)</th>
+            <th className="px-3 py-2 font-semibold">alternatieven</th>
+            <th className="px-3 py-2 font-semibold">tags</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td
+              colSpan={colSpan}
+              className="px-3 py-8 text-center text-sm text-muted-foreground"
+            >
+              {message}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -385,7 +443,7 @@ function SaveButton({
       type="button"
       onClick={onSave}
       disabled={disabled || persistState.status === "saving"}
-      className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+      className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
     >
       {persistState.status === "saving" ? "Opslaan…" : label}
     </button>

@@ -4,23 +4,16 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 
 import type { AudioProposalBatch } from "@/app/_components/features/generator/audio-proposal-table-adapter";
 
-// Client-only draft voor audio-generator (tabel + chatgeschiedenis).
+// Client-only draft voor audio-generator (batches + topic/selectie).
 // Overleeft refresh/navigatie; wordt gewist na opslaan of “Wis chat”.
 
 const STORAGE_KEY = "aid-audio-generator-draft-v1";
 const DRAFT_UPDATED_EVENT = "aid-audio-generator-draft-updated";
 
-export type PersistedChatMessage = {
-  id: string;
-  role: "user" | "status";
-  text: string;
-};
-
 export type AudioGeneratorDraftSnapshot = {
   batches: AudioProposalBatch[];
   selectedAudioIds: number[];
   topic: string;
-  messages: PersistedChatMessage[];
 };
 
 type CacheEntry = {
@@ -52,16 +45,6 @@ function isValidBatch(value: unknown): value is AudioProposalBatch {
   });
 }
 
-function isValidPersistedMessage(value: unknown): value is PersistedChatMessage {
-  if (typeof value !== "object" || value === null) return false;
-  const msg = value as Record<string, unknown>;
-  return (
-    typeof msg.id === "string" &&
-    (msg.role === "user" || msg.role === "status") &&
-    typeof msg.text === "string"
-  );
-}
-
 function parseSnapshot(raw: string | null): AudioGeneratorDraftSnapshot | null {
   if (!raw) return null;
   try {
@@ -75,15 +58,10 @@ function parseSnapshot(raw: string | null): AudioGeneratorDraftSnapshot | null {
     if (!draft.selectedAudioIds.every((id) => typeof id === "number")) {
       return null;
     }
-    // Oude drafts zonder messages blijven geldig.
-    const messages = Array.isArray(draft.messages)
-      ? draft.messages.filter(isValidPersistedMessage)
-      : [];
     return {
       batches: draft.batches,
       selectedAudioIds: draft.selectedAudioIds,
       topic: draft.topic,
-      messages,
     };
   } catch {
     return null;
@@ -118,7 +96,7 @@ function writeSnapshot(snapshot: AudioGeneratorDraftSnapshot | null): void {
 }
 
 function subscribe(callback: () => void): () => void {
-  if (typeof window === "undefined") return () => {};
+  if (typeof window === "undefined") return () => { };
   const onStorage = (e: StorageEvent) => {
     if (e.key === STORAGE_KEY) callback();
   };
@@ -148,7 +126,7 @@ export function useAudioGeneratorDraft(): UseAudioGeneratorDraft {
   );
 
   const save = useCallback((next: AudioGeneratorDraftSnapshot) => {
-    if (next.batches.length === 0 && next.messages.length === 0) {
+    if (next.batches.length === 0 && !next.topic.trim()) {
       writeSnapshot(null);
       return;
     }

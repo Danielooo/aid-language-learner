@@ -169,6 +169,12 @@ export type AudioResultTableProps = {
   serverSorted?: boolean;
   /** Rij-dubbelklik (o.a. Generator / modal-edit). */
   onRowDoubleClick?: (row: AudioRow) => void;
+  /** Density mode: "compact" (default) of "list" (like Leerplan styling) */
+  density?: "compact" | "list";
+  /** Hide row count display at bottom */
+  hideRowCount?: boolean;
+  /** Lege-staat tekst (default: “Geen rijen om te tonen.”) */
+  emptyMessage?: string;
 };
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -246,6 +252,9 @@ export function AudioResultTable({
   onSortChange,
   serverSorted = false,
   onRowDoubleClick,
+  density = "compact",
+  hideRowCount = false,
+  emptyMessage,
 }: AudioResultTableProps) {
   const [licenseFilter, setLicenseFilter] = useState<string>(LICENSE_FILTER_ALL);
   const [authorQuery, setAuthorQuery] = useState<string>("");
@@ -543,14 +552,15 @@ export function AudioResultTable({
 
       {sortedRows.length === 0 ? (
         <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-4 text-center text-xs text-muted-foreground">
-          {rows.length === 0
-            ? "Geen rijen om te tonen."
-            : "Geen rijen voor deze filtercombinatie."}
+          {emptyMessage ??
+            (rows.length === 0
+              ? "Geen rijen om te tonen."
+              : "Geen rijen voor deze filtercombinatie.")}
         </p>
       ) : (
         <div className="overflow-auto rounded-md border border-border">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead className="sticky top-0 bg-muted/60 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <table className={`w-full border-collapse text-left ${density === "list" ? "text-sm" : "text-xs"}`}>
+            <thead className={`sticky top-0 ${density === "list" ? "border-b bg-muted/40 text-sm" : "bg-muted/60 text-[10px] uppercase tracking-wide"} text-muted-foreground`}>
               <tr>
                 {selection && (
                   <SelectAllHeader
@@ -585,12 +595,12 @@ export function AudioResultTable({
                     onSort={toggleSort}
                   />
                 )}
-                <th className="px-3 py-2 font-semibold">sentence_text</th>
+                <th className="px-3 py-2 font-semibold">Brontaal (SPA)</th>
                 <th
                   className="px-3 py-2 font-semibold"
                   title="Dubbelklik op de tekst om handmatig aan te passen. + om alternatieve vertalingen toe te voegen."
                 >
-                  vertaling (NL)
+                  Vertaling (NL)
                 </th>
                 {showEdited && (
                   <th
@@ -663,6 +673,8 @@ export function AudioResultTable({
                 const cellPad = modalEditMode
                   ? "px-3 py-2 align-middle"
                   : "px-3 py-2";
+                const cellClasses = density === "list" && modalEditMode ? "px-3 py-2" : cellPad;
+                const maxWClasses = density === "list" && modalEditMode ? "" : " max-w-[14rem]";
                 return (
                   <tr
                     key={row.audio_id}
@@ -709,15 +721,15 @@ export function AudioResultTable({
                       />
                     )}
                     {showAudioId && (
-                      <td className={`${cellPad} font-mono`}>{row.audio_id}</td>
+                      <td className={`${cellClasses} font-mono`}>{row.audio_id}</td>
                     )}
                     {showSentenceId && (
-                      <td className={`${cellPad} font-mono`}>
+                      <td className={`${cellClasses} font-mono`}>
                         {row.sentence_id}
                       </td>
                     )}
                     <td
-                      className={`${cellPad}${modalEditMode ? " max-w-[14rem]" : ""}`}
+                      className={`${cellClasses}${maxWClasses}`}
                     >
                       <SourceTextCell
                         row={row}
@@ -728,7 +740,7 @@ export function AudioResultTable({
                       />
                     </td>
                     <td
-                      className={`${cellPad}${modalEditMode ? " max-w-[14rem]" : ""}`}
+                      className={`${cellClasses}${maxWClasses}`}
                     >
                       <TranslationCell
                         row={row}
@@ -742,7 +754,7 @@ export function AudioResultTable({
                       />
                     </td>
                     {showEdited && (
-                      <td className={cellPad}>
+                      <td className={cellClasses}>
                         <EditedBadgeCell
                           row={row}
                           translationCache={translation.cache}
@@ -751,7 +763,7 @@ export function AudioResultTable({
                     )}
                     {showAlternatives && (
                       <td
-                        className={`${cellPad}${modalEditMode ? " max-w-[12rem]" : ""}`}
+                        className={`${cellClasses}${density === "list" && modalEditMode ? "" : modalEditMode ? " max-w-[12rem]" : ""}`}
                       >
                         <AlternativesCell
                           row={row}
@@ -764,7 +776,7 @@ export function AudioResultTable({
                     )}
                     {showTopic && (
                       <td
-                        className={`${cellPad}${modalEditMode ? " max-w-[10rem]" : ""}`}
+                        className={`${cellClasses}${density === "list" && modalEditMode ? "" : modalEditMode ? " max-w-[10rem]" : ""}`}
                       >
                         <TopicCell
                           row={row}
@@ -776,7 +788,7 @@ export function AudioResultTable({
                     )}
                     {showTags && (
                       <td
-                        className={`${cellPad}${modalEditMode ? " max-w-[12rem]" : ""}`}
+                        className={`${cellClasses}${density === "list" && modalEditMode ? "" : modalEditMode ? " max-w-[12rem]" : ""}`}
                       >
                         <TagsCell
                           row={row}
@@ -787,36 +799,36 @@ export function AudioResultTable({
                       </td>
                     )}
                     {showLang && (
-                      <td className={`${cellPad} font-mono uppercase`}>
+                      <td className={`${cellClasses} font-mono uppercase`}>
                         {row.lang}
                       </td>
                     )}
                     {showAuthor && (
                       <td
-                        className={`${cellPad}${modalEditMode ? " max-w-[10rem] truncate" : ""}`}
+                        className={`${cellClasses}${density === "list" && modalEditMode ? "" : modalEditMode ? " max-w-[10rem] truncate" : ""}`}
                         title={modalEditMode ? row.author : undefined}
                       >
                         {row.author}
                       </td>
                     )}
                     {showLicense && (
-                      <td className={`${cellPad} font-mono text-[10px]`}>
+                      <td className={`${cellClasses} font-mono text-[10px]`}>
                         {licenseDisplay(row.license)}
                       </td>
                     )}
                     {showCreated && (
-                      <td className={`${cellPad} font-mono text-[10px] text-muted-foreground`}>
+                      <td className={`${cellClasses} font-mono text-[10px] text-muted-foreground`}>
                         {row.created ?? "—"}
                       </td>
                     )}
                     {showCosine && (
-                      <td className={`${cellPad} font-mono text-[10px] text-muted-foreground`}>
+                      <td className={`${cellClasses} font-mono text-[10px] text-muted-foreground`}>
                         {cosine !== undefined ? cosine.toFixed(3) : "—"}
                       </td>
                     )}
                     {showReason && (
                       <td
-                        className={`${cellPad} text-[11px] text-muted-foreground${modalEditMode ? " max-w-[12rem] truncate" : ""}`}
+                        className={`${cellClasses} text-[11px] text-muted-foreground${density === "list" && modalEditMode ? "" : modalEditMode ? " max-w-[12rem] truncate" : ""}`}
                         title={modalEditMode ? (reason ?? undefined) : undefined}
                       >
                         {reason ?? "—"}
@@ -854,7 +866,7 @@ export function AudioResultTable({
         </div>
       )}
 
-      {rows.length > 0 && (
+      {!hideRowCount && rows.length > 0 && (
         <p className="text-[10px] text-muted-foreground">
           Getoond {sortedRows.length} van {rows.length} rijen.
         </p>
@@ -1001,8 +1013,8 @@ function FilterToggle({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium hover:bg-muted ${hasActive
-            ? "border-accent/40 bg-accent/10 text-foreground"
-            : "border-border bg-background text-muted-foreground hover:text-foreground"
+          ? "border-accent/40 bg-accent/10 text-foreground"
+          : "border-border bg-background text-muted-foreground hover:text-foreground"
           }`}
         title={
           hasActive
@@ -1639,7 +1651,7 @@ function TranslationCell({
   if (cached && readOnly) {
     return (
       <span
-        className={compact ? "block truncate text-xs" : "text-xs"}
+        className={compact ? "block truncate" : undefined}
         title={compact ? cached.translation : undefined}
       >
         {cached.translation}
@@ -1735,8 +1747,8 @@ function TranslationCell({
                 title="Voeg een alternatieve correcte vertaling toe"
                 aria-pressed={showAddAlt}
                 className={`rounded border px-1.5 py-0.5 text-[10px] ${showAddAlt
-                    ? "border-accent bg-accent text-accent-foreground"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
               >
                 ＋
@@ -2192,8 +2204,8 @@ function AlternativesCell({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[10px] hover:text-foreground ${count > 0
-            ? "border-accent/40 bg-accent/10 text-accent"
-            : "border-border bg-background text-muted-foreground"
+          ? "border-accent/40 bg-accent/10 text-accent"
+          : "border-border bg-background text-muted-foreground"
           }`}
         title={
           count === 0
