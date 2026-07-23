@@ -36,6 +36,8 @@ Onderhoud hier de woordenlijst. Bij twijfel over een label: deze file, niet syno
 | Nieuw admin-account | Admin aanmaken | Nieuwe Beheerder |
 | Login-veld | Gebruikersnaam | Username |
 | Sleutelwoorden van oefening | Tags | - |
+| Tekst in de brontaal (oefening) | Brontaal (SPA) | sentence_text, bronzin, source text, Spaans (als kolomnaam), Brontaal |
+| Vertaling van de oefening | Vertaling (NL) | vertaling (NL) (lowercase), translation, doeltekst, Vertaling |
 
 
 ## Uitzonderingen
