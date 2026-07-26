@@ -34,12 +34,6 @@ yarn-error.log*
 .env*
 !.env.example
 
-# test credentials (Auth0 seed script)
-CRED.md
-
-# opdrachtbeschrijving (lokaal, niet committen)
-EINDOPDRACHT.md
-
 # vercel
 .vercel
 
@@ -49,3 +43,12 @@ next-env.d.ts
 
 .cursor/mcp.json
 !.cursor/mcp.json.example
+
+# test credentials (Auth0 seed script)
+CRED.md
+
+# opdrachtbeschrijving (lokaal, niet committen)
+EINDOPDRACHT.md
+
+# overig
+verdoc/
