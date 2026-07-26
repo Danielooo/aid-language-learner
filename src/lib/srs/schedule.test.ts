@@ -18,7 +18,10 @@ describe("isSrsExerciseDue", () => {
   it("sluit geschorste oefeningen uit", () => {
     assert.equal(
       isSrsExerciseDue(
-        { nextReviewAt: new Date("2026-07-09T11:00:00.000Z"), isSuspended: true },
+        {
+          nextReviewAt: new Date("2026-07-09T11:00:00.000Z"),
+          isSuspended: true,
+        },
         now,
       ),
       false,
@@ -28,7 +31,10 @@ describe("isSrsExerciseDue", () => {
   it("telt due progress mee", () => {
     assert.equal(
       isSrsExerciseDue(
-        { nextReviewAt: new Date("2026-07-09T11:00:00.000Z"), isSuspended: false },
+        {
+          nextReviewAt: new Date("2026-07-09T11:00:00.000Z"),
+          isSuspended: false,
+        },
         now,
       ),
       true,
@@ -38,7 +44,10 @@ describe("isSrsExerciseDue", () => {
   it("sluit toekomstige reviews uit", () => {
     assert.equal(
       isSrsExerciseDue(
-        { nextReviewAt: new Date("2026-07-09T13:00:00.000Z"), isSuspended: false },
+        {
+          nextReviewAt: new Date("2026-07-09T13:00:00.000Z"),
+          isSuspended: false,
+        },
         now,
       ),
       false,

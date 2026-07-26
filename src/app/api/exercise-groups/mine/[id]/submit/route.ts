@@ -2,7 +2,10 @@ import { getRoleCapabilities } from "@/lib/auth/role-capabilities";
 import { buildExerciseGroupSnapshot } from "@/lib/exercises/build-exercise-group-snapshot";
 import { snapshotsContentEqual } from "@/lib/exercises/compare-exercise-group-snapshots";
 import { getExerciseUserAccess } from "@/lib/exercises/exercise-access";
-import { EXERCISE_SELECT_COLUMNS, type ExerciseDbRow } from "@/lib/exercises/types";
+import {
+  EXERCISE_SELECT_COLUMNS,
+  type ExerciseDbRow,
+} from "@/lib/exercises/types";
 
 import type { ExerciseGroupSnapshot } from "@/types/exercise-group-submission";
 import type {
@@ -110,7 +113,10 @@ export async function POST(
 
   if (membersError) {
     return Response.json(
-      { ok: false, error: membersError.message } satisfies ExerciseGroupsFailure,
+      {
+        ok: false,
+        error: membersError.message,
+      } satisfies ExerciseGroupsFailure,
       { status: 500 },
     );
   }
@@ -141,7 +147,10 @@ export async function POST(
 
   if (rejectedError) {
     return Response.json(
-      { ok: false, error: rejectedError.message } satisfies ExerciseGroupsFailure,
+      {
+        ok: false,
+        error: rejectedError.message,
+      } satisfies ExerciseGroupsFailure,
       { status: 500 },
     );
   }

@@ -1,5 +1,8 @@
 import type { QuizSelectionMode } from "@/lib/quiz/selection-config";
-import type { TypingMode, TranslationDirection } from "@/lib/quiz/typing-config";
+import type {
+  TypingMode,
+  TranslationDirection,
+} from "@/lib/quiz/typing-config";
 
 export const PRACTICE_TYPES = ["flashcard", "typing", "sort"] as const;
 export type PracticeType = (typeof PRACTICE_TYPES)[number];
@@ -23,7 +26,8 @@ export type QuizAttemptExerciseFields = {
   at: number;
 };
 
-export type QuizAttemptPayload = QuizAttemptExerciseFields & QuizAttemptMetadata;
+export type QuizAttemptPayload = QuizAttemptExerciseFields &
+  QuizAttemptMetadata;
 
 type BuildAttemptPayloadInput = QuizAttemptExerciseFields & QuizAttemptMetadata;
 
@@ -55,7 +59,8 @@ export function toQuizAttemptPostBody(payload: QuizAttemptPayload) {
   if (payload.direction) body.direction = payload.direction;
   if (payload.typingMode) body.typingMode = payload.typingMode;
   if (payload.isMistakeReview) body.isMistakeReview = payload.isMistakeReview;
-  if (payload.responseTimeMs != null) body.responseTimeMs = payload.responseTimeMs;
+  if (payload.responseTimeMs != null)
+    body.responseTimeMs = payload.responseTimeMs;
 
   return body;
 }

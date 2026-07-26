@@ -49,12 +49,12 @@ export function ConfirmDialog({
     <dialog
       ref={dialogRef}
       onClose={onCancel}
-      className="fixed inset-0 m-auto h-fit w-[min(480px,90vw)] rounded-lg border border-border bg-card p-0 text-card-foreground backdrop:bg-foreground/40"
+      className="border-border bg-card text-card-foreground backdrop:bg-foreground/40 fixed inset-0 m-auto h-fit w-[min(480px,90vw)] rounded-lg border p-0"
     >
       <div className="space-y-4 p-5">
         <header className="space-y-1">
           <h2 className="text-base font-semibold">{title}</h2>
-          <div className="text-sm text-muted-foreground">{description}</div>
+          <div className="text-muted-foreground text-sm">{description}</div>
         </header>
 
         <footer className="flex items-center justify-end gap-2">
@@ -62,7 +62,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={pending}
-            className="rounded-md border border-border bg-background px-3 py-1.5 text-xs hover:bg-muted disabled:opacity-50"
+            className="border-border bg-background hover:bg-muted rounded-md border px-3 py-1.5 text-xs disabled:opacity-50"
           >
             Annuleren
           </button>

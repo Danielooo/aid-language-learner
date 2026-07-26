@@ -19,7 +19,7 @@ export function ProfileAvatar({
     <div
       aria-hidden="true"
       className={cn(
-        "flex size-16 shrink-0 items-center justify-center rounded-full bg-accent/15 text-lg font-semibold tracking-wide text-accent",
+        "bg-accent/15 text-accent flex size-16 shrink-0 items-center justify-center rounded-full text-lg font-semibold tracking-wide",
         className,
       )}
     >

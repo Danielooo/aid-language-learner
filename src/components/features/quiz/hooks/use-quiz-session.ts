@@ -43,9 +43,7 @@ function buildFetchUrl(config: QuizSessionConfig, exerciseId?: string): string {
   }
 
   const qs = params.toString();
-  return qs.length > 0
-    ? `/api/quiz?${qs}`
-    : "/api/quiz";
+  return qs.length > 0 ? `/api/quiz?${qs}` : "/api/quiz";
 }
 
 /** Topic altijd via ID-queue; SRS alleen tijdens fouten-review. */
@@ -88,7 +86,8 @@ export function useQuizSession() {
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [srsComplete, setSrsComplete] = useState(false);
-  const [sessionPhase, setSessionPhaseState] = useState<QuizSessionPhase>("playing");
+  const [sessionPhase, setSessionPhaseState] =
+    useState<QuizSessionPhase>("playing");
 
   const setSessionPhase = useCallback((phase: QuizSessionPhase) => {
     sessionPhaseRef.current = phase;
@@ -323,10 +322,7 @@ export function useQuizSession() {
           error?: string;
           code?: string;
         };
-        if (
-          config.selectionMode === "srs" &&
-          body.code === "SRS_NOTHING_DUE"
-        ) {
+        if (config.selectionMode === "srs" && body.code === "SRS_NOTHING_DUE") {
           completeSrsMainRound();
           return;
         }
@@ -422,7 +418,7 @@ export function useQuizSession() {
         if (lastInvalid && !isValid(lastInvalid)) {
           setError(
             invalidMessage ??
-            "Geen geschikte oefening gevonden. Probeer andere instellingen.",
+              "Geen geschikte oefening gevonden. Probeer andere instellingen.",
           );
           setItem(null);
           return;

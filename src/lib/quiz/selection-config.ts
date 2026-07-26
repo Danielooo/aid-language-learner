@@ -10,7 +10,9 @@ export const QUIZ_SELECTION_MODE_KEY = "aid:exercises-quiz:selection-mode";
 const LEGACY_RANDOM_MODE = "random";
 const LEGACY_CUSTOM_MODE = "custom";
 
-export function normalizeQuizSelectionMode(value: string): QuizSelectionMode | null {
+export function normalizeQuizSelectionMode(
+  value: string,
+): QuizSelectionMode | null {
   if (value === LEGACY_RANDOM_MODE) return "topic";
   if (value === LEGACY_CUSTOM_MODE) return null;
   return isValidQuizSelectionMode(value) ? value : null;

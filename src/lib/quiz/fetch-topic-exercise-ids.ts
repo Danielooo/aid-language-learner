@@ -30,10 +30,9 @@ export async function fetchTopicExerciseIds(
     params.set("page", String(page));
     params.set("pageSize", String(PAGE_SIZE));
 
-    const res = await fetch(
-      `/api/quiz/list?${params.toString()}`,
-      { cache: "no-store" },
-    );
+    const res = await fetch(`/api/quiz/list?${params.toString()}`, {
+      cache: "no-store",
+    });
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       throw new Error(body.error ?? `Status ${res.status}`);

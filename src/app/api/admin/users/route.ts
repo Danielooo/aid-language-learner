@@ -70,7 +70,9 @@ export async function GET(): Promise<Response> {
     for (const u of data.users) {
       authById.set(u.id, {
         role: isAdminUser(u) ? "admin" : "user",
-        banned: Boolean(u.banned_until && new Date(u.banned_until) > new Date()),
+        banned: Boolean(
+          u.banned_until && new Date(u.banned_until) > new Date(),
+        ),
       });
     }
     if (data.users.length < perPage) break;

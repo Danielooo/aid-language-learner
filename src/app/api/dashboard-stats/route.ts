@@ -1,9 +1,16 @@
 import { buildDashboardStats } from "@/lib/dashboard/metrics";
 import { createMockDashboardStats } from "@/lib/dashboard/mock-data";
 import { getExerciseUserAccess } from "@/lib/exercises/exercise-access";
-import { getActiveTopicsForUser, isTopicActive } from "@/lib/topics/active-topics";
+import {
+  getActiveTopicsForUser,
+  isTopicActive,
+} from "@/lib/topics/active-topics";
 
-import type { AttemptRow, ExerciseTopicRow, ProgressRow } from "@/lib/dashboard/types";
+import type {
+  AttemptRow,
+  ExerciseTopicRow,
+  ProgressRow,
+} from "@/lib/dashboard/types";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +35,10 @@ export async function GET(req: Request) {
   }
 
   const now = new Date();
-  const activeTopics = await getActiveTopicsForUser(access.supabase, access.userId);
+  const activeTopics = await getActiveTopicsForUser(
+    access.supabase,
+    access.userId,
+  );
 
   // Alleen eigen oefeningen (B46): globale corpus-rijen niet in Voortgang.
   const [progressRes, exerciseTopicsRes, attemptsRes] = await Promise.all([
@@ -54,7 +64,10 @@ export async function GET(req: Request) {
     return Response.json({ error: progressRes.error.message }, { status: 500 });
   }
   if (exerciseTopicsRes.error) {
-    return Response.json({ error: exerciseTopicsRes.error.message }, { status: 500 });
+    return Response.json(
+      { error: exerciseTopicsRes.error.message },
+      { status: 500 },
+    );
   }
   if (attemptsRes.error) {
     return Response.json({ error: attemptsRes.error.message }, { status: 500 });
@@ -66,17 +79,19 @@ export async function GET(req: Request) {
   }
 
   const exercises: ExerciseTopicRow[] = (exerciseTopicsRes.data ?? [])
-    .filter((row) => row.topic != null && isTopicActive(activeTopics, row.topic))
+    .filter(
+      (row) => row.topic != null && isTopicActive(activeTopics, row.topic),
+    )
     .map((row) => ({ id: row.id, topic: row.topic as string }));
 
-  const progressRows = ((progressRes.data ?? []) as unknown as ProgressRow[]).filter(
-    (row) => {
-      // Alleen progress op eigen oefeningen (niet globale ids uit oude sessies).
-      if (!topicByExerciseId.has(row.exercise_id)) return false;
-      const topic = topicByExerciseId.get(row.exercise_id) ?? null;
-      return isTopicActive(activeTopics, topic);
-    },
-  );
+  const progressRows = (
+    (progressRes.data ?? []) as unknown as ProgressRow[]
+  ).filter((row) => {
+    // Alleen progress op eigen oefeningen (niet globale ids uit oude sessies).
+    if (!topicByExerciseId.has(row.exercise_id)) return false;
+    const topic = topicByExerciseId.get(row.exercise_id) ?? null;
+    return isTopicActive(activeTopics, topic);
+  });
 
   const attemptRows: AttemptRow[] = (
     (attemptsRes.data ?? []) as unknown as AttemptRowWithExercise[]
@@ -84,9 +99,12 @@ export async function GET(req: Request) {
     .map((row) => ({
       created_at: row.created_at,
       is_correct: row.is_correct,
-      topic: row.exercises?.topic ?? topicByExerciseId.get(row.exercise_id) ?? null,
+      topic:
+        row.exercises?.topic ?? topicByExerciseId.get(row.exercise_id) ?? null,
     }))
     .filter((row) => isTopicActive(activeTopics, row.topic));
 
-  return Response.json(buildDashboardStats(progressRows, attemptRows, now, exercises));
+  return Response.json(
+    buildDashboardStats(progressRows, attemptRows, now, exercises),
+  );
 }

@@ -117,7 +117,7 @@ export function ThemeToggle() {
             </button>
             <span
               role="tooltip"
-              className="pointer-events-none absolute top-full left-1/2 z-50 mt-1.5 hidden -translate-x-1/2 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium whitespace-nowrap text-foreground shadow-md group-hover:block group-focus-within:block"
+              className="border-border bg-card text-foreground pointer-events-none absolute top-full left-1/2 z-50 mt-1.5 hidden -translate-x-1/2 rounded-md border px-2 py-1 text-xs font-medium whitespace-nowrap shadow-md group-focus-within:block group-hover:block"
             >
               {option.label}
             </span>

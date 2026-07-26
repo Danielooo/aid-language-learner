@@ -4,6 +4,10 @@ import {
   listSentencesWithAudio,
   type TatoebaSentenceWithAudios,
 } from "@/lib/api/tatoeba-audio";
+import {
+  buildNormalizedSourceTextSet,
+  normalizeSourceText,
+} from "@/lib/exercises/list-personal-source-texts";
 
 import type { AudioExerciseProposal } from "@/types/audio-exercise";
 
@@ -16,10 +20,17 @@ export type SearchAudioExercisesInput = {
   tags: string[];
   /** Audio-IDs die al in eerdere batches staan; overslaan bij zoeken. */
   excludeAudioIds?: number[];
+  /** Spaanse bronzinnen om over te slaan (exact, case-insensitive). */
+  excludeSourceTexts?: string[];
 };
 
 export type SearchAudioExercisesResult =
-  | { ok: true; topic: string; exercises: AudioExerciseProposal[]; urls: string[] }
+  | {
+      ok: true;
+      topic: string;
+      exercises: AudioExerciseProposal[];
+      urls: string[];
+    }
   | { ok: false; error: string };
 
 const SOURCE_LANG = "spa";
@@ -35,19 +46,22 @@ export async function searchAudioExercises(
 ): Promise<SearchAudioExercisesResult> {
   const topic = input.topic.trim();
   if (!topic) {
-    return { ok: false, error: "Topic mag niet leeg zijn." };
+    return { ok: false, error: "Geef een onderwerp op." };
   }
 
   const count = Math.min(Math.max(1, Math.floor(input.count)), 30);
   const keywords = dedupeKeywords(input.keywords);
   if (keywords.length === 0) {
-    return { ok: false, error: "Minimaal één zoekwoord vereist." };
+    return { ok: false, error: "Geef minstens één zoekwoord op." };
   }
 
   const tags = normalizeTags(input.tags, topic);
   const seenSentenceIds = new Set<number>();
   const seenAudioIds = new Set<number>(
     (input.excludeAudioIds ?? []).filter((id) => Number.isFinite(id)),
+  );
+  const excludedSourceTexts = buildNormalizedSourceTextSet(
+    input.excludeSourceTexts ?? [],
   );
   const exercises: AudioExerciseProposal[] = [];
   const urls: string[] = [];
@@ -65,13 +79,13 @@ export async function searchAudioExercises(
     });
 
     if (!result.ok) {
-      const message =
-        "message" in result.error
-          ? result.error.message
-          : "Tatoeba-zoekopdracht mislukt.";
       // Eerste keyword faalt hard; latere keywords zijn best-effort.
       if (exercises.length === 0 && urls.length === 0) {
-        return { ok: false, error: message };
+        return {
+          ok: false,
+          error:
+            "Zoeken naar spraakoefeningen lukte niet. Probeer het zo opnieuw.",
+        };
       }
       continue;
     }
@@ -84,6 +98,9 @@ export async function searchAudioExercises(
       if (!mapped) continue;
       if (seenSentenceIds.has(mapped.sentence_id)) continue;
       if (seenAudioIds.has(mapped.audio_id)) continue;
+      if (excludedSourceTexts.has(normalizeSourceText(mapped.source_text))) {
+        continue;
+      }
       seenSentenceIds.add(mapped.sentence_id);
       seenAudioIds.add(mapped.audio_id);
       exercises.push(mapped);
@@ -94,7 +111,7 @@ export async function searchAudioExercises(
     return {
       ok: false,
       error:
-        "Geen Tatoeba-zinnen met audio en Nederlandse vertaling gevonden voor deze zoektermen.",
+        "Geen spraakoefeningen met audio gevonden voor deze zoektermen. Probeer andere woorden.",
     };
   }
 
@@ -137,8 +154,9 @@ function mapSentenceToProposal(
 function pickReusableAudio(sentence: TatoebaSentenceWithAudios) {
   const audios = sentence.audios ?? [];
   return (
-    audios.find((a) => typeof a.license === "string" && a.license.trim() !== "") ??
-    null
+    audios.find(
+      (a) => typeof a.license === "string" && a.license.trim() !== "",
+    ) ?? null
   );
 }
 

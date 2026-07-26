@@ -18,11 +18,11 @@ export function QuizBackToOverviewButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm text-foreground hover:bg-muted"
+      className="border-border text-foreground hover:bg-muted inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm"
     >
       Terug naar overzicht
       {showEscHint ? (
-        <kbd className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+        <kbd className="border-border bg-background text-muted-foreground rounded border px-1.5 py-0.5 font-mono text-[10px]">
           Esc
         </kbd>
       ) : null}

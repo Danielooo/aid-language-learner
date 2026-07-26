@@ -1,6 +1,6 @@
 ---
 description: Pagina-chrome (indeling, spacing, header, tabs) — niet feature-inhoud
-globs: app/(app)/**/*.tsx,app/_components/features/**/*.tsx,app/_components/ui/app-page-header.tsx,app/_components/ui/container.tsx
+globs: src/app/(app)/**/*.tsx,src/components/features/**/*.tsx,src/components/ui/app-page-header.tsx,src/components/ui/container.tsx
 alwaysApply: false
 ---
 
@@ -14,7 +14,7 @@ Complementair: `ui-terminology` = copy · `styling-tailwind` = Tailwind-techniek
 
 ## Shell
 
-- Authenticated pages leven in `app/(app)/layout.tsx` (`Container width="xl"`, `gap-6` / `py-6`).
+- Authenticated pages leven in `src/app/(app)/layout.tsx` (`Container width="xl"`, `gap-6` / `py-6`).
 - Geen tweede `Container` om app-pages heen (auth/marketing mag wel eigen container).
 
 ## Page root + header
@@ -29,7 +29,7 @@ Complementair: `ui-terminology` = copy · `styling-tailwind` = Tailwind-techniek
 // ❌ ad-hoc h1 + border-rij i.p.v. AppPageHeader
 ```
 
-- Eén `AppPageHeader` bovenaan (`app/_components/ui/app-page-header.tsx`).
+- Eén `AppPageHeader` bovenaan (`src/components/ui/app-page-header.tsx`).
 - `title` verplicht; `description` / `actions` / `meta` naar behoefte.
 - Geen `accountLabel` of `stats` op user-pagina’s — account zit in de top nav.
 

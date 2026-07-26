@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { signOut } from "@/app/(auth)/actions";
-import { Container } from "@/app/_components/ui/container";
-import { ThemeToggle } from "@/app/_components/ui/theme-toggle";
+import { Container } from "@/components/ui/container";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { APP_ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,8 @@ type AppShellNavProps = {
 };
 
 function isActive(pathname: string, href: string): boolean {
+  // Exact match voor `/` — anders zou elke route actief lijken.
+  if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -25,14 +27,14 @@ export function AppTopNav({ accountLabel, isAdmin = false }: AppShellNavProps) {
   const navItems = getAppNavItems(isAdmin);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="border-border bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 border-b backdrop-blur">
       <Container width="xl">
         <div className="flex min-h-14 items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <Link
               href={isAdmin ? APP_ROUTES.adminBijdragen : APP_ROUTES.oefenen}
               aria-label="AID Language Learner — home"
-              className="text-2xl font-bold tracking-tighter text-foreground"
+              className="text-foreground text-2xl font-bold tracking-tighter"
             >
               LL
             </Link>
@@ -71,7 +73,7 @@ export function AppTopNav({ accountLabel, isAdmin = false }: AppShellNavProps) {
                   pathname === APP_ROUTES.profiel ? "page" : undefined
                 }
                 className={cn(
-                  "inline-flex h-10 max-w-48 items-center truncate rounded-md border border-border px-3.5 text-sm font-medium transition-colors sm:max-w-64",
+                  "border-border inline-flex h-10 max-w-48 items-center truncate rounded-md border px-3.5 text-sm font-medium transition-colors sm:max-w-64",
                   pathname === APP_ROUTES.profiel
                     ? "border-accent/30 bg-accent/10 text-accent"
                     : "bg-background text-foreground hover:bg-muted",
@@ -85,7 +87,7 @@ export function AppTopNav({ accountLabel, isAdmin = false }: AppShellNavProps) {
                 type="submit"
                 aria-label="Uitloggen"
                 title="Uitloggen"
-                className="inline-flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-background text-foreground transition-colors hover:bg-muted"
+                className="border-border bg-background text-foreground hover:bg-muted inline-flex size-9 cursor-pointer items-center justify-center rounded-md border transition-colors"
               >
                 <LogoutIcon />
               </button>
@@ -105,7 +107,7 @@ export function AppTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
   return (
     <nav
       aria-label="Hoofdnavigatie mobiel"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden"
+      className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul

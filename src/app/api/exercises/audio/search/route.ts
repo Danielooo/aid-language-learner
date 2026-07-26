@@ -19,7 +19,10 @@ const requestSchema = z.object({
 export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) {
-    return Response.json({ ok: false, error: "Niet ingelogd." }, { status: 401 });
+    return Response.json(
+      { ok: false, error: "Niet ingelogd." },
+      { status: 401 },
+    );
   }
 
   let parsedBody: unknown;

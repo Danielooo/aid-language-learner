@@ -193,7 +193,11 @@ export async function POST(req: Request) {
   let repetitionCountBefore: number | null = null;
 
   if (isScheduledReview) {
-    const snapshot = await loadSrsSnapshot(serverSupabase, supabaseUserId, exerciseId);
+    const snapshot = await loadSrsSnapshot(
+      serverSupabase,
+      supabaseUserId,
+      exerciseId,
+    );
     intervalDaysBefore = snapshot?.interval_days ?? 0;
     repetitionCountBefore = snapshot?.repetition_count ?? 0;
   }
@@ -219,10 +223,7 @@ export async function POST(req: Request) {
     .single();
 
   if (error) {
-    return Response.json(
-      { ok: false, error: error.message },
-      { status: 500 },
-    );
+    return Response.json({ ok: false, error: error.message }, { status: 500 });
   }
 
   const row = data as unknown as AttemptRowWithExercise;
@@ -245,10 +246,7 @@ export async function DELETE() {
     .eq("user_id", supabaseUserId);
 
   if (error) {
-    return Response.json(
-      { ok: false, error: error.message },
-      { status: 500 },
-    );
+    return Response.json({ ok: false, error: error.message }, { status: 500 });
   }
 
   return Response.json({ ok: true, deleted: count ?? 0 });

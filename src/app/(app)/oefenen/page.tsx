@@ -1,4 +1,4 @@
-import { ExercisesQuizPage } from "@/app/_components/features/quiz/exercises-quiz-page";
+import { ExercisesQuizPage } from "@/components/features/quiz/exercises-quiz-page";
 
 import type { Metadata } from "next";
 

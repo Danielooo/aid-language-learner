@@ -1,4 +1,4 @@
-import { SortQuizDeck } from "@/app/_components/features/quiz/sort-quiz-deck";
+import { SortQuizDeck } from "@/components/features/quiz/sort-quiz-deck";
 
 import type { Metadata } from "next";
 

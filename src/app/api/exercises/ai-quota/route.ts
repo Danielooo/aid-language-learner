@@ -1,7 +1,4 @@
-import {
-  getAiQuotaStatus,
-  getSessionUser,
-} from "@/lib/auth/assert-ai-quota";
+import { getAiQuotaStatus, getSessionUser } from "@/lib/auth/assert-ai-quota";
 
 export const dynamic = "force-dynamic";
 

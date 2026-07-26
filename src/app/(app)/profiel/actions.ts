@@ -96,7 +96,8 @@ export async function updateProfile(
 
   const previousUsername = currentProfile?.username ?? null;
   const usernameChanged =
-    previousUsername !== null && previousUsername.toLowerCase() !== username.toLowerCase();
+    previousUsername !== null &&
+    previousUsername.toLowerCase() !== username.toLowerCase();
 
   const { error: profileError } = await supabase
     .from("profiles")

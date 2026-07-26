@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { AppPageHeader } from "@/app/_components/ui/app-page-header";
+import { AppPageHeader } from "@/components/ui/app-page-header";
 
 import {
   FlashcardsIcon,
@@ -45,7 +45,7 @@ export function ExercisesQuizPage() {
       />
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-foreground">
+        <h2 className="text-foreground text-lg font-semibold">
           Wat wil je oefenen?
         </h2>
         <ul
@@ -74,7 +74,7 @@ export function ExercisesQuizPage() {
 
       {selection && (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">
+          <h2 className="text-foreground text-lg font-semibold">
             Hoe wil je oefenen?
           </h2>
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

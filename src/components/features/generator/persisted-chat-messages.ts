@@ -1,4 +1,4 @@
-import { getMessageText } from "@/app/_components/features/chat/message-text";
+import { getMessageText } from "@/components/features/chat/message-text";
 
 import type { UIMessage } from "ai";
 

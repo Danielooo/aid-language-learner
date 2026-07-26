@@ -47,9 +47,7 @@ export function getSortExerciseData(
   };
 }
 
-export function isSortExerciseEligible(
-  data: SortExerciseData,
-): boolean {
+export function isSortExerciseEligible(data: SortExerciseData): boolean {
   return data.tokens.length >= MIN_SORT_WORDS;
 }
 

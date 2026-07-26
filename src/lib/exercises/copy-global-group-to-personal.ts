@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { EXERCISE_SELECT_COLUMNS, type ExerciseDbRow } from "@/lib/exercises/types";
+import {
+  EXERCISE_SELECT_COLUMNS,
+  type ExerciseDbRow,
+} from "@/lib/exercises/types";
 
 type CopySuccess = {
   ok: true;
@@ -23,7 +26,10 @@ export type CopyGlobalGroupOptions = {
 };
 
 /** Voorstel: originele naam + datum van vandaag tussen haakjes. */
-export function suggestedCommunityCopyName(baseName: string, at = new Date()): string {
+export function suggestedCommunityCopyName(
+  baseName: string,
+  at = new Date(),
+): string {
   const date = new Intl.DateTimeFormat("nl-NL", {
     day: "numeric",
     month: "short",

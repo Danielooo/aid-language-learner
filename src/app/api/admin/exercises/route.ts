@@ -84,7 +84,10 @@ export async function GET(req: Request): Promise<Response> {
 
   if (!parse.success) {
     return Response.json(
-      { ok: false, error: "Validatie mislukt." } satisfies ExercisesAdminListFailure,
+      {
+        ok: false,
+        error: "Validatie mislukt.",
+      } satisfies ExercisesAdminListFailure,
       { status: 400 },
     );
   }
@@ -131,8 +134,9 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   const publicUrlForPath = (path: string) => getPublicAudioUrl(supabase, path);
-  const rows = (data ?? [])
-    .map((row) => mapDbRowToAdminRow(row as ExerciseDbRow, publicUrlForPath));
+  const rows = (data ?? []).map((row) =>
+    mapDbRowToAdminRow(row as ExerciseDbRow, publicUrlForPath),
+  );
 
   return Response.json({
     ok: true,
@@ -153,7 +157,10 @@ export async function DELETE(req: Request): Promise<Response> {
     body = await req.json();
   } catch {
     return Response.json(
-      { ok: false, error: "Body is geen geldige JSON." } satisfies ExercisesAdminDeleteFailure,
+      {
+        ok: false,
+        error: "Body is geen geldige JSON.",
+      } satisfies ExercisesAdminDeleteFailure,
       { status: 400 },
     );
   }
@@ -161,7 +168,10 @@ export async function DELETE(req: Request): Promise<Response> {
   const parse = deleteBodySchema.safeParse(body);
   if (!parse.success) {
     return Response.json(
-      { ok: false, error: "Validatie mislukt." } satisfies ExercisesAdminDeleteFailure,
+      {
+        ok: false,
+        error: "Validatie mislukt.",
+      } satisfies ExercisesAdminDeleteFailure,
       { status: 400 },
     );
   }

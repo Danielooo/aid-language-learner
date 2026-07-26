@@ -7,10 +7,7 @@ export type SortFeedback = {
   correctAnswer: string;
 };
 
-function sequencesMatch(
-  userWords: string[],
-  sequence: string[],
-): boolean {
+function sequencesMatch(userWords: string[], sequence: string[]): boolean {
   if (userWords.length !== sequence.length) return false;
   return userWords.every(
     (word, i) => normalizeWord(word) === normalizeWord(sequence[i] ?? ""),
@@ -64,7 +61,8 @@ export function getPrefixMatchLength(word: string, prefix: string): number {
 
   const normalizedPrefix = normalizeWord(prefix);
   const normalizedWord = normalizeWord(word);
-  if (normalizedWord.startsWith(normalizedPrefix)) return normalizedPrefix.length;
+  if (normalizedWord.startsWith(normalizedPrefix))
+    return normalizedPrefix.length;
 
   return 0;
 }
@@ -97,7 +95,9 @@ export function buildSentenceFromSlots(
 }
 
 /** Alle pool-items (initieel + terug in pool) als lookup-map. */
-export function buildPoolLookup(items: SortPoolItem[]): Map<string, SortPoolItem> {
+export function buildPoolLookup(
+  items: SortPoolItem[],
+): Map<string, SortPoolItem> {
   return new Map(items.map((item) => [item.id, item]));
 }
 

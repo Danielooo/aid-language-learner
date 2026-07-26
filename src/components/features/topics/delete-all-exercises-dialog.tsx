@@ -35,7 +35,7 @@ export function DeleteAllExercisesDialog({
   }, [open]);
 
   const topicLabel = topicName ? (
-    <span className="font-medium text-foreground">“{topicName}”</span>
+    <span className="text-foreground font-medium">“{topicName}”</span>
   ) : (
     "dit topic"
   );
@@ -44,22 +44,20 @@ export function DeleteAllExercisesDialog({
     <dialog
       ref={dialogRef}
       onClose={onCancel}
-      className="fixed inset-0 m-auto h-fit w-[min(480px,90vw)] rounded-lg border border-border bg-card p-0 text-card-foreground backdrop:bg-foreground/40"
+      className="border-border bg-card text-card-foreground backdrop:bg-foreground/40 fixed inset-0 m-auto h-fit w-[min(480px,90vw)] rounded-lg border p-0"
     >
       <div className="space-y-4 p-5">
         <header className="space-y-1">
           <h2 className="text-base font-semibold">
             Alle oefeningen verwijderen?
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Je staat op het punt{" "}
             {count === 1 ? "de laatste oefening" : `alle ${count} oefeningen`}{" "}
             in {topicLabel} te verwijderen. Het topic verdwijnt dan ook uit je
             leerplan
-            {hasAudio
-              ? ", inclusief de bijbehorende audiobestanden"
-              : ""}
-            . Dit kun je niet ongedaan maken. Wil je doorgaan?
+            {hasAudio ? ", inclusief de bijbehorende audiobestanden" : ""}. Dit
+            kun je niet ongedaan maken. Wil je doorgaan?
           </p>
         </header>
 
@@ -68,7 +66,7 @@ export function DeleteAllExercisesDialog({
             type="button"
             onClick={onCancel}
             disabled={deleting}
-            className="rounded-md border border-border bg-background px-3 py-1.5 text-xs hover:bg-muted disabled:opacity-50"
+            className="border-border bg-background hover:bg-muted rounded-md border px-3 py-1.5 text-xs disabled:opacity-50"
           >
             Annuleren
           </button>
@@ -76,7 +74,7 @@ export function DeleteAllExercisesDialog({
             type="button"
             onClick={onConfirm}
             disabled={deleting}
-            className="rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50"
           >
             {deleting ? "Verwijderen…" : "Verwijderen"}
           </button>

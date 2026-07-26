@@ -18,10 +18,10 @@ export function ExerciseErrorState({
   if (status === 404) {
     return (
       <div className="space-y-3 text-sm">
-        <p className="font-medium text-foreground">{message}</p>
+        <p className="text-foreground font-medium">{message}</p>
         <Link
           href={APP_ROUTES.generator}
-          className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+          className="bg-accent text-accent-foreground hover:bg-accent/90 inline-flex h-9 items-center rounded-md px-3 text-sm font-medium transition-colors"
         >
           Naar de generator
         </Link>
@@ -30,12 +30,12 @@ export function ExerciseErrorState({
   }
   return (
     <div className="space-y-3 text-sm">
-      <p className="font-medium text-destructive">Kon geen oefening laden.</p>
-      <p className="font-mono text-xs text-muted-foreground">{message}</p>
+      <p className="text-destructive font-medium">Kon geen oefening laden.</p>
+      <p className="text-muted-foreground font-mono text-xs">{message}</p>
       <button
         type="button"
         onClick={onRetry}
-        className="inline-flex h-9 cursor-pointer items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-muted"
+        className="border-input bg-background hover:bg-muted inline-flex h-9 cursor-pointer items-center rounded-md border px-3 text-sm"
       >
         Opnieuw proberen
       </button>

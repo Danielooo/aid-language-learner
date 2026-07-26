@@ -5,13 +5,13 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
   AudioResultTable,
   type ColumnKey,
-} from "@/app/_components/features/exercises/audio-result-table";
+} from "@/components/features/exercises/audio-result-table";
 import {
   ExerciseEditModal,
   type ExerciseEditValues,
-} from "@/app/_components/features/exercises/exercise-edit-modal";
+} from "@/components/features/exercises/exercise-edit-modal";
 import type { AudioRow } from "@/types/tatoeba";
-import { useTranslationCache } from "@/lib/hooks/use-translation-cache";
+import { useTranslationCache } from "@/hooks/use-translation-cache";
 
 import {
   ProposalTopicDestination,
@@ -62,10 +62,7 @@ type ProposalTableProps = {
   destinationMode: TopicDestinationMode;
   onDestinationModeChange: (mode: TopicDestinationMode) => void;
   onRemoveAudioIds?: (audioIds: number[]) => void;
-  onUpdateExercise?: (
-    audioId: number,
-    values: ExerciseEditValues,
-  ) => void;
+  onUpdateExercise?: (audioId: number, values: ExerciseEditValues) => void;
   /** Melden van selectie/topic-wijzigingen voor draft-persist. */
   onDraftMetaChange?: (meta: {
     selectedAudioIds: number[];
@@ -104,8 +101,10 @@ export function ProposalTable({
   );
   const topicInitializedRef = useRef(Boolean(initialTopic?.trim()));
   const topicRef = useRef(topic);
-  topicRef.current = topic;
   const didApplyInitialSelectionRef = useRef(false);
+  useLayoutEffect(() => {
+    topicRef.current = topic;
+  }, [topic]);
 
   const prevBatchCountRef = useRef(0);
   const prevBatchesRef = useRef<ProposalBatch[]>([]);
@@ -114,7 +113,7 @@ export function ProposalTable({
     draftMetaRef.current = onDraftMetaChange;
   }, [onDraftMetaChange]);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+  /* eslint-disable react-hooks/set-state-in-effect -- batch-sync bouwt tabelstate uit externe AI-output/cache */
   useLayoutEffect(() => {
     const prevCount = prevBatchCountRef.current;
     const nextCount = batches.length;
@@ -158,6 +157,14 @@ export function ProposalTable({
       const newRows = batchRowGroups.toReversed().flat();
 
       setRows((prev) => [...newRows, ...prev]);
+      if (!didApplyInitialSelectionRef.current && initialSelectedIds?.length) {
+        const rowIds = new Set(newRows.map((row) => row.audio_id));
+        const valid = initialSelectedIds.filter((id) => rowIds.has(id));
+        if (valid.length > 0) {
+          setSelectedIds(new Set(valid));
+          didApplyInitialSelectionRef.current = true;
+        }
+      }
     } else if (nextCount < prevCount) {
       const removedCount = getLastBatchExerciseCount(prevBatchesRef.current);
       if (removedCount > 0) {
@@ -180,20 +187,8 @@ export function ProposalTable({
 
     prevBatchCountRef.current = nextCount;
     prevBatchesRef.current = batches;
-  }, [batches, proposal?.topic, initialTopic]);
+  }, [batches, proposal?.topic, initialTopic, initialSelectedIds]);
   /* eslint-enable react-hooks/set-state-in-effect */
-
-  // Eenmalig draft-selectie toepassen nadat rijen bestaan.
-  useLayoutEffect(() => {
-    if (didApplyInitialSelectionRef.current) return;
-    if (!initialSelectedIds?.length || rows.length === 0) return;
-    const valid = initialSelectedIds.filter((id) =>
-      rows.some((row) => row.audio_id === id),
-    );
-    if (valid.length === 0) return;
-    setSelectedIds(new Set(valid));
-    didApplyInitialSelectionRef.current = true;
-  }, [initialSelectedIds, rows]);
 
   useLayoutEffect(() => {
     draftMetaRef.current?.({
@@ -269,8 +264,9 @@ export function ProposalTable({
 
   const selectedCount = selectedIds.size;
 
-  const countLabel = `${rows.length} oefening${rows.length === 1 ? "" : "en"}${selectedCount > 0 ? ` · ${selectedCount} geselecteerd` : ""
-    }${batches.length > 1 ? ` · ${batches.length} batches` : ""}`;
+  const countLabel = `${rows.length} oefening${rows.length === 1 ? "" : "en"}${
+    selectedCount > 0 ? ` · ${selectedCount} geselecteerd` : ""
+  }${batches.length > 1 ? ` · ${batches.length} batches` : ""}`;
 
   return (
     <section className="space-y-4">
@@ -294,7 +290,7 @@ export function ProposalTable({
                 type="button"
                 onClick={handleDeleteSelected}
                 disabled={selectedCount === 0}
-                className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-foreground disabled:opacity-50"
+                className="border-border text-foreground inline-flex h-9 items-center rounded-md border px-3 text-xs disabled:opacity-50"
               >
                 Verwijder geselecteerd
               </button>
@@ -309,7 +305,7 @@ export function ProposalTable({
         }}
       />
 
-      <p className="text-xs text-muted-foreground">{countLabel}</p>
+      <p className="text-muted-foreground text-xs">{countLabel}</p>
 
       {rows.length === 0 ? (
         <EmptyProposalTableChrome
@@ -322,7 +318,7 @@ export function ProposalTable({
           translation={{
             cache: translationLookup,
             state: {},
-            onTranslateRow: () => { },
+            onTranslateRow: () => {},
           }}
           selection={{
             selectedIds,
@@ -366,17 +362,17 @@ export function ProposalTable({
         initial={
           editRow
             ? (() => {
-              const cached = translationLookup.get(
-                editRow.audio_id,
-                editRow.sentence_text,
-              );
-              return {
-                sourceText: editRow.sentence_text,
-                targetText: cached?.translation ?? "",
-                tags: cached?.tags ?? [],
-                alternatives: cached?.alternatives ?? [],
-              };
-            })()
+                const cached = translationLookup.get(
+                  editRow.audio_id,
+                  editRow.sentence_text,
+                );
+                return {
+                  sourceText: editRow.sentence_text,
+                  targetText: cached?.translation ?? "",
+                  tags: cached?.tags ?? [],
+                  alternatives: cached?.alternatives ?? [],
+                };
+              })()
             : null
         }
         saving={false}
@@ -400,9 +396,9 @@ function EmptyProposalTableChrome({
 }) {
   const colSpan = showMp3 ? 6 : 5;
   return (
-    <div className="overflow-auto rounded-md border border-border">
+    <div className="border-border overflow-auto rounded-md border">
       <table className="w-full border-collapse text-left text-sm">
-        <thead className="sticky top-0 border-b bg-muted/40 text-sm text-muted-foreground">
+        <thead className="bg-muted/40 text-muted-foreground sticky top-0 border-b text-sm">
           <tr>
             <th className="w-10 px-3 py-2" aria-label="Selectie" />
             {showMp3 && (
@@ -418,7 +414,7 @@ function EmptyProposalTableChrome({
           <tr>
             <td
               colSpan={colSpan}
-              className="px-3 py-8 text-center text-sm text-muted-foreground"
+              className="text-muted-foreground px-3 py-8 text-center text-sm"
             >
               {message}
             </td>
@@ -443,14 +439,14 @@ function SaveButton({
   if (persistState.status === "error") {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-xs text-destructive">
-          Fout: {persistState.error}
+        <span className="text-destructive text-xs" role="alert">
+          {persistState.error}
         </span>
         <button
           type="button"
           onClick={onSave}
           disabled={disabled}
-          className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
+          className="border-border hover:bg-muted rounded-md border px-3 py-1.5 text-xs font-medium disabled:opacity-50"
         >
           Opnieuw proberen
         </button>
@@ -463,7 +459,7 @@ function SaveButton({
       type="button"
       onClick={onSave}
       disabled={disabled || persistState.status === "saving"}
-      className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+      className="bg-accent text-accent-foreground hover:bg-accent/90 inline-flex h-9 items-center rounded-md px-3 text-xs font-medium transition-colors disabled:opacity-50"
     >
       {persistState.status === "saving" ? "Opslaan…" : label}
     </button>

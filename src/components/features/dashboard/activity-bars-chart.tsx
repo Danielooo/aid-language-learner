@@ -38,7 +38,10 @@ function formatStreakHint(streakDays: number): string {
   return `Streak: ${streakDays} dagen`;
 }
 
-export function ActivityBarsChart({ data, streakDays }: ActivityBarsChartProps) {
+export function ActivityBarsChart({
+  data,
+  streakDays,
+}: ActivityBarsChartProps) {
   const rows = useMemo<ActivityChartRow[]>(
     () =>
       data.map((day) => ({
@@ -81,19 +84,26 @@ export function ActivityBarsChart({ data, streakDays }: ActivityBarsChartProps) 
         axisLeft={{
           tickSize: 0,
           tickPadding: 8,
-          tickValues: maxCount <= 5 ? Array.from({ length: maxCount + 1 }, (_, i) => i) : undefined,
+          tickValues:
+            maxCount <= 5
+              ? Array.from({ length: maxCount + 1 }, (_, i) => i)
+              : undefined,
           format: (value) => `${value}`,
         }}
-        gridYValues={maxCount <= 5 ? Array.from({ length: maxCount + 1 }, (_, i) => i) : undefined}
+        gridYValues={
+          maxCount <= 5
+            ? Array.from({ length: maxCount + 1 }, (_, i) => i)
+            : undefined
+        }
         tooltip={({ indexValue, value, data: barData }) => {
           const row = barData as ActivityChartRow;
           return (
-            <div className="rounded-md border border-border bg-card px-2.5 py-2 text-xs shadow-md">
-              <strong className="block text-foreground">{indexValue}</strong>
-              <div className="mt-1 font-medium text-foreground">
+            <div className="border-border bg-card rounded-md border px-2.5 py-2 text-xs shadow-md">
+              <strong className="text-foreground block">{indexValue}</strong>
+              <div className="text-foreground mt-1 font-medium">
                 {value} {(value as number) === 1 ? "poging" : "pogingen"}
               </div>
-              <div className="mt-0.5 text-muted-foreground">
+              <div className="text-muted-foreground mt-0.5">
                 {row.correct} goed, {row.incorrect} fout
               </div>
             </div>

@@ -39,13 +39,13 @@ export default async function AdminLayout({
     <div className="space-y-6">
       <nav
         aria-label="Admin-navigatie"
-        className="flex flex-wrap gap-2 border-b border-border pb-3"
+        className="border-border flex flex-wrap gap-2 border-b pb-3"
       >
         {links.map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
           >
             {link.label}
           </Link>

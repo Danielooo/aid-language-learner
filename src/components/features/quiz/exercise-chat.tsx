@@ -4,8 +4,8 @@ import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { ChatComposer } from "@/app/_components/features/chat/chat-composer";
-import { ChatThread } from "@/app/_components/features/chat/chat-thread";
+import { ChatComposer } from "@/components/features/chat/chat-composer";
+import { ChatThread } from "@/components/features/chat/chat-thread";
 
 import type { ExerciseQuizItem } from "@/types/quiz";
 import type { QuizChatMode } from "@/lib/ai/exercise-quiz-chat-config";
@@ -48,7 +48,6 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
     feedbackRef.current = feedback;
   }, [feedback]);
 
-  /* eslint-disable react-hooks/refs */
   const transport = useMemo(() => {
     return new DefaultChatTransport<UIMessage>({
       api: "/api/quiz/chat",
@@ -63,9 +62,7 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
         isCorrect: feedbackRef.current?.isCorrect,
       }),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  /* eslint-enable react-hooks/refs */
+  }, [exercise.source_text, exercise.target_text, exercise.topic]);
 
   const { messages, sendMessage, status, error, stop, setMessages } = useChat({
     id: chatId,
@@ -114,15 +111,17 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
   return (
     <section
       ref={sectionRef}
-      className="rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-3 sm:p-4"
+      className="border-border from-muted/30 to-background rounded-2xl border bg-gradient-to-b p-3 sm:p-4"
     >
       <div className="mx-auto w-full max-w-5xl space-y-3">
         <header className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0 space-y-0.5">
-            <h3 className="text-sm font-semibold text-foreground">
-              {mode === "before" ? "Hulp bij deze zin" : "Uitleg over je antwoord"}
+            <h3 className="text-foreground text-sm font-semibold">
+              {mode === "before"
+                ? "Hulp bij deze zin"
+                : "Uitleg over je antwoord"}
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               {mode === "before"
                 ? "Vraag woordbetekenis of grammatica — geen volledige vertaling."
                 : "Vraag uitleg, vervoegingen of of een alternatief ook geldig was."}
@@ -133,7 +132,7 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
               <button
                 type="button"
                 onClick={handleClearConversation}
-                className="cursor-pointer rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs transition-colors"
               >
                 Gesprek wissen
               </button>
@@ -141,7 +140,7 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
             <button
               type="button"
               onClick={handleToggleOpen}
-              className="cursor-pointer rounded-lg border border-accent/30 bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+              className="border-accent/30 bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors"
             >
               {open ? "Verberg chat" : "Open chat"}
             </button>
@@ -155,16 +154,16 @@ export function ExerciseChat({ exercise, feedback, userAnswer }: Props) {
             <ChatThread
               messages={messages}
               status={status}
-              className="min-h-[3.5rem] max-h-[min(12rem,30vh)] px-4 py-2.5"
+              className="max-h-[min(12rem,30vh)] min-h-[3.5rem] px-4 py-2.5"
               emptyState={
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Nog geen berichten. Stel een vraag of klik een suggestie.
                 </p>
               }
             />
 
             {error && (
-              <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
+              <div className="border-destructive/50 bg-destructive/10 text-destructive rounded-xl border p-3 text-xs">
                 <p className="font-medium">Fout in chat-request</p>
                 <pre className="mt-1 font-mono">{error.message}</pre>
               </div>
@@ -215,7 +214,7 @@ function Suggestions({
           <button
             type="button"
             onClick={() => onPick(s)}
-            className="cursor-pointer rounded-xl border border-border/60 bg-background/80 px-2.5 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="border-border/60 bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer rounded-xl border px-2.5 py-1.5 text-[11px] transition-colors"
           >
             {s}
           </button>

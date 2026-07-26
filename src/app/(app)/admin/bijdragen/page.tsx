@@ -1,5 +1,5 @@
-import { AdminReviewQueue } from "@/app/_components/features/admin/admin-review-queue";
-import { AppPageHeader } from "@/app/_components/ui/app-page-header";
+import { AdminReviewQueue } from "@/components/features/admin/admin-review-queue";
+import { AppPageHeader } from "@/components/ui/app-page-header";
 
 import type { Metadata } from "next";
 

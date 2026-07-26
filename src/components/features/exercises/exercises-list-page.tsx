@@ -2,21 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { DeleteConfirmDialog } from "@/app/_components/features/exercises/delete-confirm-dialog";
+import { DeleteConfirmDialog } from "@/components/features/exercises/delete-confirm-dialog";
 import {
   ExerciseEditModal,
   parseTagsCsv,
   type ExerciseEditValues,
-} from "@/app/_components/features/exercises/exercise-edit-modal";
-import { MyExercisesTable } from "@/app/_components/features/exercises/my-exercises-table";
-import { PaginationBar } from "@/app/_components/features/exercises/pagination-bar";
-import { DeleteAllExercisesDialog } from "@/app/_components/features/topics/delete-all-exercises-dialog";
+} from "@/components/features/exercises/exercise-edit-modal";
+import { MyExercisesTable } from "@/components/features/exercises/my-exercises-table";
+import { PaginationBar } from "@/components/features/exercises/pagination-bar";
+import { DeleteAllExercisesDialog } from "@/components/features/topics/delete-all-exercises-dialog";
+import { RefreshButton } from "@/components/ui/refresh-button";
+import { TableLoadingSkeleton } from "@/components/ui/table-loading-skeleton";
 import { fetchJson } from "@/lib/api/fetch-json";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -127,7 +125,6 @@ export function ExercisesListPage({
     },
   });
 
-  const [searchDraft, setSearchDraft] = useState(q);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deletePrompt, setDeletePrompt] = useState<{
     ids: string[];
@@ -162,11 +159,6 @@ export function ExercisesListPage({
     if (data) onTotalChange?.(data.total);
   }, [data, onTotalChange]);
 
-  // URL (browser Back/Forward) is bron van waarheid voor het zoekveld.
-  useEffect(() => {
-    setSearchDraft(q);
-  }, [q]);
-
   const updateParams = useCallback(
     (patch: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -195,29 +187,6 @@ export function ExercisesListPage({
     }
   }, [data, isRefreshing, page, updateParams]);
 
-  // Selectie opschonen als rijen van de pagina verdwijnen (niet in render).
-  useEffect(() => {
-    const scope = new Set(rows.map((r) => r.exercise_id));
-    setSelectedIds((prev) => {
-      let changed = false;
-      const next = new Set<string>();
-      for (const id of prev) {
-        if (scope.has(id)) next.add(id);
-        else changed = true;
-      }
-      return changed ? next : prev;
-    });
-  }, [rows]);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      if (searchDraft !== q) {
-        updateParams({ q: searchDraft || null, page: "1" });
-      }
-    }, 400);
-    return () => window.clearTimeout(t);
-  }, [searchDraft, q, updateParams]);
-
   const patchMutation = useMutation({
     mutationFn: async ({
       exerciseId,
@@ -238,9 +207,7 @@ export function ExercisesListPage({
         if (!prev) return prev;
         return {
           ...prev,
-          rows: prev.rows.map((r) =>
-            r.exercise_id === exerciseId ? row : r,
-          ),
+          rows: prev.rows.map((r) => (r.exercise_id === exerciseId ? row : r)),
         };
       });
       invalidateLeerplanOverview();
@@ -253,10 +220,7 @@ export function ExercisesListPage({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (prompt: {
-      ids: string[];
-      emptiesTopic: boolean;
-    }) => {
+    mutationFn: async (prompt: { ids: string[]; emptiesTopic: boolean }) => {
       const json = await fetchJson<DeleteSuccess>(apiBase, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -304,16 +268,20 @@ export function ExercisesListPage({
     },
   });
 
+  const visibleSelectedIds = useMemo(() => {
+    const visibleIds = new Set(rows.map((r) => r.exercise_id));
+    return new Set(Array.from(selectedIds).filter((id) => visibleIds.has(id)));
+  }, [rows, selectedIds]);
+
   const selectedRows = useMemo(
-    () => rows.filter((r) => selectedIds.has(r.exercise_id)),
-    [rows, selectedIds],
+    () => rows.filter((r) => visibleSelectedIds.has(r.exercise_id)),
+    [rows, visibleSelectedIds],
   );
 
   const handleDeleteRequest = useCallback(() => {
     if (selectedRows.length === 0) return;
     // Zonder filter: selectie van alles in het topic → oefeningen + topic weg.
-    const emptiesTopic =
-      !q.trim() && selectedRows.length >= total && total > 0;
+    const emptiesTopic = !q.trim() && selectedRows.length >= total && total > 0;
     setDeletePrompt({
       ids: selectedRows.map((r) => r.exercise_id),
       hasAudio: selectedRows.some((r) => r.has_audio),
@@ -367,53 +335,51 @@ export function ExercisesListPage({
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-sm">
-          <span className="text-xs text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             Zoek binnen Bron, Vertaling en Alternatieven.
           </span>
-          <input
-            type="search"
-            value={searchDraft}
-            onChange={(e) => setSearchDraft(e.target.value)}
-            placeholder="Bevat de tekst"
-            className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+          <SearchDraftInput
+            key={q}
+            initialValue={q}
+            onDebouncedChange={(value) =>
+              updateParams({ q: value || null, page: "1" })
+            }
           />
         </label>
 
-        <button
-          type="button"
+        <RefreshButton
+          className="ml-auto"
+          isRefreshing={isRefreshing}
           disabled={busy}
           onClick={() => {
             setActionError(null);
             void refetch();
           }}
-          className="ml-auto inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-foreground disabled:opacity-50"
-        >
-          {isRefreshing ? "Verversen…" : "Ververs"}
-        </button>
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          disabled={busy || selectedIds.size === 0}
+          disabled={busy || visibleSelectedIds.size === 0}
           onClick={handleDeleteRequest}
-          className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+          className="border-border text-destructive hover:bg-destructive/10 inline-flex h-9 items-center rounded-md border px-3 text-sm disabled:opacity-50"
         >
           {deleting
             ? "Verwijderen…"
-            : `Verwijderen${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
+            : `Verwijderen${visibleSelectedIds.size > 0 ? ` (${visibleSelectedIds.size})` : ""}`}
         </button>
-        {selectedIds.size > 0 && (
+        {visibleSelectedIds.size > 0 && (
           <button
             type="button"
             disabled={busy}
             onClick={() => setSelectedIds(new Set())}
-            className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+            className="text-muted-foreground text-xs underline-offset-2 hover:underline"
           >
             Selectie wissen
           </button>
         )}
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           {total.toLocaleString("nl-NL")}{" "}
           {total === 1 ? "oefening" : "oefeningen"}
           {q.trim() ? ` · filter: “${q.trim()}”` : ""}
@@ -421,16 +387,16 @@ export function ExercisesListPage({
       </div>
 
       {actionError && (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {actionError}
         </p>
       )}
       {actionMessage && (
-        <p className="text-sm text-muted-foreground">{actionMessage}</p>
+        <p className="text-muted-foreground text-sm">{actionMessage}</p>
       )}
 
       {listError && (
-        <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <p className="border-destructive/40 bg-destructive/10 text-destructive rounded-lg border px-4 py-3 text-sm">
           {listError}{" "}
           <button
             type="button"
@@ -443,9 +409,9 @@ export function ExercisesListPage({
       )}
 
       {isInitialLoading && rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Laden…</p>
+        <TableLoadingSkeleton columns={6} />
       ) : data && rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           {total === 0
             ? hasActiveFilters
               ? emptyFilteredMessage
@@ -458,7 +424,7 @@ export function ExercisesListPage({
         >
           <MyExercisesTable
             rows={rows}
-            selectedIds={selectedIds}
+            selectedIds={visibleSelectedIds}
             disabled={busy}
             onRowClick={(row) => {
               setEditError(null);
@@ -474,9 +440,7 @@ export function ExercisesListPage({
             }}
             onToggleAll={() => {
               setSelectedIds((prev) => {
-                const allSelected = rows.every((r) =>
-                  prev.has(r.exercise_id),
-                );
+                const allSelected = rows.every((r) => prev.has(r.exercise_id));
                 if (allSelected) return new Set();
                 return new Set(rows.map((r) => r.exercise_id));
               });
@@ -498,9 +462,7 @@ export function ExercisesListPage({
       <ExerciseEditModal
         open={editRow !== null}
         initial={editInitial}
-        mp3Url={
-          editRow?.has_audio && editRow.mp3_url ? editRow.mp3_url : null
-        }
+        mp3Url={editRow?.has_audio && editRow.mp3_url ? editRow.mp3_url : null}
         saving={editSaving}
         error={editError}
         onClose={() => {
@@ -531,5 +493,32 @@ export function ExercisesListPage({
         deleting={deleting}
       />
     </div>
+  );
+}
+
+function SearchDraftInput({
+  initialValue,
+  onDebouncedChange,
+}: {
+  initialValue: string;
+  onDebouncedChange: (value: string) => void;
+}) {
+  const [draft, setDraft] = useState(initialValue);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (draft !== initialValue) onDebouncedChange(draft);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [draft, initialValue, onDebouncedChange]);
+
+  return (
+    <input
+      type="search"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      placeholder="Bevat de tekst"
+      className="border-border bg-background text-foreground h-9 rounded-md border px-3 text-sm"
+    />
   );
 }

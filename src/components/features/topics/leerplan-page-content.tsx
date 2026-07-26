@@ -1,6 +1,6 @@
 "use client";
 
-import { AppPageHeader } from "@/app/_components/ui/app-page-header";
+import { AppPageHeader } from "@/components/ui/app-page-header";
 
 import { LeerplanGroupsPage } from "./leerplan-groups-page";
 

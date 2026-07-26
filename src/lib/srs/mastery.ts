@@ -32,8 +32,12 @@ const MASTERY_SCORES: Record<MasteryLevel, number> = {
 
 /** Bepaalt mastery-niveau op basis van SRS-ladderpositie. */
 export function getMasteryLevel(input: MasteryInput): MasteryLevel {
-  const { repetitionCount, intervalDays, lastReviewedAt, hasProgressRow = true } =
-    input;
+  const {
+    repetitionCount,
+    intervalDays,
+    lastReviewedAt,
+    hasProgressRow = true,
+  } = input;
 
   if (!hasProgressRow || (repetitionCount === 0 && !lastReviewedAt)) {
     return "nieuw";
@@ -63,7 +67,9 @@ export function masteryScoreForLevel(level: MasteryLevel): number {
   return MASTERY_SCORES[level];
 }
 
-export function averageMasteryScore(inputs: ReadonlyArray<MasteryInput>): number {
+export function averageMasteryScore(
+  inputs: ReadonlyArray<MasteryInput>,
+): number {
   if (inputs.length === 0) return 0;
   const total = inputs.reduce(
     (sum, input) => sum + masteryScoreForLevel(getMasteryLevel(input)),

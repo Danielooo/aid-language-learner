@@ -12,7 +12,9 @@ import type { ExerciseTopicRow, ProgressRow } from "@/lib/dashboard/types";
 
 const NOW = new Date("2026-07-09T12:00:00.000Z");
 
-function makeRow(overrides: Partial<ProgressRow> & Pick<ProgressRow, "exercise_id">): ProgressRow {
+function makeRow(
+  overrides: Partial<ProgressRow> & Pick<ProgressRow, "exercise_id">,
+): ProgressRow {
   return {
     repetition_count: 0,
     interval_days: 0,
@@ -102,7 +104,11 @@ describe("computeSrsStepDistribution", () => {
   it("sluit geschorste oefeningen uit", () => {
     const rows: ProgressRow[] = [
       makeRow({ exercise_id: "active", repetition_count: 1 }),
-      makeRow({ exercise_id: "suspended", repetition_count: 1, is_suspended: true }),
+      makeRow({
+        exercise_id: "suspended",
+        repetition_count: 1,
+        is_suspended: true,
+      }),
     ];
 
     const distribution = computeSrsStepDistribution(rows, NOW);
@@ -201,7 +207,11 @@ describe("computeTopicProgress", () => {
         interval_days: 90,
         next_review_at: "2026-09-01T12:00:00.000Z",
       }),
-      makeRow({ exercise_id: "b1", repetition_count: 9, next_review_at: "2026-09-01T12:00:00.000Z" }),
+      makeRow({
+        exercise_id: "b1",
+        repetition_count: 9,
+        next_review_at: "2026-09-01T12:00:00.000Z",
+      }),
       makeRow({ exercise_id: "b2", repetition_count: 2 }),
       // b3 zonder progress
     ];
@@ -328,9 +338,7 @@ describe("computeUpcomingByDay", () => {
   });
 
   it("telt later vandaag onder Vandaag terwijl dueNow dat niet doet", () => {
-    const exercises: ExerciseTopicRow[] = [
-      { id: "later-today", topic: "A" },
-    ];
+    const exercises: ExerciseTopicRow[] = [{ id: "later-today", topic: "A" }];
     const rows: ProgressRow[] = [
       makeRow({
         exercise_id: "later-today",

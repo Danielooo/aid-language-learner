@@ -20,7 +20,10 @@ function getManagementConfig() {
   return { projectRef, accessToken };
 }
 
-async function managementFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function managementFetch<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
   const { projectRef, accessToken } = getManagementConfig();
   const response = await fetch(
     `https://api.supabase.com/v1/projects/${projectRef}${path}`,
@@ -117,7 +120,12 @@ export function registerSupabaseTools(server: McpServer) {
         const { data, error } = await query;
         if (error) throw new Error(error.message);
 
-        return mcpJsonText({ ok: true, table, count: data?.length ?? 0, rows: data });
+        return mcpJsonText({
+          ok: true,
+          table,
+          count: data?.length ?? 0,
+          rows: data,
+        });
       } catch (error) {
         return mcpErrorText(
           error instanceof Error ? error.message : "Onbekende fout",

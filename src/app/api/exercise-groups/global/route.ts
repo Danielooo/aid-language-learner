@@ -38,7 +38,10 @@ export async function GET(): Promise<Response> {
 
   if (groupsRes.error) {
     return Response.json(
-      { ok: false, error: groupsRes.error.message } satisfies ExerciseGroupsFailure,
+      {
+        ok: false,
+        error: groupsRes.error.message,
+      } satisfies ExerciseGroupsFailure,
       { status: 500 },
     );
   }
@@ -79,7 +82,10 @@ export async function GET(): Promise<Response> {
 
     if (countError) {
       return Response.json(
-        { ok: false, error: countError.message } satisfies ExerciseGroupsFailure,
+        {
+          ok: false,
+          error: countError.message,
+        } satisfies ExerciseGroupsFailure,
         { status: 500 },
       );
     }

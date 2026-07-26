@@ -10,11 +10,7 @@ const PUNCTUATION = /[.,!?;:'"¿¡()\-—–]/g;
  * verwijderd, whitespace genormaliseerd. Pure functie.
  */
 export function normalizeForCompare(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(PUNCTUATION, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return s.toLowerCase().replace(PUNCTUATION, "").replace(/\s+/g, " ").trim();
 }
 
 /**

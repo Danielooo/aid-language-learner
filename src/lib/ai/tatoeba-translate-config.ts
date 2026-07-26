@@ -44,13 +44,13 @@ export const TATOEBA_ENRICH_SYSTEM_PROMPT = [
   "Topic — strikte regels:",
   "- Bekijk eerst de lijst `existing_topics` in de user-message.",
   "- Als één van die bestaande topics semantisch past bij de zin, gebruik die EXACT (zelfde spelling, zelfde casing). Hergebruik heeft prioriteit boven creativiteit.",
-  "- Past geen enkele bestaande topic? Verzin dan een kort label: 1 woord (max 2 woorden), lowercase, Nederlands. Bv. \"restaurant\", \"luchthaven\", \"reizen\", \"begroeting\".",
+  '- Past geen enkele bestaande topic? Verzin dan een kort label: 1 woord (max 2 woorden), lowercase, Nederlands. Bv. "restaurant", "luchthaven", "reizen", "begroeting".',
   "- Topic beschrijft de situatie/setting waarin deze zin natuurlijk past — niet het thema van het gesprek of de spreker.",
   "",
   "Tags — strikte regels:",
   "- 2 tot 5 tags per zin.",
   "- Elke tag: lowercase, Nederlands, één woord (max twee woorden, koppelteken-gescheiden indien nodig).",
-  "- Tags beschrijven concepten, woordvelden of taal-aspecten die in de zin voorkomen, bv. \"eten\", \"beleefdheid\", \"verleden-tijd\", \"vraag\", \"familie\".",
+  '- Tags beschrijven concepten, woordvelden of taal-aspecten die in de zin voorkomen, bv. "eten", "beleefdheid", "verleden-tijd", "vraag", "familie".',
   "- Geen duplicaten binnen één tag-lijst. Tag mag niet identiek zijn aan de topic-string.",
 ].join("\n");
 

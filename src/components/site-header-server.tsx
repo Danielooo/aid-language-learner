@@ -1,4 +1,4 @@
-import { SiteHeader } from "@/app/_components/site-header";
+import { SiteHeader } from "@/components/site-header";
 import { getDisplayLabel } from "@/lib/auth/display-label";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 
@@ -10,7 +10,5 @@ export async function SiteHeaderServer() {
     return <SiteHeader accountLabel={null} />;
   }
 
-  return (
-    <SiteHeader accountLabel={getDisplayLabel(displayName, username)} />
-  );
+  return <SiteHeader accountLabel={getDisplayLabel(displayName, username)} />;
 }

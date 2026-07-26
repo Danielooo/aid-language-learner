@@ -1,5 +1,5 @@
-import { SiteHeaderServer } from "@/app/_components/site-header-server";
-import { Container } from "@/app/_components/ui/container";
+import { SiteHeaderServer } from "@/components/site-header-server";
+import { Container } from "@/components/ui/container";
 
 import type { ReactNode } from "react";
 
@@ -9,7 +9,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
     <>
       <SiteHeaderServer />
       <Container width="sm" className="flex flex-1 items-start py-12">
-        <div className="w-full rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm">
+        <div className="border-border bg-card text-card-foreground w-full rounded-lg border p-6 shadow-sm">
           {children}
         </div>
       </Container>

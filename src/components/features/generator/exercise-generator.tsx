@@ -6,17 +6,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ConfirmDialog } from "@/app/_components/ui/confirm-dialog";
-import { ChatThread } from "@/app/_components/features/chat/chat-thread";
-import { ChatComposer } from "@/app/_components/features/chat/chat-composer";
-import type { ExerciseEditValues } from "@/app/_components/features/exercises/exercise-edit-modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ChatThread } from "@/components/features/chat/chat-thread";
+import { ChatComposer } from "@/components/features/chat/chat-composer";
+import type { ExerciseEditValues } from "@/components/features/exercises/exercise-edit-modal";
 import { queryKeys } from "@/lib/query-keys";
-import { useTextGeneratorDraft } from "@/lib/hooks/use-text-generator-draft";
+import { useTextGeneratorDraft } from "@/hooks/use-text-generator-draft";
 
-import {
-  formatQuotaLabel,
-  useAiQuota,
-} from "./hooks/use-ai-quota";
+import { formatQuotaLabel, useAiQuota } from "./hooks/use-ai-quota";
 import {
   GeneratorSavedGroupModal,
   type SavedGroupMember,
@@ -27,6 +24,10 @@ import {
 } from "./persisted-chat-messages";
 import { ProposalTable } from "./proposal-table";
 import type { TopicDestinationMode } from "./proposal-topic-destination";
+import {
+  toUserFacingChatError,
+  toUserFacingPersistError,
+} from "./user-facing-error";
 import type {
   ExercisesPersistBody,
   ProposalBatch,
@@ -40,32 +41,32 @@ import {
 import type { UIMessage } from "ai";
 
 // Genereert Spaans→NL vertaaloefeningen via de Vercel AI SDK. De chatbot
-// krijgt één tool `proposeExercises` aangereikt; zodra die met output is
-// aangeroepen rendert de UI een tabel met een "Topic opslaan"-knop.
+// krijgt `listExistingExercises` + `proposeExercises`; zodra propose met
+// output is aangeroepen rendert de UI een tabel met een "Topic opslaan"-knop.
 
 type PersistResponse =
   | {
-    ok: true;
-    inserted: number;
-    groupId?: string;
-    groupName?: string;
-    rows: Array<{
-      id: string;
-      source_text: string;
-      target_text: string;
-      topic: string | null;
-      created_at: string;
-    }>;
-    requestBody: unknown;
-    supabaseResponse: unknown;
-  }
+      ok: true;
+      inserted: number;
+      groupId?: string;
+      groupName?: string;
+      rows: Array<{
+        id: string;
+        source_text: string;
+        target_text: string;
+        topic: string | null;
+        created_at: string;
+      }>;
+      requestBody: unknown;
+      supabaseResponse: unknown;
+    }
   | {
-    ok: false;
-    error: string;
-    requestBody?: unknown;
-    supabaseResponse?: unknown;
-    issues?: unknown;
-  };
+      ok: false;
+      error: string;
+      requestBody?: unknown;
+      supabaseResponse?: unknown;
+      issues?: unknown;
+    };
 
 type SavedGroupSnapshot = {
   name: string;
@@ -121,7 +122,7 @@ export function ExerciseGenerator() {
     batchesRef.current = batches;
   }, [batches]);
 
-  /* eslint-disable react-hooks/refs */
+  /* eslint-disable react-hooks/refs -- transport-body leest de actuele draft via refs zonder transport te herbouwen */
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -148,37 +149,44 @@ export function ExerciseGenerator() {
     transport,
   });
 
-  const getAssistantFallbackText = useCallback((message: UIMessage): string | null => {
-    if (emptyToolMessageIds.has(message.id)) {
-      return "Geen nieuwe oefeningen — alles was al in het voorstel.";
-    }
-    for (const part of message.parts) {
-      if (
-        part.type === "tool-proposeExercises" &&
-        part.state === "output-available"
-      ) {
-        const output = part.output;
-        if (!isProposeOutput(output)) continue;
-        const count = output.exercises.length;
-        return count === 1
-          ? "1 oefening toegevoegd"
-          : `${count} oefeningen toegevoegd`;
+  const getAssistantFallbackText = useCallback(
+    (message: UIMessage): string | null => {
+      if (emptyToolMessageIds.has(message.id)) {
+        return "Geen nieuwe oefeningen — alles was al in het voorstel.";
       }
-    }
-    return null;
-  }, [emptyToolMessageIds]);
+      for (const part of message.parts) {
+        if (
+          part.type === "tool-proposeExercises" &&
+          part.state === "output-available"
+        ) {
+          const output = part.output;
+          if (!isProposeOutput(output)) continue;
+          if (output.ok === false || output.exercises.length === 0) {
+            return (
+              output.error ??
+              "Geen nieuwe oefeningen — die stonden al in je Leerplan of voorstel."
+            );
+          }
+          const count = output.exercises.length;
+          return count === 1
+            ? "1 oefening toegevoegd"
+            : `${count} oefeningen toegevoegd`;
+        }
+      }
+      return null;
+    },
+    [emptyToolMessageIds],
+  );
 
   // Eenmalig draft herstellen na mount (localStorage), na useChat i.v.m. setMessages.
-  /* eslint-disable react-hooks/set-state-in-effect -- hydrate from localStorage */
+  /* eslint-disable react-hooks/set-state-in-effect -- eenmalige draft-hydratie uit localStorage na useChat-init */
   useEffect(() => {
     if (restoredRef.current) return;
     restoredRef.current = true;
     const snap = draft.snapshot;
     if (
       snap &&
-      (snap.batches.length > 0 ||
-        snap.topic.trim() ||
-        snap.messages.length > 0)
+      (snap.batches.length > 0 || snap.topic.trim() || snap.messages.length > 0)
     ) {
       setBatches(snap.batches);
       setDraftSelectedIds(snap.selectedAudioIds);
@@ -232,6 +240,11 @@ export function ExerciseGenerator() {
 
   const isBusy = status === "submitted" || status === "streaming";
   const wasBusyRef = useRef(false);
+  const proposeError = useMemo(
+    () => findLatestProposeError(messages),
+    [messages],
+  );
+  const chatErrorMessage = error ? toUserFacingChatError(error) : null;
 
   useEffect(() => {
     if (isBusy) {
@@ -244,7 +257,6 @@ export function ExerciseGenerator() {
     }
   }, [isBusy, status, refreshAiQuota]);
 
-  /* eslint-disable react-hooks/set-state-in-effect -- tool-output sync naar batch-stack */
   useEffect(() => {
     for (const msg of messages) {
       if (msg.role !== "assistant") continue;
@@ -258,6 +270,16 @@ export function ExerciseGenerator() {
           const batchId = `${msg.id}:proposeExercises`;
           if (processedBatchIds.current.has(batchId)) continue;
           processedBatchIds.current.add(batchId);
+
+          if (output.ok === false || output.exercises.length === 0) {
+            setEmptyToolMessageIds((prev) => {
+              if (prev.has(msg.id)) return prev;
+              const next = new Set(prev);
+              next.add(msg.id);
+              return next;
+            });
+            continue;
+          }
 
           const seen = new Set(
             batchesRef.current.flatMap((batch) =>
@@ -295,7 +317,6 @@ export function ExerciseGenerator() {
       }
     }
   }, [messages]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -378,7 +399,10 @@ export function ExerciseGenerator() {
           status: "error",
           requestBody,
           response: json,
-          error: "error" in json ? json.error : `HTTP ${res.status}`,
+          error: toUserFacingPersistError(
+            "error" in json ? json.error : undefined,
+            res.status,
+          ),
         });
         return;
       }
@@ -422,7 +446,9 @@ export function ExerciseGenerator() {
         status: "error",
         requestBody,
         response: null,
-        error: err instanceof Error ? err.message : "Onbekende fout",
+        error: toUserFacingPersistError(
+          err instanceof Error ? err.message : undefined,
+        ),
       });
     }
   }
@@ -433,11 +459,11 @@ export function ExerciseGenerator() {
   return (
     <>
       {persistState.status === "success" && (
-        <p className="rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-foreground">
+        <p className="border-accent/30 bg-accent/10 text-foreground rounded-md border px-3 py-2 text-sm">
           Opgeslagen. Vink topics aan om ze te oefenen via{" "}
           <Link
             href="/leerplan"
-            className="font-medium text-accent underline-offset-2 hover:underline"
+            className="text-accent font-medium underline-offset-2 hover:underline"
           >
             Leerplan
           </Link>
@@ -445,14 +471,14 @@ export function ExerciseGenerator() {
         </p>
       )}
 
-      <section className="space-y-3 rounded-lg border border-border bg-card p-5 text-card-foreground">
+      <section className="border-border bg-card text-card-foreground space-y-3 rounded-lg border p-5">
         <header className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Chat</h2>
           {canClear && (
             <button
               type="button"
               onClick={() => setConfirmClearOpen(true)}
-              className="h-9 rounded border border-border px-3 text-xs font-medium hover:bg-muted"
+              className="border-border hover:bg-muted h-9 rounded border px-3 text-xs font-medium"
             >
               Gesprek en oefeningen wissen
             </button>
@@ -464,7 +490,7 @@ export function ExerciseGenerator() {
           status={status}
           getAssistantFallbackText={getAssistantFallbackText}
           emptyState={
-            <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="text-muted-foreground space-y-2 text-sm">
               <p>Nog geen berichten. Probeer:</p>
               <ul className="space-y-1.5">
                 {SUGGESTIONS.map((s) => (
@@ -472,7 +498,7 @@ export function ExerciseGenerator() {
                     <button
                       type="button"
                       onClick={() => setInput(s)}
-                      className="inline-flex h-9 max-w-full items-center rounded-md border border-border bg-background px-3 text-left text-xs text-foreground hover:bg-muted"
+                      className="border-border bg-background text-foreground hover:bg-muted inline-flex h-9 max-w-full items-center rounded-md border px-3 text-left text-xs"
                     >
                       {s}
                     </button>
@@ -483,10 +509,12 @@ export function ExerciseGenerator() {
           }
         />
 
-        {error && (
-          <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
-            <p className="font-medium">Fout in chat-request</p>
-            <pre className="mt-1 font-mono">{error.message}</pre>
+        {(chatErrorMessage || proposeError) && (
+          <div
+            className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border p-3 text-sm"
+            role="alert"
+          >
+            <p>{chatErrorMessage ?? proposeError}</p>
           </div>
         )}
 
@@ -494,7 +522,7 @@ export function ExerciseGenerator() {
           <button
             type="button"
             onClick={() => setInput(APPEND_SUGGESTION)}
-            className="inline-flex h-9 items-center rounded-md border border-border bg-background px-3 text-xs text-foreground hover:bg-muted"
+            className="border-border bg-background text-foreground hover:bg-muted inline-flex h-9 items-center rounded-md border px-3 text-xs"
           >
             {APPEND_SUGGESTION}
           </button>
@@ -515,7 +543,7 @@ export function ExerciseGenerator() {
         />
 
         {quotaLabel && (
-          <p className="text-[11px] text-muted-foreground">{quotaLabel}</p>
+          <p className="text-muted-foreground text-[11px]">{quotaLabel}</p>
         )}
       </section>
 
@@ -562,15 +590,25 @@ function sameNumberArrays(a: number[], b: number[]): boolean {
 }
 
 // Valideer tool-output voordat we 'm op de batch-stack zetten.
-function isProposeOutput(value: unknown): value is ProposeExercisesOutput {
+function isProposeOutput(
+  value: unknown,
+): value is ProposeExercisesOutput & {
+  ok?: boolean;
+  error?: string;
+  exercises: ProposeExercisesOutput["exercises"];
+} {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   if (typeof v.topic !== "string" || v.topic.trim().length === 0) return false;
   if (!Array.isArray(v.exercises)) return false;
+  if (v.ok === false) return true;
   return v.exercises.every((ex) => {
     if (typeof ex !== "object" || ex === null) return false;
     const row = ex as Record<string, unknown>;
-    if (typeof row.source_text !== "string" || typeof row.target_text !== "string") {
+    if (
+      typeof row.source_text !== "string" ||
+      typeof row.target_text !== "string"
+    ) {
       return false;
     }
     if (
@@ -589,4 +627,30 @@ function isProposeOutput(value: unknown): value is ProposeExercisesOutput {
     }
     return true;
   });
+}
+
+function findLatestProposeError(messages: UIMessage[]): string | null {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const msg = messages[i];
+    if (msg.role !== "assistant") continue;
+    for (let j = msg.parts.length - 1; j >= 0; j -= 1) {
+      const part = msg.parts[j];
+      if (
+        part.type !== "tool-proposeExercises" ||
+        part.state !== "output-available"
+      ) {
+        continue;
+      }
+      const output = part.output;
+      if (!isProposeOutput(output)) continue;
+      if (output.ok === false || output.exercises.length === 0) {
+        return (
+          output.error ??
+          "Geen nieuwe oefeningen — die stonden al in je Leerplan of voorstel."
+        );
+      }
+      return null;
+    }
+  }
+  return null;
 }

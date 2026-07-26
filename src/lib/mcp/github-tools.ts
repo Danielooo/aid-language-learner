@@ -49,15 +49,16 @@ export function registerGithubTools(server: McpServer) {
     "github_repo_status",
     {
       title: "GitHub repo status",
-      description:
-        "Haal metadata op van het aid-language-learner repository.",
+      description: "Haal metadata op van het aid-language-learner repository.",
       inputSchema: {
         repo: z.string().default(DEFAULT_REPO),
       },
     },
     async ({ repo }) => {
       try {
-        const data = await githubFetch<Record<string, unknown>>(`/repos/${repo}`);
+        const data = await githubFetch<Record<string, unknown>>(
+          `/repos/${repo}`,
+        );
         return mcpJsonText({
           ok: true,
           full_name: data.full_name,

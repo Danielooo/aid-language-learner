@@ -27,14 +27,16 @@ export function UpcomingReviewsChart({ data }: UpcomingReviewsChartProps) {
       <div className="flex h-full items-end gap-2 pt-2">
         {data.map((day) => {
           const heightPct =
-            maxCount === 0 ? 0 : Math.max((day.count / maxCount) * 100, day.count > 0 ? 8 : 0);
+            maxCount === 0
+              ? 0
+              : Math.max((day.count / maxCount) * 100, day.count > 0 ? 8 : 0);
           return (
             <div
               key={day.day}
               className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
               title={`${day.label}: ${day.count}`}
             >
-              <span className="text-[11px] tabular-nums text-muted-foreground">
+              <span className="text-muted-foreground text-[11px] tabular-nums">
                 {day.count > 0 ? day.count.toLocaleString("nl-NL") : ""}
               </span>
               <div
@@ -51,7 +53,7 @@ export function UpcomingReviewsChart({ data }: UpcomingReviewsChartProps) {
                   }}
                 />
               </div>
-              <span className="w-full truncate text-center text-[10px] font-medium text-foreground">
+              <span className="text-foreground w-full truncate text-center text-[10px] font-medium">
                 {day.label}
               </span>
             </div>

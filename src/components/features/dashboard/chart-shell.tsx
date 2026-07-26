@@ -30,17 +30,20 @@ export function ChartShell({
 }: ChartShellProps) {
   return (
     <section
-      className={`space-y-3 rounded-lg border border-border bg-card p-5 text-card-foreground ${className}`}
+      className={`border-border bg-card text-card-foreground space-y-3 rounded-lg border p-5 ${className}`}
     >
       <header className="space-y-0.5">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold">{title}</h2>
           {metric && <MetricTooltip term={metric} />}
         </div>
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+        {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
       </header>
       {isEmpty ? (
-        <ChartEmptyState title={emptyTitle ?? "Nog niet genoeg data"} message={emptyMessage} />
+        <ChartEmptyState
+          title={emptyTitle ?? "Nog niet genoeg data"}
+          message={emptyMessage}
+        />
       ) : (
         <div className={contentClassName}>{children}</div>
       )}

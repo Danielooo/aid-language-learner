@@ -11,8 +11,8 @@ function hasAttributionData({
 }: ExerciseAudioAttributionProps): boolean {
   return Boolean(
     (author && author.trim().length > 0) ||
-      (license && license.trim().length > 0) ||
-      (attributionUrl && attributionUrl.trim().length > 0),
+    (license && license.trim().length > 0) ||
+    (attributionUrl && attributionUrl.trim().length > 0),
   );
 }
 
@@ -37,13 +37,13 @@ export function ExerciseAudioAttribution({
 
   if (attributionUrl?.trim()) {
     return (
-      <p className="text-[10px] text-muted-foreground/70">
+      <p className="text-muted-foreground/70 text-[10px]">
         Audio:{" "}
         <a
           href={attributionUrl.trim()}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline decoration-muted-foreground/40 underline-offset-2 hover:text-foreground"
+          className="decoration-muted-foreground/40 hover:text-foreground underline underline-offset-2"
         >
           {label}
         </a>
@@ -51,7 +51,5 @@ export function ExerciseAudioAttribution({
     );
   }
 
-  return (
-    <p className="text-[10px] text-muted-foreground/70">Audio: {label}</p>
-  );
+  return <p className="text-muted-foreground/70 text-[10px]">Audio: {label}</p>;
 }

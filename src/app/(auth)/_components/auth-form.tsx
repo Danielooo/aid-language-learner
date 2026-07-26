@@ -36,7 +36,8 @@ const COPY = {
     cta: "Heb je al een account?",
     ctaLink: "/login",
     ctaLinkLabel: "Naar inloggen",
-    helper: "Gebruikersnaam = je login + display-naam. 2-32 tekens, [a-z0-9_-].",
+    helper:
+      "Gebruikersnaam = je login + display-naam. 2-32 tekens, [a-z0-9_-].",
   },
 } as const;
 
@@ -51,10 +52,10 @@ export function AuthForm({ mode, action, next, externalError }: AuthFormProps) {
   return (
     <div className="space-y-5">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        <h1 className="text-foreground text-2xl font-semibold tracking-tight">
           {copy.title}
         </h1>
-        <p className="text-xs text-muted-foreground">{copy.helper}</p>
+        <p className="text-muted-foreground text-xs">{copy.helper}</p>
       </header>
 
       <form action={formAction} className="space-y-4" noValidate>
@@ -79,7 +80,7 @@ export function AuthForm({ mode, action, next, externalError }: AuthFormProps) {
         {formError && (
           <div
             role="alert"
-            className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm"
           >
             {formError}
           </div>
@@ -88,17 +89,17 @@ export function AuthForm({ mode, action, next, externalError }: AuthFormProps) {
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="bg-accent text-accent-foreground hover:bg-accent/90 inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         >
           {pending ? copy.submitting : copy.submit}
         </button>
       </form>
 
-      <p className="text-center text-xs text-muted-foreground">
+      <p className="text-muted-foreground text-center text-xs">
         {copy.cta}{" "}
         <Link
           href={copy.ctaLink}
-          className="font-medium text-foreground underline underline-offset-2 hover:text-accent"
+          className="text-foreground hover:text-accent font-medium underline underline-offset-2"
         >
           {copy.ctaLinkLabel}
         </Link>
@@ -126,7 +127,7 @@ function Field({
 }) {
   return (
     <label htmlFor={id} className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
         {label}
       </span>
       <input
@@ -137,10 +138,10 @@ function Field({
         autoFocus={autoFocus}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
-        className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-destructive"
+        className="border-input bg-background focus-visible:ring-ring aria-[invalid=true]:border-destructive h-10 rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
       />
       {error && (
-        <span id={`${id}-error`} className="text-xs text-destructive">
+        <span id={`${id}-error`} className="text-destructive text-xs">
           {error}
         </span>
       )}

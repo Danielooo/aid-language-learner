@@ -1,4 +1,4 @@
-import { LeerplanGroupEditPage } from "@/app/_components/features/topics/leerplan-group-edit-page";
+import { LeerplanGroupEditPage } from "@/components/features/topics/leerplan-group-edit-page";
 import { redirect } from "next/navigation";
 
 import { APP_ROUTES } from "@/lib/routes";
@@ -16,7 +16,9 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default async function LeerplanGroupEditRoutePage({ params }: PageProps) {
+export default async function LeerplanGroupEditRoutePage({
+  params,
+}: PageProps) {
   const { id } = await params;
   if (!UUID_RE.test(id)) {
     redirect(APP_ROUTES.leerplan);

@@ -4,7 +4,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { prefersReducedMotion } from "@/app/_components/features/chat/prefers-reduced-motion";
+import { prefersReducedMotion } from "@/components/features/chat/prefers-reduced-motion";
 import { placeWordInSlot } from "@/lib/quiz/sort-config";
 
 import type { SortExerciseState } from "@/lib/quiz/sort-config";
@@ -89,7 +89,8 @@ export function useSortWordPlacementAnimation({
       }
 
       const chipEl =
-        sourceEl.querySelector<HTMLElement>("[data-sort-word-chip]") ?? sourceEl;
+        sourceEl.querySelector<HTMLElement>("[data-sort-word-chip]") ??
+        sourceEl;
       const sourceRect = chipEl.getBoundingClientRect();
       const targetRect = targetEl.getBoundingClientRect();
 

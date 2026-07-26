@@ -59,7 +59,10 @@ export async function GET(req: Request): Promise<Response> {
 
   if (!parse.success) {
     return Response.json(
-      { ok: false, error: "Validatie mislukt." } satisfies MyExercisesListFailure,
+      {
+        ok: false,
+        error: "Validatie mislukt.",
+      } satisfies MyExercisesListFailure,
       { status: 400 },
     );
   }
@@ -132,7 +135,10 @@ export async function DELETE(req: Request): Promise<Response> {
     body = await req.json();
   } catch {
     return Response.json(
-      { ok: false, error: "Body is geen geldige JSON." } satisfies MyExercisesDeleteFailure,
+      {
+        ok: false,
+        error: "Body is geen geldige JSON.",
+      } satisfies MyExercisesDeleteFailure,
       { status: 400 },
     );
   }
@@ -140,7 +146,10 @@ export async function DELETE(req: Request): Promise<Response> {
   const parse = deleteBodySchema.safeParse(body);
   if (!parse.success) {
     return Response.json(
-      { ok: false, error: "Validatie mislukt." } satisfies MyExercisesDeleteFailure,
+      {
+        ok: false,
+        error: "Validatie mislukt.",
+      } satisfies MyExercisesDeleteFailure,
       { status: 400 },
     );
   }

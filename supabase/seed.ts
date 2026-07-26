@@ -15,11 +15,11 @@ import { resolve } from "node:path";
 
 import { createClient } from "@supabase/supabase-js";
 
-import { usernameToEmail } from "../lib/auth/username";
-import { buildExerciseGroupSnapshot } from "../lib/exercises/build-exercise-group-snapshot";
+import { usernameToEmail } from "../src/lib/auth/username";
+import { buildExerciseGroupSnapshot } from "../src/lib/exercises/build-exercise-group-snapshot";
 
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import type { ExerciseMemberSnapshot } from "../types/exercise-group-submission";
+import type { ExerciseMemberSnapshot } from "../src/types/exercise-group-submission";
 
 type AdminClient = SupabaseClient;
 
@@ -72,41 +72,41 @@ const APPROVED_GLOBAL_GROUPS: Array<{
   name: string;
   exercises: ExerciseSpec[];
 }> = [
-    {
-      name: "restaurant",
-      exercises: [
-        {
-          source_text: "¿Tienen una mesa para dos?",
-          target_text: "Hebben jullie een tafel voor twee?",
-        },
-        {
-          source_text: "La cuenta, por favor.",
-          target_text: "De rekening, alstublieft.",
-        },
-        {
-          source_text: "¿Qué recomienda el chef hoy?",
-          target_text: "Wat raadt de chef vandaag aan?",
-        },
-      ],
-    },
-    {
-      name: "luchthaven",
-      exercises: [
-        {
-          source_text: "¿Dónde está la puerta de embarque?",
-          target_text: "Waar is de gate?",
-        },
-        {
-          source_text: "Mi maleta no ha llegado.",
-          target_text: "Mijn koffer is niet aangekomen.",
-        },
-        {
-          source_text: "¿A qué hora sale el próximo vuelo?",
-          target_text: "Hoe laat vertrekt de volgende vlucht?",
-        },
-      ],
-    },
-  ];
+  {
+    name: "restaurant",
+    exercises: [
+      {
+        source_text: "¿Tienen una mesa para dos?",
+        target_text: "Hebben jullie een tafel voor twee?",
+      },
+      {
+        source_text: "La cuenta, por favor.",
+        target_text: "De rekening, alstublieft.",
+      },
+      {
+        source_text: "¿Qué recomienda el chef hoy?",
+        target_text: "Wat raadt de chef vandaag aan?",
+      },
+    ],
+  },
+  {
+    name: "luchthaven",
+    exercises: [
+      {
+        source_text: "¿Dónde está la puerta de embarque?",
+        target_text: "Waar is de gate?",
+      },
+      {
+        source_text: "Mi maleta no ha llegado.",
+        target_text: "Mijn koffer is niet aangekomen.",
+      },
+      {
+        source_text: "¿A qué hora sale el próximo vuelo?",
+        target_text: "Hoe laat vertrekt de volgende vlucht?",
+      },
+    ],
+  },
+];
 
 /** Pending aanbiedingen (2) — personal groepen van testuser1. */
 const PENDING_GROUPS: Array<{ name: string; exercises: ExerciseSpec[] }> = [
@@ -153,39 +153,39 @@ const REJECTED_GROUPS: Array<{
   exercises: ExerciseSpec[];
   reason: string;
 }> = [
-    {
-      name: "sport",
-      reason: "Te weinig context; vertalingen inconsistent.",
-      exercises: [
-        {
-          source_text: "¿Dónde está el gimnasio?",
-          target_text: "Waar is de sportschool?",
-          tags: "seed-rejected,sport",
-        },
-        {
-          source_text: "Quiero reservar una pista de tenis.",
-          target_text: "Ik wil een tennisbaan reserveren.",
-          tags: "seed-rejected,sport",
-        },
-      ],
-    },
-    {
-      name: "winkel",
-      reason: "Niet geschikt als global corpus (te niche).",
-      exercises: [
-        {
-          source_text: "¿Tienen esta camisa en otra talla?",
-          target_text: "Hebben jullie dit shirt in een andere maat?",
-          tags: "seed-rejected,winkel",
-        },
-        {
-          source_text: "¿Puedo pagar con tarjeta?",
-          target_text: "Kan ik met pin betalen?",
-          tags: "seed-rejected,winkel",
-        },
-      ],
-    },
-  ];
+  {
+    name: "sport",
+    reason: "Te weinig context; vertalingen inconsistent.",
+    exercises: [
+      {
+        source_text: "¿Dónde está el gimnasio?",
+        target_text: "Waar is de sportschool?",
+        tags: "seed-rejected,sport",
+      },
+      {
+        source_text: "Quiero reservar una pista de tenis.",
+        target_text: "Ik wil een tennisbaan reserveren.",
+        tags: "seed-rejected,sport",
+      },
+    ],
+  },
+  {
+    name: "winkel",
+    reason: "Niet geschikt als global corpus (te niche).",
+    exercises: [
+      {
+        source_text: "¿Tienen esta camisa en otra talla?",
+        target_text: "Hebben jullie dit shirt in een andere maat?",
+        tags: "seed-rejected,winkel",
+      },
+      {
+        source_text: "¿Puedo pagar con tarjeta?",
+        target_text: "Kan ik met pin betalen?",
+        tags: "seed-rejected,winkel",
+      },
+    ],
+  },
+];
 
 const OWNED_EXERCISES: ExerciseSpec[] = [
   {
@@ -516,7 +516,10 @@ async function seedRejectedGroups(
   }
 }
 
-async function activateTopics(admin: AdminClient, userId: string): Promise<void> {
+async function activateTopics(
+  admin: AdminClient,
+  userId: string,
+): Promise<void> {
   const topics = Array.from(
     new Set([
       ...APPROVED_GLOBAL_GROUPS.map((g) => g.name),
@@ -721,7 +724,9 @@ async function seedDemoExerciseData(
     `  [+] ${demoExercises.length} persoonlijke oefeningen gekoppeld aan die topics`,
   );
   console.log(`  [+] ${progressCount} SRS-voortgangskaarten`);
-  console.log(`  [+] ${attemptCount} quiz-pogingen (14 dagen, topic-gekoppeld)`);
+  console.log(
+    `  [+] ${attemptCount} quiz-pogingen (14 dagen, topic-gekoppeld)`,
+  );
 }
 
 function writeCredMd(users: CredUser[]): void {

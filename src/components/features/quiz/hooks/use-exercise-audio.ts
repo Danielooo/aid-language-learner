@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { prefersReducedMotion } from "@/app/_components/features/chat/prefers-reduced-motion";
+import { prefersReducedMotion } from "@/components/features/chat/prefers-reduced-motion";
 
 type UseExerciseAudioOptions = {
   autoplay?: boolean;

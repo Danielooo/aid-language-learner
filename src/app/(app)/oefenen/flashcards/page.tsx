@@ -1,4 +1,4 @@
-import { FlashcardDeck } from "@/app/_components/features/quiz/flashcard-deck";
+import { FlashcardDeck } from "@/components/features/quiz/flashcard-deck";
 
 import type { Metadata } from "next";
 

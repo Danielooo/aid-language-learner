@@ -32,13 +32,13 @@ export function ChatComposer({
         }}
         disabled={isBusy}
         placeholder={placeholder}
-        className="flex-1 rounded-xl border border-input bg-background px-4 py-2.5 text-sm shadow-sm disabled:opacity-50"
+        className="border-input bg-background flex-1 rounded-xl border px-4 py-2.5 text-sm shadow-sm disabled:opacity-50"
       />
       {isBusy ? (
         <button
           type="button"
           onClick={onStop}
-          className="cursor-pointer rounded-xl border border-input bg-background px-4 text-xs font-medium transition-colors hover:bg-muted"
+          className="border-input bg-background hover:bg-muted cursor-pointer rounded-xl border px-4 text-xs font-medium transition-colors"
         >
           Stop
         </button>
@@ -46,7 +46,7 @@ export function ChatComposer({
         <button
           type="submit"
           disabled={!input.trim()}
-          className="cursor-pointer rounded-xl border border-accent/30 bg-accent px-4 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="border-accent/30 bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer rounded-xl border px-4 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitLabel}
         </button>

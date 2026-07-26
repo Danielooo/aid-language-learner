@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import { Container } from "@/app/_components/ui/container";
+import { Container } from "@/components/ui/container";
 
 interface ErrorProps {
   error: Error & { digest?: string };

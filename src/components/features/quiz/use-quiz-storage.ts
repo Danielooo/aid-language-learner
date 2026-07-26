@@ -35,10 +35,7 @@ function summarize(list: ReadonlyArray<QuizAttempt>): QuizScore {
 export function useQuizStorage() {
   const queryClient = useQueryClient();
 
-  const {
-    data: attempts = [],
-    isLoading: isLoadingAttempts,
-  } = useQuery({
+  const { data: attempts = [], isLoading: isLoadingAttempts } = useQuery({
     queryKey: queryKeys.quizAttempts(),
     queryFn: async () => {
       const data = await fetchJson<GetResponse>("/api/quiz-attempts");

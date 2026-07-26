@@ -9,7 +9,9 @@ import { fetchJson } from "@/lib/api/fetch-json";
 import {
   CommunityGroupModal,
   membersFromLive,
-} from "@/app/_components/features/community/community-group-modal";
+} from "@/components/features/community/community-group-modal";
+import { RefreshButton } from "@/components/ui/refresh-button";
+import { TableLoadingSkeleton } from "@/components/ui/table-loading-skeleton";
 
 import type {
   ExerciseGroupDetailSuccess,
@@ -201,21 +203,21 @@ export function CommunityBijdragenPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-sm">
-          <span className="text-xs text-muted-foreground">Zoeken</span>
+          <span className="text-muted-foreground text-xs">Zoeken</span>
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Topic of tags…"
-            className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+            className="border-border bg-background text-foreground h-9 rounded-md border px-3 text-sm"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs text-muted-foreground">Status</span>
+          <span className="text-muted-foreground text-xs">Status</span>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+            className="border-border bg-background text-foreground h-9 rounded-md border px-2 text-sm"
           >
             <option value="all">Alles</option>
             <option value="available">Beschikbaar</option>
@@ -224,55 +226,51 @@ export function CommunityBijdragenPanel() {
             <option value="rejected">Afgekeurd</option>
           </select>
         </label>
-        <button
-          type="button"
+        <RefreshButton
+          className="ml-auto"
+          isRefreshing={isRefreshing}
           disabled={loading || offerBusy}
           onClick={() =>
             void queryClient.invalidateQueries({
               queryKey: queryKeys.learningTopics(),
             })
           }
-          className="ml-auto inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-foreground disabled:opacity-50"
-        >
-          Ververs
-        </button>
+        />
       </div>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-muted-foreground text-xs">
         {filtered.length} zichtbaar
         {query.trim() ? ` · filter: “${query.trim()}”` : ""}
         {groups.length > 0 ? ` · ${groups.length} totaal` : ""}
       </p>
 
       {error && (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       )}
       {message && (
-        <p className="text-sm text-muted-foreground" role="status">
+        <p className="text-muted-foreground text-sm" role="status">
           {message}
         </p>
       )}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Laden…</p>
+        <TableLoadingSkeleton columns={5} />
       ) : groups.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Nog geen persoonlijke topics. Maak of importeer eerst topics via de
           Generator of Community → Overnemen.
         </p>
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Geen topics die bij je filters passen.
         </p>
       ) : (
         <div
-          className={
-            isRefreshing ? "opacity-60 transition-opacity" : undefined
-          }
+          className={isRefreshing ? "opacity-60 transition-opacity" : undefined}
         >
-          <div className="overflow-x-auto rounded-md border border-border">
+          <div className="border-border overflow-x-auto rounded-md border">
             <table className="w-full min-w-[44rem] table-fixed text-left text-sm">
               <colgroup>
                 <col className="w-[26%]" />
@@ -281,7 +279,7 @@ export function CommunityBijdragenPanel() {
                 <col className="w-[22%]" />
                 <col className="w-[16%]" />
               </colgroup>
-              <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
+              <thead className="border-border bg-muted/40 text-muted-foreground border-b text-xs">
                 <tr>
                   <th className="px-3 py-2">Topic</th>
                   <th className="px-3 py-2">Alle tags</th>
@@ -305,22 +303,25 @@ export function CommunityBijdragenPanel() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") void openGroup(item);
                       }}
-                      className="cursor-pointer border-b border-border/60 hover:bg-muted/40"
+                      className="border-border/60 hover:bg-muted/40 cursor-pointer border-b"
                     >
-                      <td className="truncate px-3 py-2 font-medium text-foreground">
+                      <td className="text-foreground truncate px-3 py-2 font-medium">
                         {item.name}
                       </td>
                       <td
-                        className="truncate px-3 py-2 text-muted-foreground"
+                        className="text-muted-foreground truncate px-3 py-2"
                         title={tagsFull}
                       >
                         {tagsPreview}
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">
+                      <td className="text-muted-foreground px-3 py-2">
                         {item.exerciseCount}
                       </td>
-                      <td className="truncate px-3 py-2 text-muted-foreground">
-                        {!when || label === "—" || label === "Beschikbaar" || label === "Leeg" ? (
+                      <td className="text-muted-foreground truncate px-3 py-2">
+                        {!when ||
+                        label === "—" ||
+                        label === "Beschikbaar" ||
+                        label === "Leeg" ? (
                           label
                         ) : (
                           <span>
@@ -332,7 +333,7 @@ export function CommunityBijdragenPanel() {
                           </span>
                         )}
                       </td>
-                      <td className="truncate px-3 py-2 text-muted-foreground">
+                      <td className="text-muted-foreground truncate px-3 py-2">
                         {reason ? (
                           <span title={reason.length > 40 ? reason : undefined}>
                             {truncate(reason, 40)}
@@ -348,7 +349,7 @@ export function CommunityBijdragenPanel() {
                 })}
               </tbody>
             </table>
-            <p className="px-3 py-2 text-[11px] text-muted-foreground">
+            <p className="text-muted-foreground px-3 py-2 text-[11px]">
               Klik op een rij om te bekijken en aan te bieden.
             </p>
           </div>

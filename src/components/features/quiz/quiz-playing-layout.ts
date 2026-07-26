@@ -21,21 +21,16 @@ export const QUIZ_PLAYING_DESCRIPTION_CLASS = "hidden";
 export const QUIZ_PLAYING_SECTION_CLASS =
   "relative rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-3 pt-7 sm:p-4 sm:pt-8";
 
-export const QUIZ_PLAYING_FORM_CLASS =
-  "mx-auto flex w-full max-w-lg flex-col";
+export const QUIZ_PLAYING_FORM_CLASS = "mx-auto flex w-full max-w-lg flex-col";
 
-export const QUIZ_PROMPT_CARD_FIXED_CLASS =
-  `relative h-40 shrink-0 sm:h-48 ${QUIZ_SHORT_VH}:h-28 ${QUIZ_SHORT_VH}:sm:h-32`;
+export const QUIZ_PROMPT_CARD_FIXED_CLASS = `relative h-40 shrink-0 sm:h-48 ${QUIZ_SHORT_VH}:h-28 ${QUIZ_SHORT_VH}:sm:h-32`;
 
 /** Typen/Sorteren: harde max-hoogte zodat audio de card niet opblaast. */
-export const QUIZ_PROMPT_CARD_MIN_CLASS =
-  `relative flex max-h-36 min-h-0 shrink-0 flex-col items-center justify-center overflow-hidden rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/15 via-accent/5 to-card p-3 text-center shadow-lg shadow-accent/10 sm:max-h-40 ${QUIZ_SHORT_VH}:max-h-28`;
+export const QUIZ_PROMPT_CARD_MIN_CLASS = `relative flex max-h-36 min-h-0 shrink-0 flex-col items-center justify-center overflow-hidden rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/15 via-accent/5 to-card p-3 text-center shadow-lg shadow-accent/10 sm:max-h-40 ${QUIZ_SHORT_VH}:max-h-28`;
 
-export const QUIZ_PROMPT_TEXT_CLASS =
-  `text-lg font-semibold leading-snug text-foreground sm:text-xl ${QUIZ_SHORT_VH}:text-base`;
+export const QUIZ_PROMPT_TEXT_CLASS = `text-lg font-semibold leading-snug text-foreground sm:text-xl ${QUIZ_SHORT_VH}:text-base`;
 
-export const QUIZ_PROMPT_SKELETON_CLASS =
-  `h-36 shrink-0 animate-pulse rounded-2xl bg-muted/60 sm:h-40 ${QUIZ_SHORT_VH}:h-28`;
+export const QUIZ_PROMPT_SKELETON_CLASS = `h-36 shrink-0 animate-pulse rounded-2xl bg-muted/60 sm:h-40 ${QUIZ_SHORT_VH}:h-28`;
 
 export const QUIZ_SHORT_HIDE_CLASS = "hidden";
 

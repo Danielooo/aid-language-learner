@@ -18,16 +18,66 @@ function makeProgress(): ProgressRow[] {
     dueOffsetDays: number;
     lastReviewedDaysAgo: number | null;
   }> = [
-    { repetition_count: 0, interval_days: 0, dueOffsetDays: 0, lastReviewedDaysAgo: null },
-    { repetition_count: 1, interval_days: 0, dueOffsetDays: 0, lastReviewedDaysAgo: 0 },
-    { repetition_count: 2, interval_days: 1, dueOffsetDays: 1, lastReviewedDaysAgo: 1 },
-    { repetition_count: 4, interval_days: 3, dueOffsetDays: 2, lastReviewedDaysAgo: 2 },
-    { repetition_count: 6, interval_days: 7, dueOffsetDays: 3, lastReviewedDaysAgo: 5 },
-    { repetition_count: 8, interval_days: 30, dueOffsetDays: 10, lastReviewedDaysAgo: 10 },
-    { repetition_count: 10, interval_days: 90, dueOffsetDays: 20, lastReviewedDaysAgo: 20 },
-    { repetition_count: 3, interval_days: 0, dueOffsetDays: 0, lastReviewedDaysAgo: 0 },
-    { repetition_count: 9, interval_days: 90, dueOffsetDays: 30, lastReviewedDaysAgo: 15 },
-    { repetition_count: 9, interval_days: 90, dueOffsetDays: 40, lastReviewedDaysAgo: 20 },
+    {
+      repetition_count: 0,
+      interval_days: 0,
+      dueOffsetDays: 0,
+      lastReviewedDaysAgo: null,
+    },
+    {
+      repetition_count: 1,
+      interval_days: 0,
+      dueOffsetDays: 0,
+      lastReviewedDaysAgo: 0,
+    },
+    {
+      repetition_count: 2,
+      interval_days: 1,
+      dueOffsetDays: 1,
+      lastReviewedDaysAgo: 1,
+    },
+    {
+      repetition_count: 4,
+      interval_days: 3,
+      dueOffsetDays: 2,
+      lastReviewedDaysAgo: 2,
+    },
+    {
+      repetition_count: 6,
+      interval_days: 7,
+      dueOffsetDays: 3,
+      lastReviewedDaysAgo: 5,
+    },
+    {
+      repetition_count: 8,
+      interval_days: 30,
+      dueOffsetDays: 10,
+      lastReviewedDaysAgo: 10,
+    },
+    {
+      repetition_count: 10,
+      interval_days: 90,
+      dueOffsetDays: 20,
+      lastReviewedDaysAgo: 20,
+    },
+    {
+      repetition_count: 3,
+      interval_days: 0,
+      dueOffsetDays: 0,
+      lastReviewedDaysAgo: 0,
+    },
+    {
+      repetition_count: 9,
+      interval_days: 90,
+      dueOffsetDays: 30,
+      lastReviewedDaysAgo: 15,
+    },
+    {
+      repetition_count: 9,
+      interval_days: 90,
+      dueOffsetDays: 40,
+      lastReviewedDaysAgo: 20,
+    },
   ];
 
   for (let i = 0; i < configs.length; i++) {
@@ -44,7 +94,9 @@ function makeProgress(): ProgressRow[] {
       repetition_count: cfg.repetition_count,
       interval_days: cfg.interval_days,
       last_reviewed_at:
-        cfg.lastReviewedDaysAgo == null ? null : daysAgo(cfg.lastReviewedDaysAgo),
+        cfg.lastReviewedDaysAgo == null
+          ? null
+          : daysAgo(cfg.lastReviewedDaysAgo),
       next_review_at: due.toISOString(),
       is_suspended: false,
     });
@@ -72,7 +124,11 @@ function makeExercises(): ExerciseTopicRow[] {
 
 function makeAttempts(): AttemptRow[] {
   const rows: AttemptRow[] = [];
-  const pattern: Array<{ daysAgo: number; count: number; correctRatio: number }> = [
+  const pattern: Array<{
+    daysAgo: number;
+    count: number;
+    correctRatio: number;
+  }> = [
     { daysAgo: 0, count: 8, correctRatio: 0.75 },
     { daysAgo: 1, count: 12, correctRatio: 0.67 },
     { daysAgo: 2, count: 5, correctRatio: 0.8 },
@@ -104,5 +160,10 @@ function makeAttempts(): AttemptRow[] {
 }
 
 export function createMockDashboardStats() {
-  return buildDashboardStats(makeProgress(), makeAttempts(), new Date(), makeExercises());
+  return buildDashboardStats(
+    makeProgress(),
+    makeAttempts(),
+    new Date(),
+    makeExercises(),
+  );
 }

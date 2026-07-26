@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
+import { ALL_TOPICS } from "@/components/features/quiz/constants";
 
 import type { TopicStat } from "@/types/quiz";
 
@@ -16,9 +16,7 @@ export function hasActivePracticeTopics(
   loading: boolean,
 ): boolean {
   if (loading) return true;
-  return topicStats.some(
-    (stat) => stat.topic !== ALL_TOPICS && stat.count > 0,
-  );
+  return topicStats.some((stat) => stat.topic !== ALL_TOPICS && stat.count > 0);
 }
 
 export function ActiveTopicsEmptyBanner({
@@ -30,12 +28,12 @@ export function ActiveTopicsEmptyBanner({
   }
 
   return (
-    <div className="rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-4 text-sm text-muted-foreground">
+    <div className="border-accent/40 bg-accent/5 text-muted-foreground rounded-xl border border-dashed px-4 py-4 text-sm">
       <p>
         Je hebt nog geen actieve topics. Ga naar{" "}
         <Link
           href="/leerplan"
-          className="font-medium text-accent underline-offset-2 hover:underline"
+          className="text-accent font-medium underline-offset-2 hover:underline"
         >
           Mijn leerplan
         </Link>{" "}

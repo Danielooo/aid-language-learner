@@ -1,5 +1,5 @@
-import { CommunityPageContent } from "@/app/_components/features/community/community-page-content";
-import { AppPageHeader } from "@/app/_components/ui/app-page-header";
+import { CommunityPageContent } from "@/components/features/community/community-page-content";
+import { AppPageHeader } from "@/components/ui/app-page-header";
 
 import type { Metadata } from "next";
 

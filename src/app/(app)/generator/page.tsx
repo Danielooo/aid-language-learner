@@ -1,4 +1,4 @@
-import { GeneratorPageContent } from "@/app/_components/features/generator/generator-page-content";
+import { GeneratorPageContent } from "@/components/features/generator/generator-page-content";
 
 import type { Metadata } from "next";
 

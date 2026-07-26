@@ -4,13 +4,11 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { signOut } from "@/app/(auth)/actions";
-import { Container } from "@/app/_components/ui/container";
-import { ThemeToggle } from "@/app/_components/ui/theme-toggle";
+import { Container } from "@/components/ui/container";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { href: "/", label: "Home" },
-] as const;
+const navItems = [{ href: "/", label: "Over" }] as const;
 
 const navLinkClasses =
   "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground";
@@ -34,14 +32,14 @@ export function SiteHeader({ accountLabel }: SiteHeaderProps) {
   const closeMenu = () => setOpen(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="border-border bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 border-b backdrop-blur">
       <Container>
         <div className="flex min-h-16 items-center justify-between gap-4">
           <Link
             href="/"
             onClick={closeMenu}
             aria-label="AID Language Learner — home"
-            className="text-3xl font-bold tracking-tighter text-foreground"
+            className="text-foreground text-3xl font-bold tracking-tighter"
           >
             LL
           </Link>
@@ -51,12 +49,19 @@ export function SiteHeader({ accountLabel }: SiteHeaderProps) {
             className="hidden items-center gap-6 md:flex"
           >
             {navItems.map((item) => (
-              <Link key={item.label} href={item.href} className={navLinkClasses}>
+              <Link
+                key={item.label}
+                href={item.href}
+                className={navLinkClasses}
+              >
                 {item.label}
               </Link>
             ))}
             <ThemeToggle />
-            <AuthControls accountLabel={accountLabel} onAfterClick={closeMenu} />
+            <AuthControls
+              accountLabel={accountLabel}
+              onAfterClick={closeMenu}
+            />
           </nav>
 
           <button
@@ -66,7 +71,7 @@ export function SiteHeader({ accountLabel }: SiteHeaderProps) {
             aria-controls="site-mobile-nav"
             onClick={() => setOpen((prev) => !prev)}
             className={cn(
-              "inline-flex size-10 items-center justify-center rounded-md text-foreground md:hidden",
+              "text-foreground inline-flex size-10 items-center justify-center rounded-md md:hidden",
               "hover:bg-muted",
             )}
           >
@@ -78,7 +83,7 @@ export function SiteHeader({ accountLabel }: SiteHeaderProps) {
       {open && (
         <div
           id="site-mobile-nav"
-          className="border-t border-border bg-background md:hidden"
+          className="border-border bg-background border-t md:hidden"
         >
           <Container>
             <nav
@@ -95,9 +100,12 @@ export function SiteHeader({ accountLabel }: SiteHeaderProps) {
                   {item.label}
                 </Link>
               ))}
-              <div className="mt-2 flex flex-col gap-3 border-t border-border pt-4">
+              <div className="border-border mt-2 flex flex-col gap-3 border-t pt-4">
                 <ThemeToggle />
-                <AuthControls accountLabel={accountLabel} onAfterClick={closeMenu} />
+                <AuthControls
+                  accountLabel={accountLabel}
+                  onAfterClick={closeMenu}
+                />
               </div>
             </nav>
           </Container>
@@ -117,7 +125,9 @@ function AuthControls({
   if (accountLabel) {
     return (
       <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-foreground">{accountLabel}</span>
+        <span className="text-foreground text-sm font-medium">
+          {accountLabel}
+        </span>
         <form action={signOut}>
           <button
             type="submit"
@@ -133,18 +143,10 @@ function AuthControls({
 
   return (
     <div className="flex items-center gap-2">
-      <Link
-        href="/login"
-        onClick={onAfterClick}
-        className={ghostButtonClasses}
-      >
+      <Link href="/login" onClick={onAfterClick} className={ghostButtonClasses}>
         Inloggen
       </Link>
-      <Link
-        href="/register"
-        onClick={onAfterClick}
-        className={buttonClasses}
-      >
+      <Link href="/register" onClick={onAfterClick} className={buttonClasses}>
         Registreren
       </Link>
     </div>

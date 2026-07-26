@@ -1,6 +1,6 @@
 "use client";
 
-import { useDashboardStats } from "@/app/_components/features/dashboard/use-dashboard-stats";
+import { useDashboardStats } from "@/components/features/dashboard/use-dashboard-stats";
 
 function formatStreak(days: number): string {
   if (days === 0) return "0d";

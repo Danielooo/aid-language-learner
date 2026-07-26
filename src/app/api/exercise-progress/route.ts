@@ -1,10 +1,7 @@
 import { z } from "zod";
 
 import { getExerciseUserAccess } from "@/lib/exercises/exercise-access";
-import {
-  createNewSrsCard,
-  reviewSrsCard,
-} from "@/lib/srs/schedule";
+import { createNewSrsCard, reviewSrsCard } from "@/lib/srs/schedule";
 import { countSrsDue } from "@/lib/srs/due-exercises";
 import {
   activeTopicsToArray,
@@ -47,7 +44,11 @@ function toDto(row: ProgressRow): ExerciseProgressDto {
   };
 }
 
-function rowFromCard(exerciseId: string, userId: string, card: ReturnType<typeof reviewSrsCard>) {
+function rowFromCard(
+  exerciseId: string,
+  userId: string,
+  card: ReturnType<typeof reviewSrsCard>,
+) {
   return {
     user_id: userId,
     exercise_id: exerciseId,
@@ -73,7 +74,10 @@ export async function GET(req: Request) {
       : null;
 
   const now = new Date().toISOString();
-  const activeTopics = await getActiveTopicsForUser(access.supabase, access.userId);
+  const activeTopics = await getActiveTopicsForUser(
+    access.supabase,
+    access.userId,
+  );
   const activeList = activeTopicsToArray(activeTopics);
 
   if (topic && !isTopicActive(activeTopics, topic)) {
@@ -92,10 +96,15 @@ export async function GET(req: Request) {
 
   if (activeList) {
     try {
-      const dueCounts = await countSrsDue(access.supabase, access.userId, activeList, {
-        topic,
-        now: new Date(now),
-      });
+      const dueCounts = await countSrsDue(
+        access.supabase,
+        access.userId,
+        activeList,
+        {
+          topic,
+          now: new Date(now),
+        },
+      );
       dueCount = dueCounts.total;
       if (breakdown === "topics") {
         dueByTopic = dueCounts.byTopic;
@@ -153,13 +162,20 @@ export async function POST(req: Request) {
   try {
     parsedBody = await req.json();
   } catch {
-    return Response.json({ ok: false, error: "Body is geen geldige JSON." }, { status: 400 });
+    return Response.json(
+      { ok: false, error: "Body is geen geldige JSON." },
+      { status: 400 },
+    );
   }
 
   const parseResult = postSchema.safeParse(parsedBody);
   if (!parseResult.success) {
     return Response.json(
-      { ok: false, error: "Validatie mislukt.", issues: parseResult.error.issues },
+      {
+        ok: false,
+        error: "Validatie mislukt.",
+        issues: parseResult.error.issues,
+      },
       { status: 400 },
     );
   }
@@ -176,7 +192,10 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (fetchError) {
-    return Response.json({ ok: false, error: fetchError.message }, { status: 500 });
+    return Response.json(
+      { ok: false, error: fetchError.message },
+      { status: 500 },
+    );
   }
 
   const currentState = existing
