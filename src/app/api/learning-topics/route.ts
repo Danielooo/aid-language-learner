@@ -33,24 +33,35 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const includeGlobal = url.searchParams.get("includeGlobal") === "true";
 
-  const activeTopics = await getActiveTopicsForUser(access.supabase, access.userId);
+  const activeTopics = await getActiveTopicsForUser(
+    access.supabase,
+    access.userId,
+  );
   const activeList = activeTopicsToArray(activeTopics);
 
   const [exercisesRes, prefsRes, dueCountsRes] = await Promise.all([
-    access.supabase.from("exercises").select("topic, owner_id").not("topic", "is", null),
+    access.supabase
+      .from("exercises")
+      .select("topic, owner_id")
+      .not("topic", "is", null),
     access.supabase
       .from("user_topic_preferences")
       .select("topic, is_active")
       .eq("user_id", access.userId),
     activeList
-      ? countSrsDue(access.supabase, access.userId, activeList).catch((error: unknown) => ({
-          error: error instanceof Error ? error.message : "Onbekende fout",
-        }))
+      ? countSrsDue(access.supabase, access.userId, activeList).catch(
+          (error: unknown) => ({
+            error: error instanceof Error ? error.message : "Onbekende fout",
+          }),
+        )
       : Promise.resolve({ total: 0, byTopic: {} } satisfies SrsDueCounts),
   ]);
 
   if (exercisesRes.error) {
-    return Response.json({ error: exercisesRes.error.message }, { status: 500 });
+    return Response.json(
+      { error: exercisesRes.error.message },
+      { status: 500 },
+    );
   }
   if (prefsRes.error) {
     return Response.json({ error: prefsRes.error.message }, { status: 500 });
@@ -66,7 +77,10 @@ export async function GET(req: Request) {
 
   const dueByTopic: Record<string, number> = dueCountsRes.byTopic;
 
-  const topicMeta = new Map<string, { exerciseCount: number; isOwn: boolean }>();
+  const topicMeta = new Map<
+    string,
+    { exerciseCount: number; isOwn: boolean }
+  >();
 
   for (const row of (exercisesRes.data ?? []) as ExerciseRow[]) {
     const topic = row.topic?.trim();
@@ -88,7 +102,8 @@ export async function GET(req: Request) {
       exerciseCount: meta.exerciseCount,
       isActive: prefsByTopic.get(topic) ?? false,
       isOwn: meta.isOwn,
-      dueCount: (prefsByTopic.get(topic) ?? false) ? (dueByTopic[topic] ?? 0) : 0,
+      dueCount:
+        (prefsByTopic.get(topic) ?? false) ? (dueByTopic[topic] ?? 0) : 0,
     }));
 
   const payload: LearningTopicsResponse = {
@@ -112,13 +127,20 @@ export async function PATCH(req: Request) {
   try {
     parsedBody = await req.json();
   } catch {
-    return Response.json({ ok: false, error: "Body is geen geldige JSON." }, { status: 400 });
+    return Response.json(
+      { ok: false, error: "Body is geen geldige JSON." },
+      { status: 400 },
+    );
   }
 
   const parseResult = patchSchema.safeParse(parsedBody);
   if (!parseResult.success) {
     return Response.json(
-      { ok: false, error: "Validatie mislukt.", issues: parseResult.error.issues },
+      {
+        ok: false,
+        error: "Validatie mislukt.",
+        issues: parseResult.error.issues,
+      },
       { status: 400 },
     );
   }
@@ -134,7 +156,10 @@ export async function PATCH(req: Request) {
     .maybeSingle();
 
   if (exerciseError) {
-    return Response.json({ ok: false, error: exerciseError.message }, { status: 500 });
+    return Response.json(
+      { ok: false, error: exerciseError.message },
+      { status: 500 },
+    );
   }
   if (!exerciseRow) {
     return Response.json(

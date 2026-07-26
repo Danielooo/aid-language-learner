@@ -2,7 +2,10 @@
  * Initialen voor avatar-placeholder (max. 2 letters).
  * Gebruikt weergavenaam indien aanwezig, anders username.
  */
-export function getInitials(displayName: string | null | undefined, username: string): string {
+export function getInitials(
+  displayName: string | null | undefined,
+  username: string,
+): string {
   const source = displayName?.trim() || username.trim();
   if (!source) return "?";
 

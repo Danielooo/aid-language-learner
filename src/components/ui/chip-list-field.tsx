@@ -45,24 +45,22 @@ export function ChipListField({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-muted-foreground text-xs">{label}</p>
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+        <p className="text-muted-foreground text-sm">{emptyLabel}</p>
       ) : (
         <ul className="flex flex-wrap gap-1.5">
           {items.map((item, index) => (
             <li
               key={`${item}-${index}`}
-              className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs text-foreground"
+              className="border-border bg-muted text-foreground inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
             >
               <span className="min-w-0 truncate">{item}</span>
               <button
                 type="button"
                 disabled={disabled}
-                onClick={() =>
-                  onChange(items.filter((_, i) => i !== index))
-                }
-                className="shrink-0 text-muted-foreground hover:text-destructive disabled:opacity-50"
+                onClick={() => onChange(items.filter((_, i) => i !== index))}
+                className="text-muted-foreground hover:text-destructive shrink-0 disabled:opacity-50"
                 aria-label={`Verwijder ${item}`}
               >
                 ×
@@ -84,13 +82,13 @@ export function ChipListField({
             }
           }}
           placeholder={placeholder}
-          className="h-9 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm"
+          className="border-border bg-background h-9 min-w-0 flex-1 rounded-md border px-3 text-sm"
         />
         <button
           type="button"
           disabled={disabled || draft.trim().length === 0}
           onClick={addItem}
-          className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs disabled:opacity-50"
+          className="border-border inline-flex h-9 items-center rounded-md border px-3 text-xs disabled:opacity-50"
         >
           {addLabel}
         </button>

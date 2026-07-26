@@ -107,11 +107,13 @@ export async function enrichExercises({
   }
 
   const existingTopics = await fetchExistingTopicsSafe(supabase, ownerId);
-  const llmItems = enrichItems.map(({ audio_id, source_text, source_lang }) => ({
-    audio_id,
-    source_text,
-    source_lang,
-  }));
+  const llmItems = enrichItems.map(
+    ({ audio_id, source_text, source_lang }) => ({
+      audio_id,
+      source_text,
+      source_lang,
+    }),
+  );
 
   const prompt = buildEnrichUserMessage(llmItems, existingTopics);
 
@@ -179,7 +181,10 @@ async function fetchExistingTopicsSafe(
   ownerId?: string,
 ): Promise<string[]> {
   try {
-    let query = supabase.from("exercises").select("topic").not("topic", "is", null);
+    let query = supabase
+      .from("exercises")
+      .select("topic")
+      .not("topic", "is", null);
     if (ownerId) {
       query = query.eq("owner_id", ownerId);
     }

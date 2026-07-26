@@ -30,9 +30,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       action={signIn}
       next={next}
       externalError={
-        fout === "deactivated"
-          ? "Dit account is gedeactiveerd."
-          : undefined
+        fout === "deactivated" ? "Dit account is gedeactiveerd." : undefined
       }
     />
   );

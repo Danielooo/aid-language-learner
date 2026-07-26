@@ -6,18 +6,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ConfirmDialog } from "@/app/_components/ui/confirm-dialog";
-import { ChatThread } from "@/app/_components/features/chat/chat-thread";
-import { ChatComposer } from "@/app/_components/features/chat/chat-composer";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ChatThread } from "@/components/features/chat/chat-thread";
+import { ChatComposer } from "@/components/features/chat/chat-composer";
 import { queryKeys } from "@/lib/query-keys";
-import {
-  useAudioGeneratorDraft,
-} from "@/lib/hooks/use-audio-generator-draft";
+import { useAudioGeneratorDraft } from "@/hooks/use-audio-generator-draft";
 
-import {
-  formatQuotaLabel,
-  useAiQuota,
-} from "./hooks/use-ai-quota";
+import { formatQuotaLabel, useAiQuota } from "./hooks/use-ai-quota";
 import { AudioProposalTable } from "./audio-proposal-table";
 import {
   filterAudioProposalBatchesByAudioIds,
@@ -36,24 +31,28 @@ import {
   uiMessagesToPersisted,
 } from "./persisted-chat-messages";
 import type { TopicDestinationMode } from "./proposal-topic-destination";
+import {
+  toUserFacingChatError,
+  toUserFacingPersistError,
+} from "./user-facing-error";
 
-import type { ExerciseEditValues } from "@/app/_components/features/exercises/exercise-edit-modal";
+import type { ExerciseEditValues } from "@/components/features/exercises/exercise-edit-modal";
 import type { AudioExerciseProposal } from "@/types/audio-exercise";
 import type { UIMessage } from "ai";
 
 type PersistResponse =
   | {
-    ok: true;
-    inserted: number;
-    groupId?: string;
-    groupName?: string;
-    results?: unknown;
-  }
+      ok: true;
+      inserted: number;
+      groupId?: string;
+      groupName?: string;
+      results?: unknown;
+    }
   | {
-    ok: false;
-    error: string;
-    results?: unknown;
-  };
+      ok: false;
+      error: string;
+      results?: unknown;
+    };
 
 type SavedGroupSnapshot = {
   name: string;
@@ -109,7 +108,7 @@ export function AudioExerciseGenerator() {
     batchesRef.current = batches;
   }, [batches]);
 
-  /* eslint-disable react-hooks/refs */
+  /* eslint-disable react-hooks/refs -- transport-body leest de actuele draft via refs zonder transport te herbouwen */
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -139,37 +138,38 @@ export function AudioExerciseGenerator() {
     transport,
   });
 
-  const getAssistantFallbackText = useCallback((message: UIMessage): string | null => {
-    if (emptyToolMessageIds.has(message.id)) {
-      return "Geen nieuwe oefeningen — alles was al in het voorstel.";
-    }
-    for (const part of message.parts) {
-      if (
-        part.type === "tool-proposeAudioExercises" &&
-        part.state === "output-available"
-      ) {
-        const output = part.output;
-        if (!isAudioProposeOutput(output)) continue;
-        const count = output.exercises.length;
-        return count === 1
-          ? "1 oefening toegevoegd"
-          : `${count} oefeningen toegevoegd`;
+  const getAssistantFallbackText = useCallback(
+    (message: UIMessage): string | null => {
+      if (emptyToolMessageIds.has(message.id)) {
+        return "Geen nieuwe oefeningen — alles was al in het voorstel.";
       }
-    }
-    return null;
-  }, [emptyToolMessageIds]);
+      for (const part of message.parts) {
+        if (
+          part.type === "tool-proposeAudioExercises" &&
+          part.state === "output-available"
+        ) {
+          const output = part.output;
+          if (!isAudioProposeOutput(output)) continue;
+          const count = output.exercises.length;
+          return count === 1
+            ? "1 oefening toegevoegd"
+            : `${count} oefeningen toegevoegd`;
+        }
+      }
+      return null;
+    },
+    [emptyToolMessageIds],
+  );
 
   // Eenmalig draft herstellen na mount (localStorage), na useChat i.v.m. setMessages.
-  /* eslint-disable react-hooks/set-state-in-effect -- hydrate from localStorage */
+  /* eslint-disable react-hooks/set-state-in-effect -- eenmalige draft-hydratie uit localStorage na useChat-init */
   useEffect(() => {
     if (restoredRef.current) return;
     restoredRef.current = true;
     const snap = draft.snapshot;
     if (
       snap &&
-      (snap.batches.length > 0 ||
-        snap.topic.trim() ||
-        snap.messages.length > 0)
+      (snap.batches.length > 0 || snap.topic.trim() || snap.messages.length > 0)
     ) {
       setBatches(snap.batches);
       setDraftSelectedIds(snap.selectedAudioIds);
@@ -225,6 +225,7 @@ export function AudioExerciseGenerator() {
     () => findLatestAudioSearchError(messages),
     [messages],
   );
+  const chatErrorMessage = error ? toUserFacingChatError(error) : null;
 
   const isBusy = status === "submitted" || status === "streaming";
   const wasBusyRef = useRef(false);
@@ -240,7 +241,6 @@ export function AudioExerciseGenerator() {
     }
   }, [isBusy, status, refreshAiQuota]);
 
-  /* eslint-disable react-hooks/set-state-in-effect -- tool-output sync naar batch-stack */
   useEffect(() => {
     for (const msg of messages) {
       if (msg.role !== "assistant") continue;
@@ -292,7 +292,6 @@ export function AudioExerciseGenerator() {
       }
     }
   }, [messages]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -382,7 +381,10 @@ export function AudioExerciseGenerator() {
           status: "error",
           requestBody,
           response: json,
-          error: "error" in json ? json.error : `HTTP ${res.status}`,
+          error: toUserFacingPersistError(
+            "error" in json ? json.error : undefined,
+            res.status,
+          ),
         });
         return;
       }
@@ -436,7 +438,9 @@ export function AudioExerciseGenerator() {
         status: "error",
         requestBody,
         response: null,
-        error: err instanceof Error ? err.message : "Onbekende fout",
+        error: toUserFacingPersistError(
+          err instanceof Error ? err.message : undefined,
+        ),
       });
     }
   }
@@ -447,11 +451,11 @@ export function AudioExerciseGenerator() {
   return (
     <>
       {persistState.status === "success" && (
-        <p className="rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-foreground">
+        <p className="border-accent/30 bg-accent/10 text-foreground rounded-md border px-3 py-2 text-sm">
           Opgeslagen met audio. Vink topics aan via{" "}
           <Link
             href="/leerplan"
-            className="font-medium text-accent underline-offset-2 hover:underline"
+            className="text-accent font-medium underline-offset-2 hover:underline"
           >
             Leerplan
           </Link>
@@ -459,14 +463,14 @@ export function AudioExerciseGenerator() {
         </p>
       )}
 
-      <section className="space-y-3 rounded-lg border border-border bg-card p-5 text-card-foreground">
+      <section className="border-border bg-card text-card-foreground space-y-3 rounded-lg border p-5">
         <header className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Chat</h2>
           {canClear && (
             <button
               type="button"
               onClick={() => setConfirmClearOpen(true)}
-              className="h-9 rounded border border-border px-3 text-xs font-medium hover:bg-muted"
+              className="border-border hover:bg-muted h-9 rounded border px-3 text-xs font-medium"
             >
               Gesprek en oefeningen wissen
             </button>
@@ -478,7 +482,7 @@ export function AudioExerciseGenerator() {
           status={status}
           getAssistantFallbackText={getAssistantFallbackText}
           emptyState={
-            <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="text-muted-foreground space-y-2 text-sm">
               <p>Nog geen berichten. Probeer:</p>
               <ul className="space-y-1.5">
                 {SUGGESTIONS.map((s) => (
@@ -486,7 +490,7 @@ export function AudioExerciseGenerator() {
                     <button
                       type="button"
                       onClick={() => setInput(s)}
-                      className="inline-flex h-9 max-w-full items-center rounded-md border border-border bg-background px-3 text-left text-xs text-foreground hover:bg-muted"
+                      className="border-border bg-background text-foreground hover:bg-muted inline-flex h-9 max-w-full items-center rounded-md border px-3 text-left text-xs"
                     >
                       {s}
                     </button>
@@ -497,14 +501,12 @@ export function AudioExerciseGenerator() {
           }
         />
 
-        {(error || searchError) && (
-          <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
-            <p className="font-medium">
-              {error ? "Fout in chat-request" : "Geen resultaten"}
-            </p>
-            <pre className="mt-1 font-mono">
-              {error?.message ?? searchError}
-            </pre>
+        {(chatErrorMessage || searchError) && (
+          <div
+            className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border p-3 text-sm"
+            role="alert"
+          >
+            <p>{chatErrorMessage ?? searchError}</p>
           </div>
         )}
 
@@ -512,7 +514,7 @@ export function AudioExerciseGenerator() {
           <button
             type="button"
             onClick={() => setInput(APPEND_SUGGESTION)}
-            className="inline-flex h-9 items-center rounded-md border border-border bg-background px-3 text-xs text-foreground hover:bg-muted"
+            className="border-border bg-background text-foreground hover:bg-muted inline-flex h-9 items-center rounded-md border px-3 text-xs"
           >
             {APPEND_SUGGESTION}
           </button>
@@ -533,7 +535,7 @@ export function AudioExerciseGenerator() {
         />
 
         {quotaLabel && (
-          <p className="text-[11px] text-muted-foreground">{quotaLabel}</p>
+          <p className="text-muted-foreground text-[11px]">{quotaLabel}</p>
         )}
       </section>
 
@@ -614,7 +616,7 @@ function findLatestAudioSearchError(messages: UIMessage[]): string | null {
       if (output.ok === false || output.exercises.length === 0) {
         return (
           output.error ??
-          "Geen audio-oefeningen gevonden voor deze zoekopdracht."
+          "Geen spraakoefeningen gevonden voor deze zoekopdracht."
         );
       }
       return null;

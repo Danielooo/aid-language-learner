@@ -1,5 +1,5 @@
 import type { AudioRow } from "@/types/tatoeba";
-import type { UseTranslationCache } from "@/lib/hooks/use-translation-cache";
+import type { UseTranslationCache } from "@/hooks/use-translation-cache";
 
 // Map LLM-voorstellen naar pseudo-AudioRow's zodat AudioResultTable
 // hergebruikt kan worden zonder Tatoeba-metadata. Negatieve audio_id's
@@ -148,7 +148,9 @@ export function updateProposalExerciseByAudioId(
   });
 }
 
-export function mapProposalToRows(proposal: ProposeExercisesOutput): AudioRow[] {
+export function mapProposalToRows(
+  proposal: ProposeExercisesOutput,
+): AudioRow[] {
   return proposal.exercises.map((ex, index) => ({
     audio_id: proposalIndexToAudioId(index),
     sentence_id: 0,

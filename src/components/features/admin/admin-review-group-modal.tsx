@@ -97,7 +97,7 @@ function ActionIconButton({
       className={`${iconBtnClass} ${className}`}
     >
       <span
-        className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+        className="bg-foreground text-background pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 rounded px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
         aria-hidden
       >
         {label}
@@ -133,24 +133,24 @@ export function AdminReviewGroupModal({
     }
   }, [open]);
 
-  useEffect(() => {
-    if (!open) setRejectReason("");
-  }, [open]);
-
   if (!snapshot) return null;
 
   const exercises = Array.isArray(snapshot.exercises) ? snapshot.exercises : [];
+  const handleClose = () => {
+    setRejectReason("");
+    onClose();
+  };
 
   return (
     <dialog
       ref={dialogRef}
-      onClose={onClose}
-      className="fixed inset-0 m-auto h-fit max-h-[85vh] w-[min(720px,90vw)] rounded-lg border border-border bg-card p-0 text-card-foreground backdrop:bg-foreground/40"
+      onClose={handleClose}
+      className="border-border bg-card text-card-foreground backdrop:bg-foreground/40 fixed inset-0 m-auto h-fit max-h-[85vh] w-[min(720px,90vw)] rounded-lg border p-0"
     >
       <div className="flex h-full max-h-[85vh] flex-col">
-        <header className="relative space-y-1 border-b border-border px-5 py-3 pr-12">
+        <header className="border-border relative space-y-1 border-b px-5 py-3 pr-12">
           <h2 className="text-base font-semibold">{snapshot.name}</h2>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             {exercises.length} oefening{exercises.length === 1 ? "" : "en"} in
             deze groep
           </p>
@@ -158,8 +158,8 @@ export function AdminReviewGroupModal({
             type="button"
             aria-label="Sluiten"
             disabled={busy}
-            onClick={onClose}
-            className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+            onClick={handleClose}
+            className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-3 right-3 inline-flex size-8 items-center justify-center rounded-md disabled:opacity-50"
           >
             <CrossIcon />
           </button>
@@ -167,21 +167,23 @@ export function AdminReviewGroupModal({
 
         <div className="flex-1 space-y-3 overflow-auto px-5 py-3">
           {exercises.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Geen oefeningen in de snapshot.
             </p>
           ) : (
             exercises.map((ex, index) => (
               <div
                 key={`${ex.source_text}-${index}`}
-                className="space-y-1 rounded-md border border-border/60 px-3 py-2"
+                className="border-border/60 space-y-1 rounded-md border px-3 py-2"
               >
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-foreground text-sm font-medium">
                   {ex.source_text}
                 </p>
-                <p className="text-sm text-muted-foreground">{ex.target_text}</p>
+                <p className="text-muted-foreground text-sm">
+                  {ex.target_text}
+                </p>
                 {ex.tags?.trim() ? (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-muted-foreground text-[11px]">
                     Tags: {ex.tags}
                   </p>
                 ) : null}
@@ -190,12 +192,12 @@ export function AdminReviewGroupModal({
           )}
         </div>
 
-        <footer className="space-y-3 border-t border-border px-5 pt-8 pb-3">
+        <footer className="border-border space-y-3 border-t px-5 pt-8 pb-3">
           {(tab === "pending" || tab === "approved") && (
             <div className="flex min-w-0 flex-col gap-1">
               <label
                 htmlFor="modal-reject-reason"
-                className="text-[11px] text-muted-foreground"
+                className="text-muted-foreground text-[11px]"
               >
                 Afkeurreden (optioneel)
               </label>
@@ -203,7 +205,7 @@ export function AdminReviewGroupModal({
                 id="modal-reject-reason"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+                className="border-border bg-background h-9 rounded-md border px-2 text-sm"
                 placeholder="Bijv. onduidelijke vertalingen"
                 disabled={busy}
               />
@@ -224,9 +226,7 @@ export function AdminReviewGroupModal({
                 <ActionIconButton
                   label="Afkeuren"
                   ariaLabel={
-                    rejectReason.trim()
-                      ? "Afkeuren"
-                      : "Afkeuren zonder reden"
+                    rejectReason.trim() ? "Afkeuren" : "Afkeuren zonder reden"
                   }
                   disabled={busy}
                   onClick={() => onReject(rejectReason)}

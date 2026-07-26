@@ -1,4 +1,4 @@
-import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
+import { ALL_TOPICS } from "@/components/features/quiz/constants";
 import { getExerciseUserAccess } from "@/lib/exercises/exercise-access";
 import {
   activeTopicsToArray,
@@ -16,7 +16,10 @@ export async function GET() {
   const access = await getExerciseUserAccess();
   if (!access.ok) return access.response;
 
-  const activeTopics = await getActiveTopicsForUser(access.supabase, access.userId);
+  const activeTopics = await getActiveTopicsForUser(
+    access.supabase,
+    access.userId,
+  );
   const activeList = activeTopicsToArray(activeTopics);
 
   if (!activeList) {
@@ -40,7 +43,8 @@ export async function GET() {
 
   const countByTopic = new Map<string, number>();
   for (const row of data ?? []) {
-    if (typeof row.topic !== "string" || row.topic.trim().length === 0) continue;
+    if (typeof row.topic !== "string" || row.topic.trim().length === 0)
+      continue;
     const key = row.topic.trim();
     if (!isTopicActive(activeTopics, key)) continue;
     countByTopic.set(key, (countByTopic.get(key) ?? 0) + 1);

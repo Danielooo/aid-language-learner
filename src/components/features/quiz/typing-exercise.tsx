@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef } from "react";
 
-import { ExerciseAudioAttribution } from "@/app/_components/features/quiz/exercise-audio-attribution";
-import { ExerciseAudioControls } from "@/app/_components/features/quiz/exercise-audio-controls";
+import { ExerciseAudioAttribution } from "@/components/features/quiz/exercise-audio-attribution";
+import { ExerciseAudioControls } from "@/components/features/quiz/exercise-audio-controls";
 import { shuffleAnagram } from "@/lib/quiz/anagram";
 import { pickBlankWord } from "@/lib/quiz/blank-word";
 import { isAnswerCorrect, normalizeForCompare } from "@/lib/quiz/compare";
@@ -90,7 +90,7 @@ export function TypingExercise({
     <form onSubmit={handleFormSubmit} className={QUIZ_PLAYING_FORM_CLASS}>
       <div className={QUIZ_PROMPT_CARD_MIN_CLASS}>
         <div className="flex w-full flex-col items-center gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             {promptAndAnswer.promptLabel}
           </span>
           <p className={QUIZ_PROMPT_TEXT_CLASS}>{promptAndAnswer.prompt}</p>
@@ -108,7 +108,7 @@ export function TypingExercise({
           )}
         </div>
         <p
-          className={`absolute bottom-2 text-[11px] text-muted-foreground/80 ${QUIZ_SHORT_HIDE_CLASS}`}
+          className={`text-muted-foreground/80 absolute bottom-2 text-[11px] ${QUIZ_SHORT_HIDE_CLASS}`}
         >
           {mode === "blank"
             ? "Vul het ontbrekende woord in"
@@ -118,19 +118,19 @@ export function TypingExercise({
 
       <div className={QUIZ_PLAYING_MIDDLE_CLASS}>
         {mode === "blank" && blank && (
-          <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-center">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="border-border/60 bg-muted/20 space-y-2 rounded-xl border px-4 py-3 text-center">
+            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
               {promptAndAnswer.answerLabel}
             </p>
-            <p className="text-xl font-semibold leading-snug text-foreground sm:text-2xl">
+            <p className="text-foreground text-xl leading-snug font-semibold sm:text-2xl">
               {blank.display}
             </p>
             {/* Vaste hint-hoogte zodat layout niet verspringt bij tonen */}
             <div className="min-h-[2.75rem]">
               {hintVisible ? (
-                <p className="rounded-md border border-border bg-background/80 px-3 py-2 text-sm text-muted-foreground">
+                <p className="border-border bg-background/80 text-muted-foreground rounded-md border px-3 py-2 text-sm">
                   Hint (anagram):{" "}
-                  <span className="font-mono font-medium tracking-widest text-foreground">
+                  <span className="text-foreground font-mono font-medium tracking-widest">
                     {anagramHint}
                   </span>
                 </p>
@@ -141,7 +141,7 @@ export function TypingExercise({
 
         {mode === "full" ? (
           <label htmlFor="typing-answer" className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
               {`Jouw antwoord (${promptAndAnswer.answerLabel})`}
             </span>
             <textarea
@@ -153,7 +153,7 @@ export function TypingExercise({
               disabled={hasFeedback}
               rows={2}
               placeholder="Typ hier je vertaling…"
-              className="w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-base shadow-sm disabled:opacity-70"
+              className="border-input bg-background w-full resize-none rounded-xl border px-4 py-3 text-base shadow-sm disabled:opacity-70"
             />
           </label>
         ) : (
@@ -167,7 +167,7 @@ export function TypingExercise({
             disabled={hasFeedback}
             placeholder="Typ het ontbrekende woord…"
             aria-label="Ontbrekend woord"
-            className="w-full rounded-xl border border-input bg-background px-4 py-3 text-center text-lg font-medium shadow-sm disabled:opacity-70"
+            className="border-input bg-background w-full rounded-xl border px-4 py-3 text-center text-lg font-medium shadow-sm disabled:opacity-70"
             autoComplete="off"
           />
         )}
@@ -180,10 +180,9 @@ export function TypingExercise({
       ) : null}
 
       <div
-        className={`mt-2 grid shrink-0 gap-2 ${mode === "blank"
-          ? "grid-cols-1 sm:grid-cols-2"
-          : "grid-cols-1"
-          }`}
+        className={`mt-2 grid shrink-0 gap-2 ${
+          mode === "blank" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"
+        }`}
       >
         {hasFeedback ? (
           <FlashcardActionButton
@@ -217,7 +216,10 @@ export function evaluateTypingAnswer(
   item: ExerciseQuizItem,
   answer: string,
 ): TypingFeedback {
-  const { acceptedAnswers, primaryAnswer } = getPromptAndAnswer(item, direction);
+  const { acceptedAnswers, primaryAnswer } = getPromptAndAnswer(
+    item,
+    direction,
+  );
 
   if (mode === "full") {
     const isCorrect = isAnswerCorrect(answer, acceptedAnswers);
@@ -251,7 +253,7 @@ function FeedbackBanner({ feedback }: { feedback: TypingFeedback }) {
   }
 
   return (
-    <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-center text-sm text-destructive">
+    <div className="border-destructive/50 bg-destructive/10 text-destructive rounded-xl border p-4 text-center text-sm">
       <p className="font-medium">Niet goed.</p>
       <p className="mt-1 text-xs">
         Geldig antwoord:{" "}
@@ -266,9 +268,9 @@ export function TypingExerciseSkeleton() {
     <div className={QUIZ_PLAYING_FORM_CLASS}>
       <div className={QUIZ_PROMPT_SKELETON_CLASS} />
       <div className={QUIZ_PLAYING_MIDDLE_CLASS}>
-        <div className="h-12 animate-pulse rounded-xl bg-muted/60" />
+        <div className="bg-muted/60 h-12 animate-pulse rounded-xl" />
       </div>
-      <div className="mt-2 h-12 shrink-0 animate-pulse rounded-xl bg-muted/60" />
+      <div className="bg-muted/60 mt-2 h-12 shrink-0 animate-pulse rounded-xl" />
     </div>
   );
 }

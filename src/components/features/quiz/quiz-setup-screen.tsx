@@ -26,7 +26,7 @@ function ToggleGroup<T extends string>({
 }) {
   return (
     <fieldset className="space-y-2">
-      <legend className="text-sm font-semibold text-foreground">{label}</legend>
+      <legend className="text-foreground text-sm font-semibold">{label}</legend>
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map((option) => {
           const selected = value === option.value;
@@ -35,7 +35,7 @@ function ToggleGroup<T extends string>({
               key={option.value}
               className={`cursor-pointer rounded-xl border p-4 transition-colors ${
                 selected
-                  ? "border-accent bg-accent/10 ring-1 ring-accent/30"
+                  ? "border-accent bg-accent/10 ring-accent/30 ring-1"
                   : "border-border bg-card hover:bg-muted/40"
               }`}
             >
@@ -47,10 +47,10 @@ function ToggleGroup<T extends string>({
                 onChange={() => onChange(option.value)}
                 className="sr-only"
               />
-              <span className="block text-sm font-medium text-foreground">
+              <span className="text-foreground block text-sm font-medium">
                 {option.title}
               </span>
-              <span className="mt-1 block text-xs text-muted-foreground">
+              <span className="text-muted-foreground mt-1 block text-xs">
                 {option.description}
               </span>
             </label>
@@ -69,12 +69,12 @@ export function QuizSetupScreen({
   onContinue,
 }: QuizSetupScreenProps) {
   return (
-    <section className="space-y-6 rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
+    <section className="border-border from-muted/30 to-background space-y-6 rounded-2xl border bg-gradient-to-b p-6 sm:p-8">
       <div className="space-y-1">
-        <h2 className="text-sm font-semibold text-foreground">
+        <h2 className="text-foreground text-sm font-semibold">
           Stel je oefening in
         </h2>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           Kies typvorm en vertaalrichting. Daarna selecteer je een topic.
         </p>
       </div>
@@ -119,7 +119,7 @@ export function QuizSetupScreen({
       <button
         type="button"
         onClick={onContinue}
-        className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+        className="bg-accent text-accent-foreground hover:bg-accent/90 inline-flex h-10 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium transition-colors"
       >
         Kies topic
       </button>

@@ -28,14 +28,12 @@ export function SessionCompleteState({
   if (phase === "main-complete") {
     return (
       <div className="mx-auto max-w-lg space-y-5 text-center">
-        <p className="text-lg font-semibold text-foreground">
-          Ronde voltooid
-        </p>
+        <p className="text-foreground text-lg font-semibold">Ronde voltooid</p>
 
         <ScoreSummary correctCount={correctCount} totalCount={totalCount} />
 
         {skippedIneligible > 0 && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             {skippedIneligible} oefening
             {skippedIneligible === 1 ? "" : "en"} overgeslagen (niet geschikt
             voor deze sessie).
@@ -46,7 +44,7 @@ export function SessionCompleteState({
             <button
               type="button"
               onClick={onStartMistakeReview}
-              className="cursor-pointer rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+              className="bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer rounded-xl px-5 py-2.5 text-sm font-medium transition-colors"
             >
               Fouten opnieuw doen
             </button>
@@ -54,7 +52,7 @@ export function SessionCompleteState({
           <button
             type="button"
             onClick={onFinish}
-            className="cursor-pointer rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            className="border-border bg-background text-foreground hover:bg-muted cursor-pointer rounded-xl border px-5 py-2.5 text-sm font-medium transition-colors"
           >
             {mistakeCount > 0 ? "Klaar" : "Nieuwe sessie starten"}
           </button>
@@ -67,8 +65,8 @@ export function SessionCompleteState({
   if (phase === "all-complete") {
     return (
       <div className="mx-auto max-w-lg space-y-5 text-center">
-        <p className="text-lg font-semibold text-foreground">Sessie afgerond</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-foreground text-lg font-semibold">Sessie afgerond</p>
+        <p className="text-muted-foreground text-sm">
           Goed gedaan! Je hebt alle oefeningen in deze sessie doorlopen. Foute
           antwoorden komen automatisch sneller terug in je herhaalschema.
         </p>
@@ -76,13 +74,13 @@ export function SessionCompleteState({
           <button
             type="button"
             onClick={onFinish}
-            className="cursor-pointer rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+            className="bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer rounded-xl px-5 py-2.5 text-sm font-medium transition-colors"
           >
             Nog een ronde
           </button>
           <Link
             href={APP_ROUTES.oefenen}
-            className="rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            className="border-border bg-background text-foreground hover:bg-muted rounded-xl border px-5 py-2.5 text-sm font-medium transition-colors"
           >
             Terug naar Oefenen
           </Link>
@@ -107,8 +105,8 @@ function ScoreSummary({
   const mistakes = totalCount - correctCount;
 
   return (
-    <div className="space-y-2 rounded-2xl border border-border bg-card p-5 text-card-foreground">
-      <p className="text-3xl font-semibold tracking-tight text-foreground">
+    <div className="border-border bg-card text-card-foreground space-y-2 rounded-2xl border p-5">
+      <p className="text-foreground text-3xl font-semibold tracking-tight">
         {pct}%
       </p>
       <div
@@ -117,14 +115,14 @@ function ScoreSummary({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label="Percentage goed"
-        className="h-2 overflow-hidden rounded-full bg-muted"
+        className="bg-muted h-2 overflow-hidden rounded-full"
       >
         <div
-          className="h-full rounded-full bg-accent transition-all"
+          className="bg-accent h-full rounded-full transition-all"
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         {correctCount} van {totalCount} goed
         {mistakes > 0 ? ` · ${mistakes} fout${mistakes === 1 ? "" : "en"}` : ""}
       </p>
@@ -137,7 +135,7 @@ function BackToOefenenLink() {
     <p>
       <Link
         href={APP_ROUTES.oefenen}
-        className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        className="text-muted-foreground hover:text-foreground text-xs font-medium underline-offset-2 hover:underline"
       >
         Terug naar Oefenen
       </Link>

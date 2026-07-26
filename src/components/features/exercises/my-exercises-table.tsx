@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { InlineAudioPlayButton } from "@/app/_components/features/exercises/inline-audio-play-button";
+import { InlineAudioPlayButton } from "@/components/features/exercises/inline-audio-play-button";
 
 import type { AdminExerciseRow } from "@/lib/exercises/types";
 
@@ -40,8 +40,9 @@ export function MyExercisesTable({
   const [playingId, setPlayingId] = useState<string | null>(null);
 
   useEffect(() => {
+    const node = audioRef.current;
     return () => {
-      audioRef.current?.pause();
+      node?.pause();
     };
   }, []);
 
@@ -50,6 +51,8 @@ export function MyExercisesTable({
     if (!playingId) return;
     if (!rows.some((r) => r.exercise_id === playingId)) {
       audioRef.current?.pause();
+      // Rijwissel komt uit serverdata; lokale afspeelstatus moet mee resetten.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPlayingId(null);
     }
   }, [rows, playingId]);
@@ -71,7 +74,7 @@ export function MyExercisesTable({
   }, []);
 
   return (
-    <div className="overflow-x-auto rounded-md border border-border">
+    <div className="border-border overflow-x-auto rounded-md border">
       <audio
         ref={audioRef}
         preload="none"
@@ -79,7 +82,7 @@ export function MyExercisesTable({
         onEnded={() => setPlayingId(null)}
       />
       <table className="w-full min-w-[44rem] text-left text-sm">
-        <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
+        <thead className="border-border bg-muted/40 text-muted-foreground border-b text-xs">
           <tr>
             <th className="w-10 px-3 py-2 align-middle">
               <input
@@ -88,7 +91,7 @@ export function MyExercisesTable({
                 disabled={disabled || rows.length === 0}
                 onChange={onToggleAll}
                 aria-label="Alles selecteren"
-                className="size-4 rounded border-border accent-accent"
+                className="border-border accent-accent size-4 rounded"
               />
             </th>
             <th className="w-12 px-3 py-2 align-middle">Audio</th>
@@ -115,7 +118,7 @@ export function MyExercisesTable({
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !disabled) onRowClick(row);
                 }}
-                className="cursor-pointer border-b border-border/60 hover:bg-muted/40"
+                className="border-border/60 hover:bg-muted/40 cursor-pointer border-b"
               >
                 <td
                   className="px-3 py-2 align-middle"
@@ -127,7 +130,7 @@ export function MyExercisesTable({
                     disabled={disabled}
                     onChange={() => onToggle(row.exercise_id)}
                     aria-label={`Selecteer oefening ${row.sentence_text}`}
-                    className="size-4 rounded border-border accent-accent"
+                    className="border-border accent-accent size-4 rounded"
                   />
                 </td>
                 <td
@@ -139,24 +142,22 @@ export function MyExercisesTable({
                       playing={playingId === row.exercise_id}
                       disabled={disabled}
                       label={row.sentence_text}
-                      onToggle={() =>
-                        handlePlayToggle(row.exercise_id, mp3Url)
-                      }
+                      onToggle={() => handlePlayToggle(row.exercise_id, mp3Url)}
                     />
                   ) : (
-                    <span className="text-[10px] text-muted-foreground/70">
+                    <span className="text-muted-foreground/70 text-[10px]">
                       —
                     </span>
                   )}
                 </td>
                 <td
-                  className="max-w-[14rem] truncate px-3 py-2 align-middle text-foreground"
+                  className="text-foreground max-w-[14rem] truncate px-3 py-2 align-middle"
                   title={row.sentence_text}
                 >
                   {row.sentence_text}
                 </td>
                 <td
-                  className="max-w-[14rem] truncate px-3 py-2 align-middle text-foreground"
+                  className="text-foreground max-w-[14rem] truncate px-3 py-2 align-middle"
                   title={row.target_text}
                 >
                   {row.target_text}
@@ -164,20 +165,20 @@ export function MyExercisesTable({
                 <td className="px-3 py-2 align-middle">
                   <span className="inline-flex max-w-[14rem] items-center gap-1.5">
                     <span
-                      className="truncate text-foreground"
+                      className="text-foreground truncate"
                       title={formatAltsPreview(alts)}
                     >
                       {alts[0] ?? "—"}
                     </span>
                     {extra > 0 && (
-                      <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground">
+                      <span className="bg-muted text-muted-foreground shrink-0 rounded px-1.5 py-0.5 text-xs tabular-nums">
                         +{extra}
                       </span>
                     )}
                   </span>
                 </td>
                 <td
-                  className="max-w-[10rem] truncate px-3 py-2 align-middle text-muted-foreground"
+                  className="text-muted-foreground max-w-[10rem] truncate px-3 py-2 align-middle"
                   title={row.topic ?? undefined}
                 >
                   {row.topic?.trim() ? row.topic : "—"}

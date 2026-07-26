@@ -2,8 +2,8 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { CommunityAdoptPanel } from "@/app/_components/features/community/community-adopt-panel";
-import { CommunityBijdragenPanel } from "@/app/_components/features/community/community-bijdragen-panel";
+import { CommunityAdoptPanel } from "@/components/features/community/community-adopt-panel";
+import { CommunityBijdragenPanel } from "@/components/features/community/community-bijdragen-panel";
 
 type OuterTab = "overnemen" | "bijdragen";
 
@@ -42,7 +42,7 @@ export function CommunityPageContent() {
       <div
         role="tablist"
         aria-label="Community"
-        className="flex flex-wrap gap-2 border-b border-border pb-2"
+        className="border-border flex flex-wrap gap-2 border-b pb-2"
       >
         <button
           type="button"

@@ -1,4 +1,4 @@
-import type { QuizAttempt } from "@/app/_components/features/quiz/use-quiz-storage";
+import type { QuizAttempt } from "@/components/features/quiz/use-quiz-storage";
 
 // Pure helpers, geen React, geen DOM. Houden we apart zodat ze
 // later triviaal te testen zijn en hergebruikt kunnen worden zodra
@@ -146,7 +146,9 @@ export function dailyAccuracy(
       total: bucket.total,
       correct: bucket.correct,
       accuracyPct:
-        bucket.total === 0 ? 0 : Math.round((bucket.correct / bucket.total) * 100),
+        bucket.total === 0
+          ? 0
+          : Math.round((bucket.correct / bucket.total) * 100),
     });
   }
   return out;

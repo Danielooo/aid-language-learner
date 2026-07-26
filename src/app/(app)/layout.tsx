@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { Container } from "@/app/_components/ui/container";
+import { Container } from "@/components/ui/container";
 import { getDisplayLabel } from "@/lib/auth/display-label";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { isUserBanned } from "@/lib/auth/is-banned";

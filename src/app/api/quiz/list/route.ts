@@ -9,10 +9,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-import type {
-  ExerciseListResponse,
-  ExerciseListItem,
-} from "@/types/quiz";
+import type { ExerciseListResponse, ExerciseListItem } from "@/types/quiz";
 
 export type { ExerciseListResponse, ExerciseListItem };
 
@@ -37,10 +34,17 @@ export async function GET(req: Request) {
   const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
   const pageSize = Math.min(
     MAX_PAGE_SIZE,
-    Math.max(1, Number.parseInt(pageSizeParam ?? String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE),
+    Math.max(
+      1,
+      Number.parseInt(pageSizeParam ?? String(DEFAULT_PAGE_SIZE), 10) ||
+        DEFAULT_PAGE_SIZE,
+    ),
   );
 
-  const activeTopics = await getActiveTopicsForUser(access.supabase, access.userId);
+  const activeTopics = await getActiveTopicsForUser(
+    access.supabase,
+    access.userId,
+  );
   const activeList = activeTopicsToArray(activeTopics);
 
   if (!activeList) {

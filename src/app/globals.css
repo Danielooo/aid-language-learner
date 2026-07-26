@@ -25,7 +25,9 @@
   --color-chart-incorrect: var(--chart-incorrect);
   --color-chart-neutral: var(--chart-neutral);
   --color-chat-bubble-assistant: var(--chat-bubble-assistant);
-  --color-chat-bubble-assistant-foreground: var(--chat-bubble-assistant-foreground);
+  --color-chat-bubble-assistant-foreground: var(
+    --chat-bubble-assistant-foreground
+  );
   --color-chat-bubble-user: var(--chat-bubble-user);
   --color-chat-thread-bg: var(--chat-thread-bg);
   --radius-sm: calc(var(--radius) - 2px);

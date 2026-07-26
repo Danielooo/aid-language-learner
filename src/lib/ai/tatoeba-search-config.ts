@@ -33,8 +33,7 @@ export type TatoebaSearchModel =
 /** @deprecated Gebruik `TatoebaSearchModel` */
 export type TatoebaSearchRerankModel = TatoebaSearchModel;
 
-export const TATOEBA_SEARCH_DEFAULT_MODEL: TatoebaSearchModel =
-  "gpt-4o-mini";
+export const TATOEBA_SEARCH_DEFAULT_MODEL: TatoebaSearchModel = "gpt-4o-mini";
 
 /** @deprecated Gebruik `TATOEBA_SEARCH_DEFAULT_MODEL` */
 export const TATOEBA_SEARCH_RERANK_DEFAULT_MODEL = TATOEBA_SEARCH_DEFAULT_MODEL;

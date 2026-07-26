@@ -1,5 +1,5 @@
-import { AdminCreateAdminForm } from "@/app/_components/features/admin/admin-create-admin-form";
-import { AppPageHeader } from "@/app/_components/ui/app-page-header";
+import { AdminCreateAdminForm } from "@/components/features/admin/admin-create-admin-form";
+import { AppPageHeader } from "@/components/ui/app-page-header";
 
 import type { Metadata } from "next";
 

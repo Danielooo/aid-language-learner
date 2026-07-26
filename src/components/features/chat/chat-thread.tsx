@@ -62,7 +62,7 @@ export function ChatThread({
     <div
       ref={scrollRef}
       className={cn(
-        "min-h-[4.5rem] max-h-[min(16rem,40vh)] space-y-2 overflow-y-auto rounded-xl bg-chat-thread-bg px-7 py-3",
+        "bg-chat-thread-bg max-h-[min(16rem,40vh)] min-h-[4.5rem] space-y-2 overflow-y-auto rounded-xl px-7 py-3",
         className,
       )}
       aria-live="polite"

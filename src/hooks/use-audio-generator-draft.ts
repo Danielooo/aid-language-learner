@@ -2,12 +2,12 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 
-import type { AudioProposalBatch } from "@/app/_components/features/generator/audio-proposal-table-adapter";
+import type { AudioProposalBatch } from "@/components/features/generator/audio-proposal-table-adapter";
 import {
   parsePersistedChatMessages,
   type PersistedChatMessage,
-} from "@/app/_components/features/generator/persisted-chat-messages";
-import type { TopicDestinationMode } from "@/app/_components/features/generator/proposal-topic-destination";
+} from "@/components/features/generator/persisted-chat-messages";
+import type { TopicDestinationMode } from "@/components/features/generator/proposal-topic-destination";
 
 // Client-only draft voor audio-generator (batches + chat + topic/selectie).
 // Overleeft refresh/navigatie; wordt gewist na opslaan of “Wis chat”.
@@ -38,7 +38,8 @@ function isValidBatch(value: unknown): value is AudioProposalBatch {
   if (typeof value !== "object" || value === null) return false;
   const batch = value as Record<string, unknown>;
   if (typeof batch.id !== "string") return false;
-  if (typeof batch.proposal !== "object" || batch.proposal === null) return false;
+  if (typeof batch.proposal !== "object" || batch.proposal === null)
+    return false;
   const proposal = batch.proposal as Record<string, unknown>;
   if (typeof proposal.topic !== "string") return false;
   if (!Array.isArray(proposal.exercises)) return false;
@@ -109,7 +110,7 @@ function writeSnapshot(snapshot: AudioGeneratorDraftSnapshot | null): void {
 }
 
 function subscribe(callback: () => void): () => void {
-  if (typeof window === "undefined") return () => { };
+  if (typeof window === "undefined") return () => {};
   const onStorage = (e: StorageEvent) => {
     if (e.key === STORAGE_KEY) callback();
   };
@@ -154,8 +155,5 @@ export function useAudioGeneratorDraft(): UseAudioGeneratorDraft {
     writeSnapshot(null);
   }, []);
 
-  return useMemo(
-    () => ({ snapshot, save, clear }),
-    [snapshot, save, clear],
-  );
+  return useMemo(() => ({ snapshot, save, clear }), [snapshot, save, clear]);
 }

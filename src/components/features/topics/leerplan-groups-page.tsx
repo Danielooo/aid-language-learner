@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { RefreshButton } from "@/components/ui/refresh-button";
+import { TableLoadingSkeleton } from "@/components/ui/table-loading-skeleton";
 import { APP_ROUTES, leerplanGroupPath } from "@/lib/routes";
 import { queryKeys } from "@/lib/query-keys";
 import { fetchJson } from "@/lib/api/fetch-json";
@@ -95,18 +97,13 @@ export function LeerplanGroupsPage() {
       queryClient.setQueryData<ExerciseGroupListItem[]>(
         queryKeys.learningTopics(),
         (old) =>
-          (old ?? []).map((g) =>
-            g.name === name ? { ...g, isActive } : g,
-          ),
+          (old ?? []).map((g) => (g.name === name ? { ...g, isActive } : g)),
       );
       return { previous };
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) {
-        queryClient.setQueryData(
-          queryKeys.learningTopics(),
-          ctx.previous,
-        );
+        queryClient.setQueryData(queryKeys.learningTopics(), ctx.previous);
       }
     },
     onSettled: () => {
@@ -162,13 +159,7 @@ export function LeerplanGroupsPage() {
       if ((g.tagText ?? "").toLowerCase().includes(q)) return true;
       return false;
     });
-  }, [
-    personalGroups,
-    query,
-    originFilter,
-    editedFilter,
-    activeFilter,
-  ]);
+  }, [personalGroups, query, originFilter, editedFilter, activeFilter]);
 
   function openGroupEditor(item: ExerciseGroupListItem) {
     router.push(leerplanGroupPath(item.id));
@@ -187,26 +178,23 @@ export function LeerplanGroupsPage() {
 
   return (
     <div className="space-y-4">
-
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-sm">
-          <span className="text-xs text-muted-foreground">Zoeken</span>
+          <span className="text-muted-foreground text-xs">Zoeken</span>
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Topic of tags…"
-            className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+            className="border-border bg-background text-foreground h-9 rounded-md border px-3 text-sm"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs text-muted-foreground">Herkomst</span>
+          <span className="text-muted-foreground text-xs">Herkomst</span>
           <select
             value={originFilter}
-            onChange={(e) =>
-              setOriginFilter(e.target.value as OriginFilter)
-            }
-            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+            onChange={(e) => setOriginFilter(e.target.value as OriginFilter)}
+            className="border-border bg-background text-foreground h-9 rounded-md border px-2 text-sm"
           >
             <option value="all">Alles</option>
             <option value="personal">Persoonlijk</option>
@@ -214,13 +202,11 @@ export function LeerplanGroupsPage() {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs text-muted-foreground">Bewerkt</span>
+          <span className="text-muted-foreground text-xs">Bewerkt</span>
           <select
             value={editedFilter}
-            onChange={(e) =>
-              setEditedFilter(e.target.value as EditedFilter)
-            }
-            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+            onChange={(e) => setEditedFilter(e.target.value as EditedFilter)}
+            className="border-border bg-background text-foreground h-9 rounded-md border px-2 text-sm"
           >
             <option value="all">Alles</option>
             <option value="yes">Ja</option>
@@ -228,44 +214,38 @@ export function LeerplanGroupsPage() {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs text-muted-foreground">Actief</span>
+          <span className="text-muted-foreground text-xs">Actief</span>
           <select
             value={activeFilter}
-            onChange={(e) =>
-              setActiveFilter(e.target.value as ActiveFilter)
-            }
-            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+            onChange={(e) => setActiveFilter(e.target.value as ActiveFilter)}
+            className="border-border bg-background text-foreground h-9 rounded-md border px-2 text-sm"
           >
             <option value="all">Alles</option>
             <option value="active">Actief</option>
             <option value="inactive">Inactief</option>
           </select>
         </label>
-        <button
-          type="button"
-          disabled={loading || isRefreshing}
+        <RefreshButton
+          className="ml-auto"
+          isRefreshing={isRefreshing}
+          disabled={loading}
           onClick={() =>
             void queryClient.invalidateQueries({
               queryKey: queryKeys.learningTopics(),
             })
           }
-          className="ml-auto inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-foreground disabled:opacity-50"
-        >
-          Ververs
-        </button>
+        />
       </div>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-muted-foreground text-xs">
         {filtered.length} zichtbaar
         {query.trim() ? ` · filter: “${query.trim()}”` : ""}
-        {personalGroups.length > 0
-          ? ` · ${personalGroups.length} totaal`
-          : ""}
+        {personalGroups.length > 0 ? ` · ${personalGroups.length} totaal` : ""}
       </p>
 
       {displayError && (
         <p
-          className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="border-destructive/40 bg-destructive/10 text-destructive rounded-lg border px-4 py-3 text-sm"
           role="alert"
         >
           {displayError}
@@ -273,36 +253,37 @@ export function LeerplanGroupsPage() {
       )}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Laden…</p>
+        <TableLoadingSkeleton columns={8} />
       ) : personalGroups.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Nog geen persoonlijke topics.{" "}
           <Link
             href={APP_ROUTES.generator}
-            className="font-medium text-accent underline-offset-2 hover:underline"
+            className="text-accent font-medium underline-offset-2 hover:underline"
           >
             Genereer oefeningen
           </Link>{" "}
           of haal topics binnen via{" "}
           <Link
             href={APP_ROUTES.community}
-            className="font-medium text-accent underline-offset-2 hover:underline"
+            className="text-accent font-medium underline-offset-2 hover:underline"
           >
             Community → Overnemen
           </Link>
           .
         </p>
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Geen topics die bij je zoekopdracht of filters passen.
         </p>
       ) : (
         <div
-          className={`overflow-x-auto rounded-md border border-border ${isRefreshing ? "opacity-60 transition-opacity" : ""
-            }`}
+          className={`border-border overflow-x-auto rounded-md border ${
+            isRefreshing ? "opacity-60 transition-opacity" : ""
+          }`}
         >
           <table className="w-full min-w-[52rem] text-left text-sm">
-            <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
+            <thead className="border-border bg-muted/40 text-muted-foreground border-b text-xs">
               <tr>
                 <th className="px-3 py-2">Topic</th>
                 <th className="px-3 py-2">Herkomst</th>
@@ -332,27 +313,27 @@ export function LeerplanGroupsPage() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") openGroupEditor(item);
                     }}
-                    className="cursor-pointer border-b border-border/60 hover:bg-muted/40"
+                    className="border-border/60 hover:bg-muted/40 cursor-pointer border-b"
                   >
-                    <td className="px-3 py-2 font-medium text-foreground">
+                    <td className="text-foreground px-3 py-2 font-medium">
                       {item.name}
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">
+                    <td className="text-muted-foreground px-3 py-2">
                       {fromCommunity ? "Community" : "Persoonlijk"}
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">
+                    <td className="text-muted-foreground px-3 py-2">
                       {item.isEdited ? "Ja" : "Nee"}
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">
+                    <td className="text-muted-foreground px-3 py-2">
                       {item.hasAudio ? "Ja" : "Nee"}
                     </td>
                     <td
-                      className="max-w-[12rem] truncate px-3 py-2 text-muted-foreground"
+                      className="text-muted-foreground max-w-[12rem] truncate px-3 py-2"
                       title={tagsFull}
                     >
                       {tagsPreview}
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">
+                    <td className="text-muted-foreground px-3 py-2">
                       {item.exerciseCount}
                     </td>
                     <td
@@ -364,12 +345,9 @@ export function LeerplanGroupsPage() {
                         checked={isActive}
                         disabled={togglingThis}
                         onChange={(e) =>
-                          handleToggleActive(
-                            item.name,
-                            e.target.checked,
-                          )
+                          handleToggleActive(item.name, e.target.checked)
                         }
-                        className="size-4 rounded border-border accent-accent disabled:opacity-50"
+                        className="border-border accent-accent size-4 rounded disabled:opacity-50"
                         aria-label={`${isActive ? "Deactiveer" : "Activeer"} topic ${item.name}`}
                       />
                     </td>
@@ -380,7 +358,7 @@ export function LeerplanGroupsPage() {
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(item)}
-                        className="rounded-md border border-border px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
+                        className="border-border text-destructive hover:bg-destructive/10 rounded-md border px-2 py-1 text-xs"
                       >
                         Verwijderen
                       </button>

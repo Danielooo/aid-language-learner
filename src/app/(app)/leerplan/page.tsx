@@ -1,4 +1,4 @@
-import { LeerplanPageContent } from "@/app/_components/features/topics/leerplan-page-content";
+import { LeerplanPageContent } from "@/components/features/topics/leerplan-page-content";
 
 import type { Metadata } from "next";
 

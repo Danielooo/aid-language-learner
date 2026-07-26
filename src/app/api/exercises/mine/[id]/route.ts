@@ -45,7 +45,10 @@ export async function PATCH(
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) {
     return Response.json(
-      { ok: false, error: "Ongeldig exercise-id." } satisfies MyExercisesPatchFailure,
+      {
+        ok: false,
+        error: "Ongeldig exercise-id.",
+      } satisfies MyExercisesPatchFailure,
       { status: 400 },
     );
   }
@@ -55,7 +58,10 @@ export async function PATCH(
     body = await req.json();
   } catch {
     return Response.json(
-      { ok: false, error: "Body is geen geldige JSON." } satisfies MyExercisesPatchFailure,
+      {
+        ok: false,
+        error: "Body is geen geldige JSON.",
+      } satisfies MyExercisesPatchFailure,
       { status: 400 },
     );
   }
@@ -63,7 +69,10 @@ export async function PATCH(
   const parse = patchBodySchema.safeParse(body);
   if (!parse.success) {
     return Response.json(
-      { ok: false, error: "Validatie mislukt." } satisfies MyExercisesPatchFailure,
+      {
+        ok: false,
+        error: "Validatie mislukt.",
+      } satisfies MyExercisesPatchFailure,
       { status: 400 },
     );
   }
@@ -103,7 +112,10 @@ export async function PATCH(
 
   if (!data) {
     return Response.json(
-      { ok: false, error: "Oefening niet gevonden." } satisfies MyExercisesPatchFailure,
+      {
+        ok: false,
+        error: "Oefening niet gevonden.",
+      } satisfies MyExercisesPatchFailure,
       { status: 404 },
     );
   }

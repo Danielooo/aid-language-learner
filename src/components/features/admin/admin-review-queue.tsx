@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { AdminReviewGroupModal } from "@/app/_components/features/admin/admin-review-group-modal";
+import { AdminReviewGroupModal } from "@/components/features/admin/admin-review-group-modal";
+import { RefreshButton } from "@/components/ui/refresh-button";
+import { TableLoadingSkeleton } from "@/components/ui/table-loading-skeleton";
 import { fetchJson } from "@/lib/api/fetch-json";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -251,9 +253,10 @@ export function AdminReviewQueue() {
   }
 
   const tabButtonClass = (id: TabId) =>
-    `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === id
-      ? "bg-muted text-foreground"
-      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+    `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+      tab === id
+        ? "bg-muted text-foreground"
+        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
     }`;
 
   return (
@@ -261,7 +264,7 @@ export function AdminReviewQueue() {
       <div
         role="tablist"
         aria-label="Bijdragen beoordelen-tabs"
-        className="flex flex-wrap gap-2 border-b border-border pb-2"
+        className="border-border flex flex-wrap gap-2 border-b pb-2"
       >
         <button
           type="button"
@@ -295,6 +298,7 @@ export function AdminReviewQueue() {
       <Toolbar
         tab={tab}
         busy={busy}
+        isRefreshing={isRefreshing}
         selectedCount={selected.size}
         rejectReason={rejectReason}
         onRejectReasonChange={setRejectReason}
@@ -305,28 +309,24 @@ export function AdminReviewQueue() {
       />
 
       {error && (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
           {listError && !actionError ? (
             <>
               {" "}
-              <button
-                type="button"
-                onClick={refetchAll}
-                className="underline"
-              >
+              <button type="button" onClick={refetchAll} className="underline">
                 Opnieuw
               </button>
             </>
           ) : null}
         </p>
       )}
-      {message && <p className="text-sm text-muted-foreground">{message}</p>}
+      {message && <p className="text-muted-foreground text-sm">{message}</p>}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Laden…</p>
+        <TableLoadingSkeleton columns={tab === "rejected" ? 6 : 5} />
       ) : activeRows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           {tab === "pending"
             ? "Geen pending groep-aanbiedingen."
             : tab === "approved"
@@ -335,12 +335,12 @@ export function AdminReviewQueue() {
         </p>
       ) : (
         <div
-          className={`overflow-x-auto rounded-md border border-border ${
+          className={`border-border overflow-x-auto rounded-md border ${
             isRefreshing ? "opacity-60 transition-opacity" : ""
           }`}
         >
           <table className="w-full min-w-[40rem] text-left text-sm">
-            <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
+            <thead className="border-border bg-muted/40 text-muted-foreground border-b text-xs">
               <tr>
                 <th className="w-10 px-3 py-2 align-middle">
                   <input
@@ -348,15 +348,13 @@ export function AdminReviewQueue() {
                     checked={allSelected}
                     onChange={toggleAll}
                     aria-label="Alles selecteren"
-                    className="size-4 rounded border-border accent-accent"
+                    className="border-border accent-accent size-4 rounded"
                   />
                 </th>
                 <th className="px-3 py-2">Groep</th>
                 <th className="px-3 py-2">Oefeningen</th>
                 <th className="px-3 py-2">User</th>
-                {tab === "rejected" && (
-                  <th className="px-3 py-2">Reden</th>
-                )}
+                {tab === "rejected" && <th className="px-3 py-2">Reden</th>}
                 <th className="px-3 py-2">
                   {tab === "pending" ? "Aangeboden" : "Bijgewerkt"}
                 </th>
@@ -370,7 +368,7 @@ export function AdminReviewQueue() {
                   <tr
                     key={row.id}
                     onClick={() => setModalRow(row)}
-                    className="cursor-pointer border-b border-border/60 hover:bg-muted/40"
+                    className="border-border/60 hover:bg-muted/40 cursor-pointer border-b"
                   >
                     <td
                       className="px-3 py-2 align-middle"
@@ -381,20 +379,20 @@ export function AdminReviewQueue() {
                         checked={selected.has(row.id)}
                         onChange={() => toggle(row.id)}
                         aria-label={`Selecteer ${snap.name}`}
-                        className="size-4 rounded border-border accent-accent"
+                        className="border-border accent-accent size-4 rounded"
                       />
                     </td>
-                    <td className="px-3 py-2 font-medium text-foreground">
+                    <td className="text-foreground px-3 py-2 font-medium">
                       {snap.name}
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">
+                    <td className="text-muted-foreground px-3 py-2">
                       {snap.exercises?.length ?? 0}
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">
+                    <td className="text-muted-foreground px-3 py-2">
                       {row.submitter_username ?? "—"}
                     </td>
                     {tab === "rejected" && (
-                      <td className="px-3 py-2 text-muted-foreground">
+                      <td className="text-muted-foreground px-3 py-2">
                         {reason ? (
                           <span title={reason.length > 30 ? reason : undefined}>
                             {truncate(reason, 30)}
@@ -404,7 +402,7 @@ export function AdminReviewQueue() {
                         )}
                       </td>
                     )}
-                    <td className="px-3 py-2 text-muted-foreground">
+                    <td className="text-muted-foreground px-3 py-2">
                       {new Date(
                         tab === "pending"
                           ? row.created_at
@@ -445,6 +443,7 @@ export function AdminReviewQueue() {
 type ToolbarProps = {
   tab: TabId;
   busy: boolean;
+  isRefreshing: boolean;
   selectedCount: number;
   rejectReason: string;
   onRejectReasonChange: (value: string) => void;
@@ -457,6 +456,7 @@ type ToolbarProps = {
 function Toolbar({
   tab,
   busy,
+  isRefreshing,
   selectedCount,
   rejectReason,
   onRejectReasonChange,
@@ -475,7 +475,7 @@ function Toolbar({
             type="button"
             disabled={busy || none}
             onClick={onApprove}
-            className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground disabled:opacity-50"
+            className="bg-accent text-accent-foreground inline-flex h-9 items-center rounded-md px-3 text-xs font-medium disabled:opacity-50"
           >
             Goedkeuren ({selectedCount})
           </button>
@@ -483,7 +483,7 @@ function Toolbar({
             type="button"
             disabled={busy || none}
             onClick={onReject}
-            className="inline-flex h-9 items-center rounded-md bg-destructive/90 px-3 text-xs font-medium text-destructive-foreground disabled:opacity-50"
+            className="bg-destructive/90 text-destructive-foreground inline-flex h-9 items-center rounded-md px-3 text-xs font-medium disabled:opacity-50"
           >
             Afkeuren ({selectedCount})
           </button>
@@ -502,7 +502,7 @@ function Toolbar({
             type="button"
             disabled={busy || none}
             onClick={onReopen}
-            className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs disabled:opacity-50"
+            className="border-border inline-flex h-9 items-center rounded-md border px-3 text-xs disabled:opacity-50"
           >
             Terug naar Pending ({selectedCount})
           </button>
@@ -510,7 +510,7 @@ function Toolbar({
             type="button"
             disabled={busy || none}
             onClick={onReject}
-            className="inline-flex h-9 items-center rounded-md bg-destructive/90 px-3 text-xs font-medium text-destructive-foreground disabled:opacity-50"
+            className="bg-destructive/90 text-destructive-foreground inline-flex h-9 items-center rounded-md px-3 text-xs font-medium disabled:opacity-50"
           >
             Afkeuren ({selectedCount})
           </button>
@@ -529,7 +529,7 @@ function Toolbar({
             type="button"
             disabled={busy || none}
             onClick={onReopen}
-            className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs disabled:opacity-50"
+            className="border-border inline-flex h-9 items-center rounded-md border px-3 text-xs disabled:opacity-50"
           >
             Terug naar Pending ({selectedCount})
           </button>
@@ -537,21 +537,18 @@ function Toolbar({
             type="button"
             disabled={busy || none}
             onClick={onApprove}
-            className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground disabled:opacity-50"
+            className="bg-accent text-accent-foreground inline-flex h-9 items-center rounded-md px-3 text-xs font-medium disabled:opacity-50"
           >
             Goedkeuren ({selectedCount})
           </button>
         </>
       )}
 
-      <button
-        type="button"
+      <RefreshButton
+        isRefreshing={isRefreshing}
         disabled={busy}
         onClick={onReload}
-        className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs"
-      >
-        Ververs
-      </button>
+      />
     </div>
   );
 }
@@ -569,7 +566,7 @@ function RejectReasonField({
 }) {
   return (
     <div className="flex min-w-64 flex-1 flex-col gap-1">
-      <label htmlFor={id} className="text-[11px] text-muted-foreground">
+      <label htmlFor={id} className="text-muted-foreground text-[11px]">
         Afkeurreden (optioneel)
       </label>
       <input
@@ -577,7 +574,7 @@ function RejectReasonField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+        className="border-border bg-background h-9 rounded-md border px-2 text-sm"
         placeholder="Bijv. onduidelijke vertalingen"
       />
     </div>

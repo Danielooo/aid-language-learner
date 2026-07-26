@@ -1,24 +1,26 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
-import { SiteHeaderServer } from "@/app/_components/site-header-server";
-import { Container } from "@/app/_components/ui/container";
+import { SiteHeaderServer } from "@/components/site-header-server";
+import { Container } from "@/components/ui/container";
 import { getHomeRoute } from "@/lib/auth/home-route";
+import { isAdminUser } from "@/lib/auth/is-admin";
 import { APP_ROUTES } from "@/lib/routes";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-// Publieke landingspagina. Ingelogde gebruikers gaan direct door naar
-// hun startroute (admins → Beheer, overige users → Oefenen) — de
-// landing is alleen voor bezoekers.
+// Publieke About-pagina. Gasten en ingelogde gebruikers kunnen `/`
+// bezoeken; post-login landt elders via getHomeRoute.
 export default async function Home() {
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user) {
-    redirect(getHomeRoute(user));
-  }
+  const homeHref = user ? getHomeRoute(user) : null;
+  const homeLabel = user
+    ? isAdminUser(user)
+      ? "Naar beheer"
+      : "Naar oefenen"
+    : null;
 
   return (
     <>
@@ -26,31 +28,34 @@ export default async function Home() {
       <main className="flex-1">
         <Container className="flex flex-col gap-16 py-16 sm:py-24">
           <section className="mx-auto max-w-2xl space-y-6 text-center">
-            <p className="text-sm font-medium uppercase tracking-wide text-accent">
-              Spaans leren die blijft hangen
-            </p>
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+            <h1 className="text-foreground text-4xl font-semibold tracking-tight sm:text-5xl">
+              Language Learner
+            </h1>
+            <p className="text-foreground text-lg font-medium tracking-tight sm:text-xl">
               Leer Spaans met zinnen die{" "}
               <span className="text-accent">jij</span> nodig hebt
-            </h1>
-            <p className="text-base text-muted-foreground sm:text-lg">
+            </p>
+            <p className="text-muted-foreground text-base sm:text-lg">
               Genereer oefenzinnen met AI voor jouw situaties — het restaurant,
               de garage, het station. Oefen met flashcards, sorteren en typen,
               en onthoud alles dankzij spaced repetition.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href={APP_ROUTES.register}
-                className="inline-flex min-h-12 items-center rounded-md bg-accent px-6 text-base font-medium text-accent-foreground transition-colors hover:bg-accent/90"
-              >
-                Begin gratis
-              </Link>
-              <Link
-                href={APP_ROUTES.login}
-                className="inline-flex min-h-12 items-center rounded-md border border-border bg-background px-6 text-base font-medium text-foreground transition-colors hover:bg-muted"
-              >
-                Inloggen
-              </Link>
+              {homeHref && homeLabel ? (
+                <Link
+                  href={homeHref}
+                  className="bg-accent text-accent-foreground hover:bg-accent/90 inline-flex min-h-12 items-center rounded-md px-6 text-base font-medium transition-colors"
+                >
+                  {homeLabel}
+                </Link>
+              ) : (
+                <Link
+                  href={APP_ROUTES.login}
+                  className="border-border bg-background text-foreground hover:bg-muted inline-flex min-h-12 items-center rounded-md border px-6 text-base font-medium transition-colors"
+                >
+                  Inloggen
+                </Link>
+              )}
             </div>
           </section>
 
@@ -74,10 +79,10 @@ export default async function Home() {
           </section>
 
           <section className="mx-auto max-w-2xl space-y-4 text-center">
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h2 className="text-foreground text-2xl font-semibold tracking-tight">
               Zo werkt het
             </h2>
-            <ol className="space-y-3 text-left text-sm text-muted-foreground">
+            <ol className="text-muted-foreground space-y-3 text-left text-sm">
               <StepItem index={1}>
                 Kies of genereer topics die bij jouw leven passen — van
                 boodschappen doen tot een sollicitatiegesprek.
@@ -91,12 +96,6 @@ export default async function Home() {
                 zin op het moment dat je &apos;m bijna zou vergeten.
               </StepItem>
             </ol>
-            <Link
-              href={APP_ROUTES.register}
-              className="inline-flex min-h-11 items-center rounded-md bg-accent px-5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
-            >
-              Maak een account
-            </Link>
           </section>
         </Container>
       </main>
@@ -112,9 +111,9 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <article className="rounded-2xl border border-border bg-card p-6 text-card-foreground">
+    <article className="border-border bg-card text-card-foreground rounded-2xl border p-6">
       <h2 className="text-base font-semibold">{title}</h2>
-      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+      <p className="text-muted-foreground mt-2 text-sm">{description}</p>
     </article>
   );
 }
@@ -127,8 +126,8 @@ function StepItem({
   children: React.ReactNode;
 }) {
   return (
-    <li className="flex gap-3 rounded-xl border border-border bg-card p-4">
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
+    <li className="border-border bg-card flex gap-3 rounded-xl border p-4">
+      <span className="bg-accent text-accent-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
         {index}
       </span>
       <span>{children}</span>

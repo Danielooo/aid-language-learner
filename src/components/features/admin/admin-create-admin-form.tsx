@@ -48,21 +48,19 @@ export function AdminCreateAdminForm() {
   }
 
   const error =
-    createMutation.error instanceof Error
-      ? createMutation.error.message
-      : null;
+    createMutation.error instanceof Error ? createMutation.error.message : null;
 
   return (
     <div className="max-w-md space-y-3">
       {error && (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       )}
 
       {success && (
         <p
-          className="rounded-md border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-foreground"
+          className="border-accent/40 bg-accent/10 text-foreground rounded-md border px-3 py-2 text-sm"
           role="status"
         >
           {success}
@@ -71,7 +69,7 @@ export function AdminCreateAdminForm() {
 
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             Gebruikersnaam
           </span>
           <input
@@ -85,7 +83,7 @@ export function AdminCreateAdminForm() {
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             Wachtwoord
           </span>
           <input
@@ -100,10 +98,8 @@ export function AdminCreateAdminForm() {
 
         <button
           type="submit"
-          disabled={
-            createMutation.isPending || !username.trim() || !password
-          }
-          className="inline-flex h-10 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
+          disabled={createMutation.isPending || !username.trim() || !password}
+          className="bg-accent text-accent-foreground hover:bg-accent/90 inline-flex h-10 w-full items-center justify-center rounded-md px-4 text-sm font-medium disabled:opacity-50"
         >
           {createMutation.isPending ? "Aanmaken…" : "Admin aanmaken"}
         </button>

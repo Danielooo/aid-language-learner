@@ -1,4 +1,10 @@
-import { convertToModelMessages, hasToolCall, streamText, tool } from "ai";
+import {
+  convertToModelMessages,
+  hasToolCall,
+  stepCountIs,
+  streamText,
+  tool,
+} from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 
@@ -10,16 +16,19 @@ import {
   assertAndConsumeAiQuota,
   getSessionUser,
 } from "@/lib/auth/assert-ai-quota";
+import { listPersonalSourceTexts } from "@/lib/exercises/list-personal-source-texts";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { searchAudioExercises } from "@/lib/tatoeba/search-audio-exercises";
 
 import type { UIMessage } from "ai";
 
-// Audio-generator chat: LLM levert zoekintentie; tool-execute haalt
-// Tatoeba-hits op zodat de UI dezelfde voorstel→opslaan-flow krijgt
-// als de tekstgenerator.
+// Audio-generator: multi-step — list Leerplan-bronteksten, daarna
+// proposeAudioExercises (Tatoeba-zoek met exacte source_text-uitsluiting).
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+const listExistingExercisesSchema = z.object({});
 
 const proposeAudioExercisesSchema = z.object({
   topic: z
@@ -89,16 +98,29 @@ export async function POST(req: Request) {
 
   const { messages, draftSummary } = (await req.json()) as ChatRequestBody;
   const excludeAudioIds = draftSummary?.existingAudioIds ?? [];
+  const draftSourceTexts = draftSummary?.existingSourceTexts ?? [];
 
-  // Tool binnen POST zodat execute exclude-IDs uit draftSummary kan gebruiken.
+  const supabase = await getSupabaseServerClient();
+  const listed = await listPersonalSourceTexts(supabase, user.id);
+  const excludeSourceTexts = [...listed.sourceTexts, ...draftSourceTexts];
+
+  const listExistingExercises = tool({
+    description:
+      "Haal Spaanse bronzinnen op uit het hele persoonlijke Leerplan. Roep dit aan vóór proposeAudioExercises bij elke IN-SCOPE zoek-vraag.",
+    inputSchema: listExistingExercisesSchema,
+    execute: async () => listed,
+  });
+
+  // Tool binnen POST zodat execute exclude-lijsten uit draft + Leerplan kan gebruiken.
   const proposeAudioExercises = tool({
     description:
-      "Alleen voor Spaans→Nederlands oefeningen mét Tatoeba-audio. Zoek N hits bij een onderwerp; de UI toont ze zodat de gebruiker kan opslaan.",
+      "Alleen voor Spaans→Nederlands oefeningen mét Tatoeba-audio. Zoek N hits bij een onderwerp; vermijd overlap met listExistingExercises en de draft. De UI toont ze zodat de gebruiker kan opslaan.",
     inputSchema: proposeAudioExercisesSchema,
     execute: async (input) => {
       const result = await searchAudioExercises({
         ...input,
         excludeAudioIds,
+        excludeSourceTexts,
       });
       if (!result.ok) {
         return {
@@ -106,6 +128,15 @@ export async function POST(req: Request) {
           topic: input.topic,
           exercises: [] as const,
           error: result.error,
+        };
+      }
+      if (result.exercises.length === 0) {
+        return {
+          ok: false as const,
+          topic: input.topic,
+          exercises: [] as const,
+          error:
+            "Geen nieuwe spraakoefeningen gevonden — ze stonden al in je Leerplan of voorstel. Probeer andere zoekwoorden.",
         };
       }
       return {
@@ -120,8 +151,8 @@ export async function POST(req: Request) {
     model: openai(AUDIO_EXERCISE_CHAT_MODEL),
     system: buildSystemPrompt(draftSummary),
     messages: await convertToModelMessages(messages),
-    tools: { proposeAudioExercises },
-    stopWhen: hasToolCall("proposeAudioExercises"),
+    tools: { listExistingExercises, proposeAudioExercises },
+    stopWhen: [hasToolCall("proposeAudioExercises"), stepCountIs(3)],
   });
 
   return result.toUIMessageStreamResponse();

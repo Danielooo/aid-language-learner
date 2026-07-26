@@ -1,6 +1,6 @@
 "use client";
 
-import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
+import { ALL_TOPICS } from "@/components/features/quiz/constants";
 
 import { useExerciseProgress } from "./hooks/use-exercise-progress";
 import { SrsCompleteState } from "./srs-complete-state";
@@ -34,12 +34,12 @@ export function SrsTopicPickerSection({
   const allDone = !loading && totalDue === 0;
 
   return (
-    <section className="space-y-4 rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
+    <section className="border-border from-muted/30 to-background space-y-4 rounded-2xl border bg-gradient-to-b p-6 sm:p-8">
       <div className="space-y-1">
-        <h2 className="text-sm font-semibold text-foreground">
+        <h2 className="text-foreground text-sm font-semibold">
           Kies een categorie
         </h2>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           Alleen oefeningen die nu aan herhaling toe zijn. Per categorie zie je
           hoeveel er klaarstaan.
         </p>

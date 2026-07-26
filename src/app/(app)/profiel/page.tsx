@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { ProfilePageContent } from "@/app/_components/features/profile/profile-page-content";
+import { ProfilePageContent } from "@/components/features/profile/profile-page-content";
 import { getAccountCapabilities } from "@/lib/auth/account-capabilities";
 import { isAdminUser } from "@/lib/auth/is-admin";
 import { APP_ROUTES } from "@/lib/routes";
@@ -17,7 +17,9 @@ export default async function ProfielPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect(`${APP_ROUTES.login}?next=${encodeURIComponent(APP_ROUTES.profiel)}`);
+    redirect(
+      `${APP_ROUTES.login}?next=${encodeURIComponent(APP_ROUTES.profiel)}`,
+    );
   }
 
   const { data: profile } = await supabase

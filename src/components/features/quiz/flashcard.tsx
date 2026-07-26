@@ -10,7 +10,6 @@ import { FlashcardActionButton } from "./flashcard-action-button";
 import {
   QUIZ_PLAYING_FORM_CLASS,
   QUIZ_PROMPT_CARD_FIXED_CLASS,
-  QUIZ_PROMPT_SKELETON_CLASS,
   QUIZ_PROMPT_TEXT_CLASS,
   QUIZ_SHORT_HIDE_CLASS,
 } from "./quiz-playing-layout";
@@ -124,13 +123,12 @@ export function Flashcard({
         onPointerDown={handleCardPointerDown}
         onPointerUp={handleCardPointerUp}
         onPointerLeave={handleCardPointerUp}
-        className={`relative cursor-pointer [perspective:1000px] ${animating ? "pointer-events-none" : ""
-          }`}
+        className={`relative cursor-pointer [perspective:1000px] ${
+          animating ? "pointer-events-none" : ""
+        }`}
         style={{ perspective: "1000px" }}
       >
-        <div
-          className={`${QUIZ_PROMPT_CARD_FIXED_CLASS} mx-auto w-full`}
-        >
+        <div className={`${QUIZ_PROMPT_CARD_FIXED_CLASS} mx-auto w-full`}>
           <div
             ref={innerRef}
             className="relative h-full w-full [transform-style:preserve-3d]"
@@ -138,11 +136,11 @@ export function Flashcard({
           >
             {/* Voorkant */}
             <div
-              className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/15 via-accent/5 to-card p-3 text-center shadow-lg shadow-accent/10 [backface-visibility:hidden]"
+              className="border-accent/25 from-accent/15 via-accent/5 to-card shadow-accent/10 absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-2xl border bg-gradient-to-br p-3 text-center shadow-lg [backface-visibility:hidden]"
               style={{ backfaceVisibility: "hidden" }}
             >
               <div className="flex w-full flex-col items-center gap-2">
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
                   Spaans
                 </span>
                 <p className={QUIZ_PROMPT_TEXT_CLASS}>{item.source_text}</p>
@@ -163,7 +161,7 @@ export function Flashcard({
                 )}
               </div>
               <p
-                className={`absolute bottom-2 text-[11px] text-muted-foreground/80 ${QUIZ_SHORT_HIDE_CLASS}`}
+                className={`text-muted-foreground/80 absolute bottom-2 text-[11px] ${QUIZ_SHORT_HIDE_CLASS}`}
               >
                 Klik om te draaien
               </p>
@@ -171,14 +169,14 @@ export function Flashcard({
 
             {/* Achterkant */}
             <div
-              className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-card to-muted/30 p-3 text-center shadow-lg shadow-emerald-500/10 [backface-visibility:hidden] [transform:rotateX(180deg)]"
+              className="via-card to-muted/30 absolute inset-0 flex [transform:rotateX(180deg)] flex-col items-center justify-center overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 p-3 text-center shadow-lg shadow-emerald-500/10 [backface-visibility:hidden]"
               style={{
                 backfaceVisibility: "hidden",
                 transform: "rotateX(180deg)",
               }}
             >
               <div className="flex flex-col items-center gap-2">
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
                   Nederlands
                 </span>
                 <p className={QUIZ_PROMPT_TEXT_CLASS}>{item.target_text}</p>
@@ -189,8 +187,9 @@ export function Flashcard({
       </div>
 
       <div
-        className={`mt-2 grid shrink-0 gap-2 ${isBack ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1"
-          }`}
+        className={`mt-2 grid shrink-0 gap-2 ${
+          isBack ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1"
+        }`}
       >
         {!isBack && (
           <FlashcardActionButton

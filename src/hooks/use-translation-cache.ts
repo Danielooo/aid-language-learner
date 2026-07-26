@@ -100,9 +100,7 @@ export type UseTranslationCache = {
 // Module-scope cache zodat `getSnapshot` een stabiele referentie kan
 // teruggeven — useSyncExternalStore vergelijkt op identity, dus elke
 // keer een nieuwe object retourneren zou re-render-loops triggeren.
-const EMPTY_MAP: TranslationCacheMap = Object.freeze(
-  {},
-) as TranslationCacheMap;
+const EMPTY_MAP: TranslationCacheMap = Object.freeze({}) as TranslationCacheMap;
 let cachedRaw: string | null = null;
 let cachedParsed: TranslationCacheMap = EMPTY_MAP;
 
@@ -116,7 +114,9 @@ function normalizeEntry(raw: unknown): TranslationCacheEntry | null {
     return null;
   }
   const alternatives = Array.isArray(r.alternatives)
-    ? (r.alternatives.filter((s): s is string => typeof s === "string") as string[])
+    ? (r.alternatives.filter(
+        (s): s is string => typeof s === "string",
+      ) as string[])
     : [];
   const tags = Array.isArray(r.tags)
     ? (r.tags.filter((s): s is string => typeof s === "string") as string[])
@@ -262,11 +262,7 @@ export function useTranslationCache(): UseTranslationCache {
               ? (prev?.topic ?? null)
               : null;
         const tags =
-          e.tags !== undefined
-            ? e.tags
-            : sameSource
-              ? (prev?.tags ?? [])
-              : [];
+          e.tags !== undefined ? e.tags : sameSource ? (prev?.tags ?? []) : [];
         const alternatives =
           e.alternatives !== undefined
             ? e.alternatives

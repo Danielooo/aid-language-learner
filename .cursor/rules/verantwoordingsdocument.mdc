@@ -1,0 +1,95 @@
+---
+description: Verantwoordingsdocument (VW.md) — APA 7-inhoud, figuren/bijlagen/literatuurlijst, Pandoc A4-PDF
+globs: verdoc/**/*
+alwaysApply: false
+---
+
+# Verantwoordingsdocument (`verdoc/`)
+
+Werk alleen in `verdoc/` (gitignored). Opdrachtstructuur behouden; vul in, verzin geen nieuwe hoofdstukken zonder noodzaak.
+
+**Inhoud = APA 7** (figuren, bijlagen, bronvermelding, literatuurlijst).  
+**Opmaak = praktisch** (leesbare A4 via Pandoc; geen manuscript-dubbele regelafstand).
+
+## PDF-export (enige workflow)
+
+Vanuit `verdoc/` (vereist Pandoc + XeLaTeX):
+
+```bash
+# PATH: MacTeX/BasicTeX — export PATH="/Library/TeX/texbin:$PATH"
+# Calibri: eerst Office-TTF's symlinken naar ~/Library/Fonts/ (eenmalig), daarna:
+pandoc VW.md -o VW.pdf \
+  --pdf-engine=xelatex \
+  -V mainfont="Calibri" \
+  -V mainfontoptions="Path=$HOME/Library/Fonts/,Extension=.ttf,UprightFont=Calibri,BoldFont=Calibrib,ItalicFont=Calibrii,BoldItalicFont=Calibriz" \
+  -V fontsize=11pt \
+  -V geometry:margin=2.5cm \
+  -V documentclass=article \
+  -V papersize=a4 \
+  --toc --toc-depth=2 \
+  -V colorlinks=true
+```
+
+Lettertype: **Calibri 11 pt** (APA 7). Op macOS komt Calibri mee met Microsoft Office;
+symlink de `.ttf`-bestanden uit
+`/Applications/Microsoft Word.app/Contents/Resources/DFonts/` naar `~/Library/Fonts/`
+(Calibri / Calibrib / Calibrii / Calibriz) als XeLaTeX de fontnaam niet vindt.
+
+Geen Markdown Preview/Print als PDF-pad. Paginanummers komen uit Pandoc-TOC; in MD alleen ankers/titels.
+
+## Figuren (APA 7)
+
+- In de **looptekst**, vlak na eerste vermelding — niet standaard in bijlagen.
+- Call-out eerst: `(zie Figuur 1)`.
+- Blok:
+
+```markdown
+**Figuur 1**  
+*Korte beschrijvende titel*
+
+![Korte beschrijvende titel](assets/figuur-01-slug.png)
+
+*Noot.* Optionele toelichting of bron.
+```
+
+- Nummering doorlopend (Figuur 1, 2, …). In bijlagen: Figuur A1, B1, …
+- Bestand: `assets/figuur-NN-korte-slug.png` (pad relatief t.o.v. `VW.md`).
+- Geen Mermaid-only voor PDF → exporteer naar PNG/SVG in `assets/`.
+- **Nooit** dezelfde figuur in body én bijlage.
+
+## Bijlagen
+
+- A = app-prompts · B = agent-instructie · C = Cursor-instructies.
+- D+ alleen voor écht supplemental materiaal.
+- Elke bijlage op nieuwe pagina: `\newpage` vóór de bijlage-heading.
+- Verwijs tekstueel én met anker: `zie [Bijlage A](#a-gebruikte-prompts-binnen-de-applicatie)`.
+
+## Bronvermelding + literatuurlijst
+
+- In-text: `(Auteur, jaar)` of `Auteur (jaar)`.
+- Sectie `## Literatuurlijst` na Conclusie, vóór Bijlagen; alfabetisch; elke citation ↔ entry.
+- Eigen projectcode: geen citation. Derde-partij docs/SDK/API/papers: wél.
+- Woordentelling opdracht (2500–3000) **excl.** TOC, literatuurlijst en bijlagen.
+
+## A4 / afbreking
+
+- `\newpage` vóór elk hoofd-`##` vanaf Introductie, plus Literatuurlijst en elke bijlage.
+- Na `##`/`###` meteen body of figuur (geen orphan headings).
+- Code in looptekst kort (≤ ~15–20 regels); volledige prompts → bijlage.
+- Figuurbreedte beperkt houden; caption direct bij het image.
+- Grote tabellen → bijlage.
+
+## Sync-checklist (nieuwe figuur)
+
+1. Bestand `assets/figuur-NN-slug.ext`
+2. Call-out + APA-blok in looptekst
+3. Literatuurlijst bijwerken als de bron extern is
+4. TOC/bijlage-index alleen bij nieuwe bijlage-letter
+5. Relatief pad controleren — geen broken links
+
+## Anti-patronen
+
+- Images “alleen in bijlagen” terwijl ze het betoog steunen
+- Figuur zonder call-out of zonder **Figuur n** + *titel*
+- Citation zonder literatuurlijst-entry (of omgekeerd)
+- Absolute image-paden of `../` buiten `verdoc/`

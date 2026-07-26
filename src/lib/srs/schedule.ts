@@ -103,16 +103,25 @@ export function getSrsStepIndex(repetitionCount: number): number {
 }
 
 /** Label en beschrijving voor een stapindex op de hoofdladder. */
-export function getSrsStepInfo(stepIndex: number): Pick<SrsGuideEntry, "label" | "description"> {
+export function getSrsStepInfo(
+  stepIndex: number,
+): Pick<SrsGuideEntry, "label" | "description"> {
   const clamped = Math.min(Math.max(0, stepIndex), MAX_SRS_STEP_INDEX);
   return SRS_MAIN_LADDER_STEPS[clamped];
 }
 
 /** Of een kaart in herkansing staat na een fout antwoord (na minstens één goed). */
 export function isInRelearning(
-  input: Pick<SrsCardState, "repetitionCount" | "intervalDays" | "lastReviewedAt" | "nextReviewAt">,
+  input: Pick<
+    SrsCardState,
+    "repetitionCount" | "intervalDays" | "lastReviewedAt" | "nextReviewAt"
+  >,
 ): boolean {
-  if (input.repetitionCount <= 0 || input.intervalDays !== 0 || !input.lastReviewedAt) {
+  if (
+    input.repetitionCount <= 0 ||
+    input.intervalDays !== 0 ||
+    !input.lastReviewedAt
+  ) {
     return false;
   }
   return input.nextReviewAt.getTime() <= input.lastReviewedAt.getTime();

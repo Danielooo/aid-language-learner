@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 
-import { AppPageHeader } from "@/app/_components/ui/app-page-header";
+import { AppPageHeader } from "@/components/ui/app-page-header";
 
 import { AudioExerciseGenerator } from "./audio-exercise-generator";
 import { ExerciseGenerator } from "./exercise-generator";
@@ -45,7 +45,7 @@ export function GeneratorPageContent() {
                 href="https://api.tatoeba.org"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline underline-offset-2 hover:text-foreground"
+                className="hover:text-foreground underline underline-offset-2"
               >
                 Tatoeba-API
               </a>
@@ -58,7 +58,7 @@ export function GeneratorPageContent() {
       <div
         role="tablist"
         aria-label="Generator-modus"
-        className="flex flex-wrap gap-2 border-b border-border pb-2"
+        className="border-border flex flex-wrap gap-2 border-b pb-2"
       >
         <a
           role="tab"
@@ -79,11 +79,7 @@ export function GeneratorPageContent() {
       </div>
 
       <div className="space-y-4">
-        {tab === "text" ? (
-          <ExerciseGenerator />
-        ) : (
-          <AudioExerciseGenerator />
-        )}
+        {tab === "text" ? <ExerciseGenerator /> : <AudioExerciseGenerator />}
       </div>
     </div>
   );

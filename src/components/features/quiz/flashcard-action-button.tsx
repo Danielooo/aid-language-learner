@@ -6,8 +6,7 @@ type FlashcardActionButtonProps = {
 };
 
 const variantClasses = {
-  default:
-    "border border-input bg-background hover:bg-muted text-foreground",
+  default: "border border-input bg-background hover:bg-muted text-foreground",
   success:
     "border border-emerald-500/30 bg-emerald-600 text-white hover:bg-emerald-600/90",
   danger:

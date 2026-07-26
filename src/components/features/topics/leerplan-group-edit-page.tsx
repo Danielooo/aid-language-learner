@@ -4,10 +4,10 @@ import { Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { AppPageHeader } from "@/app/_components/ui/app-page-header";
-import { ExercisesListPage } from "@/app/_components/features/exercises/exercises-list-page";
-import { QuizBackToOverviewButton } from "@/app/_components/features/quiz/quiz-back-to-overview-button";
-import { LeerplanGroupDeleteDialog } from "@/app/_components/features/topics/leerplan-group-delete-dialog";
+import { AppPageHeader } from "@/components/ui/app-page-header";
+import { ExercisesListPage } from "@/components/features/exercises/exercises-list-page";
+import { QuizBackToOverviewButton } from "@/components/features/quiz/quiz-back-to-overview-button";
+import { LeerplanGroupDeleteDialog } from "@/components/features/topics/leerplan-group-delete-dialog";
 import { fetchJson } from "@/lib/api/fetch-json";
 import { queryKeys } from "@/lib/query-keys";
 import { APP_ROUTES, leerplanGroupPath } from "@/lib/routes";
@@ -91,7 +91,7 @@ export function LeerplanGroupEditPage({ groupId }: LeerplanGroupEditPageProps) {
             />
           }
         />
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {groupError}
         </p>
       </div>
@@ -124,14 +124,14 @@ export function LeerplanGroupEditPage({ groupId }: LeerplanGroupEditPageProps) {
       />
 
       {deleteTopicError ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {deleteTopicError}
         </p>
       ) : null}
 
       <Suspense
         fallback={
-          <p className="text-sm text-muted-foreground">Oefeningen laden…</p>
+          <p className="text-muted-foreground text-sm">Oefeningen laden…</p>
         }
       >
         <ExercisesListPage
@@ -147,7 +147,7 @@ export function LeerplanGroupEditPage({ groupId }: LeerplanGroupEditPageProps) {
                 type="button"
                 disabled={deletingTopic}
                 onClick={() => setDeleteConfirmOpen(true)}
-                className="font-medium text-destructive underline-offset-2 hover:underline disabled:opacity-50"
+                className="text-destructive font-medium underline-offset-2 hover:underline disabled:opacity-50"
               >
                 Topic verwijderen
               </button>

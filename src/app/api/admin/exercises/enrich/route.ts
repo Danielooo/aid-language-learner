@@ -38,7 +38,11 @@ export async function POST(req: Request): Promise<Response> {
     body = await req.json();
   } catch {
     return Response.json(
-      { ok: false, error: "Body is geen geldige JSON.", reason: "validation" } satisfies ExercisesAdminEnrichFailure,
+      {
+        ok: false,
+        error: "Body is geen geldige JSON.",
+        reason: "validation",
+      } satisfies ExercisesAdminEnrichFailure,
       { status: 400 },
     );
   }
@@ -46,7 +50,11 @@ export async function POST(req: Request): Promise<Response> {
   const parse = inputSchema.safeParse(body);
   if (!parse.success) {
     return Response.json(
-      { ok: false, error: "Validatie mislukt.", reason: "validation" } satisfies ExercisesAdminEnrichFailure,
+      {
+        ok: false,
+        error: "Validatie mislukt.",
+        reason: "validation",
+      } satisfies ExercisesAdminEnrichFailure,
       { status: 400 },
     );
   }
@@ -75,4 +83,3 @@ export async function POST(req: Request): Promise<Response> {
     skipped: result.skipped,
   } satisfies ExercisesAdminEnrichSuccess);
 }
-

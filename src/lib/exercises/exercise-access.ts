@@ -22,7 +22,10 @@ export async function getExerciseUserAccess(): Promise<ExerciseUserAccess> {
   if (!supabaseUserId) {
     return {
       ok: false,
-      response: Response.json({ ok: false, error: "Niet ingelogd." }, { status: 401 }),
+      response: Response.json(
+        { ok: false, error: "Niet ingelogd." },
+        { status: 401 },
+      ),
     };
   }
 

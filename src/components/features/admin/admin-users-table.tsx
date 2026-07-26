@@ -1,17 +1,11 @@
 "use client";
 
-import {
-  useEffect,
-  useEffectEvent,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "@/lib/query-keys";
 import { fetchJson } from "@/lib/api/fetch-json";
-import { ConfirmDialog } from "@/app/_components/ui/confirm-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 import type { AdminUserRow } from "@/app/api/admin/users/route";
 import type { ReactNode } from "react";
@@ -111,13 +105,14 @@ function ColumnFilterHeader<T extends string>({
         onClick={onToggle}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className={`inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-left hover:bg-muted/80 ${active ? "text-accent" : "text-muted-foreground"
-          }`}
+        className={`hover:bg-muted/80 inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-left ${
+          active ? "text-accent" : "text-muted-foreground"
+        }`}
       >
         <span>
           {label}
           {active && activeLabel ? (
-            <span className="font-normal text-muted-foreground">
+            <span className="text-muted-foreground font-normal">
               {" "}
               · {activeLabel}
             </span>
@@ -129,7 +124,7 @@ function ColumnFilterHeader<T extends string>({
       {open && (
         <div
           role="listbox"
-          className="absolute left-3 top-full z-10 mt-1 min-w-[9rem] rounded-md border border-border bg-background py-1 shadow-md"
+          className="border-border bg-background absolute top-full left-3 z-10 mt-1 min-w-[9rem] rounded-md border py-1 shadow-md"
         >
           {options.map((opt) => {
             const selected = opt.value === value;
@@ -139,8 +134,9 @@ function ColumnFilterHeader<T extends string>({
                 type="button"
                 role="option"
                 aria-selected={selected}
-                className={`flex w-full px-3 py-1.5 text-left text-xs hover:bg-muted ${selected ? "font-medium text-accent" : "text-foreground"
-                  }`}
+                className={`hover:bg-muted flex w-full px-3 py-1.5 text-left text-xs ${
+                  selected ? "text-accent font-medium" : "text-foreground"
+                }`}
                 onClick={() => onSelect(opt.value)}
               >
                 {opt.label}
@@ -278,66 +274,62 @@ export function AdminUsersTable() {
   }
 
   const actionError =
-    patchMutation.error instanceof Error
-      ? patchMutation.error.message
-      : null;
+    patchMutation.error instanceof Error ? patchMutation.error.message : null;
 
   const busy = patchMutation.isPending;
 
-  const pendingLabel = pendingAction
-    ? accountLabel(pendingAction.row)
-    : "";
+  const pendingLabel = pendingAction ? accountLabel(pendingAction.row) : "";
 
   const confirmCopy =
     pendingAction?.type === "ban"
       ? {
-        title: "Account deactiveren?",
-        description: (
-          <>
-            Weet je zeker dat je “{pendingLabel}” wilt deactiveren? Een
-            nieuwe login wordt geblokkeerd. Een sessie die nu al openstaat
-            wordt meteen onbruikbaar.
-          </>
-        ),
-        confirmLabel: "Deactiveren",
-        pendingLabel: "Deactiveren…",
-      }
+          title: "Account deactiveren?",
+          description: (
+            <>
+              Weet je zeker dat je “{pendingLabel}” wilt deactiveren? Een nieuwe
+              login wordt geblokkeerd. Een sessie die nu al openstaat wordt
+              meteen onbruikbaar.
+            </>
+          ),
+          confirmLabel: "Deactiveren",
+          pendingLabel: "Deactiveren…",
+        }
       : pendingAction?.type === "delete" && pendingAction.row.role === "admin"
         ? {
-          title: "Admin verwijderen?",
-          description: (
-            <>
-              Weet je zeker dat je het admin-account “{pendingLabel}” wilt
-              verwijderen?
-            </>
-          ),
-          confirmLabel: "Verwijderen",
-          pendingLabel: "Verwijderen…",
-        }
+            title: "Admin verwijderen?",
+            description: (
+              <>
+                Weet je zeker dat je het admin-account “{pendingLabel}” wilt
+                verwijderen?
+              </>
+            ),
+            confirmLabel: "Verwijderen",
+            pendingLabel: "Verwijderen…",
+          }
         : {
-          title: "Gebruiker verwijderen?",
-          description: (
-            <>
-              Weet je zeker dat je “{pendingLabel}” definitief wilt
-              verwijderen? Alle gegevens van deze gebruiker (oefeningen,
-              voortgang, inzendingen) gaan permanent verloren.
-            </>
-          ),
-          confirmLabel: "Verwijderen",
-          pendingLabel: "Verwijderen…",
-        };
+            title: "Gebruiker verwijderen?",
+            description: (
+              <>
+                Weet je zeker dat je “{pendingLabel}” definitief wilt
+                verwijderen? Alle gegevens van deze gebruiker (oefeningen,
+                voortgang, inzendingen) gaan permanent verloren.
+              </>
+            ),
+            confirmLabel: "Verwijderen",
+            pendingLabel: "Verwijderen…",
+          };
 
   return (
     <div className="space-y-3">
       {(listError || actionError) && (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {listError ?? actionError}
         </p>
       )}
 
-      <div className="rounded-md border border-border bg-muted/20 p-3">
+      <div className="border-border bg-muted/20 rounded-md border p-3">
         <label className="flex min-w-[200px] flex-col gap-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
             Zoeken
           </span>
           <input
@@ -351,18 +343,18 @@ export function AdminUsersTable() {
       </div>
 
       {!loading && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-muted-foreground text-[11px]">
           {filtered.length === rows.length
             ? `${rows.length} gebruiker${rows.length === 1 ? "" : "s"}`
             : `${filtered.length} van ${rows.length} gebruikers`}
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-md border border-border">
+      <div className="border-border overflow-x-auto rounded-md border">
         <table className="w-full min-w-[56rem] text-left text-sm">
           <thead
             ref={tableHeadRef}
-            className="border-b border-border bg-muted/40 text-xs text-muted-foreground"
+            className="border-border bg-muted/40 text-muted-foreground border-b text-xs"
           >
             <tr>
               <th className="px-3 py-2 font-medium">Gebruikersnaam</th>
@@ -405,21 +397,35 @@ export function AdminUsersTable() {
           </thead>
           <tbody>
             {loading && (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-3 py-8 text-center text-xs text-muted-foreground"
-                >
-                  Gebruikers laden…
-                </td>
-              </tr>
+              <>
+                <tr className="sr-only">
+                  <td colSpan={6}>Laden…</td>
+                </tr>
+                {Array.from({ length: 5 }, (_, rowIdx) => (
+                  <tr
+                    key={`skeleton-${rowIdx}`}
+                    className="border-border/60 border-b last:border-b-0"
+                    aria-hidden
+                  >
+                    {Array.from({ length: 6 }, (_, colIdx) => (
+                      <td key={colIdx} className="px-3 py-3">
+                        <div
+                          className={`bg-muted/70 h-3 animate-pulse rounded ${
+                            colIdx === 0 ? "w-28" : "w-16"
+                          }`}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </>
             )}
 
             {!loading && rows.length === 0 && (
               <tr>
                 <td
                   colSpan={6}
-                  className="px-3 py-8 text-center text-xs text-muted-foreground"
+                  className="text-muted-foreground px-3 py-8 text-center text-xs"
                 >
                   Geen gebruikers gevonden.
                 </td>
@@ -430,7 +436,7 @@ export function AdminUsersTable() {
               <tr>
                 <td
                   colSpan={6}
-                  className="px-3 py-8 text-center text-xs text-muted-foreground"
+                  className="text-muted-foreground px-3 py-8 text-center text-xs"
                 >
                   Geen gebruikers met deze filters.
                 </td>
@@ -441,7 +447,7 @@ export function AdminUsersTable() {
               filtered.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-b border-border/60 last:border-b-0"
+                  className="border-border/60 border-b last:border-b-0"
                 >
                   <td className="px-3 py-2 font-medium">
                     {row.username ? (
@@ -508,9 +514,7 @@ export function AdminUsersTable() {
                           type="button"
                           disabled={busy}
                           className={actionDangerClass}
-                          onClick={() =>
-                            setPendingAction({ type: "ban", row })
-                          }
+                          onClick={() => setPendingAction({ type: "ban", row })}
                         >
                           Deactiveer
                         </button>

@@ -3,12 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { AppPageHeader } from "@/app/_components/ui/app-page-header";
+import { AppPageHeader } from "@/components/ui/app-page-header";
 
-import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
-import { ExerciseErrorState } from "@/app/_components/features/quiz/exercise-error-state";
-import { ExerciseChat } from "@/app/_components/features/quiz/exercise-chat";
-import { useQuizStorage } from "@/app/_components/features/quiz/use-quiz-storage";
+import { ALL_TOPICS } from "@/components/features/quiz/constants";
+import { ExerciseErrorState } from "@/components/features/quiz/exercise-error-state";
+import { ExerciseChat } from "@/components/features/quiz/exercise-chat";
+import { useQuizStorage } from "@/components/features/quiz/use-quiz-storage";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
 import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
 import {
@@ -172,7 +172,8 @@ export function SortQuizDeck() {
         }
 
         const storedTopic = window.localStorage.getItem(SORT_TOPIC_KEY);
-        if (storedTopic && storedTopic.length > 0) setSelectedTopic(storedTopic);
+        if (storedTopic && storedTopic.length > 0)
+          setSelectedTopic(storedTopic);
       } catch {
         // localStorage geblokkeerd.
       }
@@ -238,7 +239,8 @@ export function SortQuizDeck() {
       void fetchNext();
     } else {
       void fetchNextValidated(
-        (candidate) => isSortExerciseEligible(getSortExerciseData(candidate, direction)),
+        (candidate) =>
+          isSortExerciseEligible(getSortExerciseData(candidate, direction)),
         MAX_SORT_FETCH_RETRIES,
         `Geen geschikte oefening met minimaal ${MIN_SORT_WORDS} woorden gevonden. Probeer andere instellingen.`,
       );
@@ -303,7 +305,16 @@ export function SortQuizDeck() {
         void recordSrsReview(item.id, result.isCorrect);
       }
     },
-    [item, recordAttempt, recordAnswer, selectionMode, sessionPhase, direction, getResponseTimeMs, recordSrsReview],
+    [
+      item,
+      recordAttempt,
+      recordAnswer,
+      selectionMode,
+      sessionPhase,
+      direction,
+      getResponseTimeMs,
+      recordSrsReview,
+    ],
   );
 
   const handleNext = useCallback(() => {
@@ -332,10 +343,10 @@ export function SortQuizDeck() {
   const progressLabel =
     queueTotal > 0
       ? formatQueueProgressLabel(
-        queueProgress,
-        queueTotal,
-        sessionPhase === "review",
-      )
+          queueProgress,
+          queueTotal,
+          sessionPhase === "review",
+        )
       : null;
 
   useEffect(() => {
@@ -368,7 +379,9 @@ export function SortQuizDeck() {
       ref={containerRef}
       tabIndex={-1}
       className={
-        screen === "playing" ? QUIZ_PLAYING_DECK_CLASS : "space-y-6 outline-none"
+        screen === "playing"
+          ? QUIZ_PLAYING_DECK_CLASS
+          : "space-y-6 outline-none"
       }
     >
       <AppPageHeader
@@ -415,12 +428,12 @@ export function SortQuizDeck() {
       )}
 
       {ready && screen === "topic-picker" && selectionMode === "topic" && (
-        <section className="space-y-4 rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
+        <section className="border-border from-muted/30 to-background space-y-4 rounded-2xl border bg-gradient-to-b p-6 sm:p-8">
           <div className="space-y-1">
-            <h2 className="text-sm font-semibold text-foreground">
+            <h2 className="text-foreground text-sm font-semibold">
               Kies je topic
             </h2>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               {selectionModeLabel(selectionMode)} — selecteer een categorie.
             </p>
           </div>
@@ -443,16 +456,16 @@ export function SortQuizDeck() {
             <QuizQueueProgressBadge label={progressLabel} />
             {(sessionPhase === "main-complete" ||
               sessionPhase === "all-complete") && (
-                <SessionCompleteState
-                  phase={sessionPhase}
-                  correctCount={correctCount}
-                  totalCount={initialQueueTotal}
-                  mistakeCount={mistakeCount}
-                  skippedIneligible={skippedIneligible}
-                  onStartMistakeReview={handleStartMistakeReview}
-                  onFinish={handleFinishSession}
-                />
-              )}
+              <SessionCompleteState
+                phase={sessionPhase}
+                correctCount={correctCount}
+                totalCount={initialQueueTotal}
+                mistakeCount={mistakeCount}
+                skippedIneligible={skippedIneligible}
+                onStartMistakeReview={handleStartMistakeReview}
+                onFinish={handleFinishSession}
+              />
+            )}
             {srsComplete && (
               <SrsCompleteState
                 topic={selectedTopic}

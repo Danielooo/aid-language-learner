@@ -20,24 +20,20 @@ export const queryKeys = {
   learningTopics: () => ["learning-topics"] as const,
 
   /** Detail = `ExerciseGroupDetail` (niet alleen de naam). */
-  learningTopic: (groupId: string) =>
-    ["learning-topics", groupId] as const,
+  learningTopic: (groupId: string) => ["learning-topics", groupId] as const,
 
   communityGroups: () => ["community-groups"] as const,
 
-  communityGroup: (groupId: string) =>
-    ["community-groups", groupId] as const,
+  communityGroup: (groupId: string) => ["community-groups", groupId] as const,
 
   communitySubmissions: (status: string) =>
     ["community-submissions", status] as const,
 
   adminUsers: () => ["admin-users"] as const,
 
-  adminReviews: (status: string) =>
-    ["admin-reviews", status] as const,
+  adminReviews: (status: string) => ["admin-reviews", status] as const,
 
-  exercises: (params: Record<string, string>) =>
-    ["exercises", params] as const,
+  exercises: (params: Record<string, string>) => ["exercises", params] as const,
 
   aiQuota: () => ["ai-quota"] as const,
 

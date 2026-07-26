@@ -24,7 +24,9 @@ export const dynamic = "force-dynamic";
 export type { ExerciseQuizItem } from "@/types/quiz";
 
 async function fetchById(
-  access: NonNullable<Awaited<ReturnType<typeof getExerciseUserAccess>> & { ok: true }>,
+  access: NonNullable<
+    Awaited<ReturnType<typeof getExerciseUserAccess>> & { ok: true }
+  >,
   id: string,
   activeTopics: Set<string>,
 ) {
@@ -35,10 +37,14 @@ async function fetchById(
     .eq("owner_id", access.userId)
     .maybeSingle();
 
-  if (error) return { error: Response.json({ error: error.message }, { status: 500 }) };
+  if (error)
+    return { error: Response.json({ error: error.message }, { status: 500 }) };
   if (!data) {
     return {
-      error: Response.json({ error: "Oefening niet gevonden." }, { status: 404 }),
+      error: Response.json(
+        { error: "Oefening niet gevonden." },
+        { status: 404 },
+      ),
     };
   }
   if (!isTopicActive(activeTopics, data.topic)) {
@@ -53,7 +59,9 @@ async function fetchById(
 }
 
 async function fetchSrsDue(
-  access: NonNullable<Awaited<ReturnType<typeof getExerciseUserAccess>> & { ok: true }>,
+  access: NonNullable<
+    Awaited<ReturnType<typeof getExerciseUserAccess>> & { ok: true }
+  >,
   topic: string | null,
   activeTopics: Set<string>,
 ) {
@@ -112,7 +120,9 @@ async function fetchSrsDue(
 }
 
 async function fetchRandom(
-  access: NonNullable<Awaited<ReturnType<typeof getExerciseUserAccess>> & { ok: true }>,
+  access: NonNullable<
+    Awaited<ReturnType<typeof getExerciseUserAccess>> & { ok: true }
+  >,
   topic: string | null,
   excludeIds: string[],
   activeTopics: Set<string>,
@@ -151,7 +161,9 @@ async function fetchRandom(
 
   const { count, error: countError } = await countQuery;
   if (countError) {
-    return { error: Response.json({ error: countError.message }, { status: 500 }) };
+    return {
+      error: Response.json({ error: countError.message }, { status: 500 }),
+    };
   }
 
   if (!count || count === 0) {
@@ -213,9 +225,15 @@ export async function GET(req: Request) {
       ? topicParam.trim()
       : null;
   const excludeIds =
-    excludeParam?.split(",").map((s) => s.trim()).filter((s) => s.length > 0) ?? [];
+    excludeParam
+      ?.split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0) ?? [];
 
-  const activeTopics = await getActiveTopicsForUser(access.supabase, access.userId);
+  const activeTopics = await getActiveTopicsForUser(
+    access.supabase,
+    access.userId,
+  );
 
   if (idParam) {
     const result = await fetchById(access, idParam, activeTopics);

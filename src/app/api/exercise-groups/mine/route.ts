@@ -47,7 +47,10 @@ export async function GET(): Promise<Response> {
 
   if (groupsRes.error) {
     return Response.json(
-      { ok: false, error: groupsRes.error.message } satisfies ExerciseGroupsFailure,
+      {
+        ok: false,
+        error: groupsRes.error.message,
+      } satisfies ExerciseGroupsFailure,
       { status: 500 },
     );
   }
@@ -82,7 +85,10 @@ export async function GET(): Promise<Response> {
 
     if (countError) {
       return Response.json(
-        { ok: false, error: countError.message } satisfies ExerciseGroupsFailure,
+        {
+          ok: false,
+          error: countError.message,
+        } satisfies ExerciseGroupsFailure,
         { status: 500 },
       );
     }
@@ -138,9 +144,7 @@ export async function GET(): Promise<Response> {
       offerState,
       offerStatusAt,
       rejectReason:
-        latest?.status === "rejected"
-          ? (latest.reject_reason ?? null)
-          : null,
+        latest?.status === "rejected" ? (latest.reject_reason ?? null) : null,
       changedSinceReject,
       sourceGroupId,
       isEdited: editedByGroup.get(id) ?? false,

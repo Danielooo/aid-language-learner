@@ -1,4 +1,4 @@
-import { TypingQuizDeck } from "@/app/_components/features/quiz/typing-quiz-deck";
+import { TypingQuizDeck } from "@/components/features/quiz/typing-quiz-deck";
 
 import type { Metadata } from "next";
 

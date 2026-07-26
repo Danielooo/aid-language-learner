@@ -6,7 +6,7 @@ type QuizQueueProgressBadgeProps = {
 export function QuizQueueProgressBadge({ label }: QuizQueueProgressBadgeProps) {
   if (!label) return null;
   return (
-    <span className="absolute right-3 top-2 text-sm font-medium tabular-nums text-foreground sm:right-4 sm:top-3">
+    <span className="text-foreground absolute top-2 right-3 text-sm font-medium tabular-nums sm:top-3 sm:right-4">
       {label}
     </span>
   );

@@ -97,7 +97,10 @@ export const ACCURACY_PERIOD_OPTIONS: ReadonlyArray<{
 ];
 
 export function getAccuracyPeriodLabel(period: AccuracyPeriod): string {
-  return ACCURACY_PERIOD_OPTIONS.find((option) => option.value === period)?.label ?? "Altijd";
+  return (
+    ACCURACY_PERIOD_OPTIONS.find((option) => option.value === period)?.label ??
+    "Altijd"
+  );
 }
 
 function getCutoffDayKey(days: number, now: Date): string {
@@ -105,7 +108,9 @@ function getCutoffDayKey(days: number, now: Date): string {
 }
 
 /** Filter pogingen op rollend venster (kalenderdagen in Europe/Amsterdam). */
-export function filterAttemptsByPeriod<T extends Pick<AttemptRow, "created_at">>(
+export function filterAttemptsByPeriod<
+  T extends Pick<AttemptRow, "created_at">,
+>(
   attempts: ReadonlyArray<T>,
   period: AccuracyPeriod,
   now: Date = new Date(),

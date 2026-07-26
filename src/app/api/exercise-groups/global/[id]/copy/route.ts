@@ -47,7 +47,10 @@ export async function POST(
     const parsed = bodySchema.safeParse(json ?? {});
     if (!parsed.success) {
       return Response.json(
-        { ok: false, error: "Ongeldige topicnaam." } satisfies ExerciseGroupsFailure,
+        {
+          ok: false,
+          error: "Ongeldige topicnaam.",
+        } satisfies ExerciseGroupsFailure,
         { status: 400 },
       );
     }

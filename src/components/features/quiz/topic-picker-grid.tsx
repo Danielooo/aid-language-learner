@@ -4,7 +4,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useRef } from "react";
 
-import { ALL_TOPICS } from "@/app/_components/features/quiz/constants";
+import { ALL_TOPICS } from "@/components/features/quiz/constants";
 
 import type { TopicStat } from "@/types/quiz";
 
@@ -70,7 +70,7 @@ export function TopicPickerGrid({
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="h-28 animate-pulse rounded-2xl border border-border bg-muted/40"
+            className="border-border bg-muted/40 h-28 animate-pulse rounded-2xl border"
           />
         ))}
       </div>
@@ -79,7 +79,7 @@ export function TopicPickerGrid({
 
   if (stats.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         Geen topics beschikbaar. Genereer eerst oefeningen via de
         oefeningen-generator.
       </p>
@@ -116,11 +116,11 @@ export function TopicPickerGrid({
             }}
             className={`group flex min-h-28 flex-col items-start justify-between rounded-2xl border p-5 text-left transition-all ${
               isDone
-                ? "cursor-not-allowed border-border bg-muted/20 opacity-60"
+                ? "border-border bg-muted/20 cursor-not-allowed opacity-60"
                 : "cursor-pointer hover:-translate-y-0.5 hover:shadow-md"
             } ${
               isSelected && !isDone
-                ? "border-accent bg-gradient-to-br from-accent/20 via-accent/5 to-card shadow-md ring-2 ring-accent/30"
+                ? "border-accent from-accent/20 via-accent/5 to-card ring-accent/30 bg-gradient-to-br shadow-md ring-2"
                 : isDone
                   ? ""
                   : "border-border bg-card hover:border-accent/30 hover:bg-muted/30"
@@ -128,30 +128,33 @@ export function TopicPickerGrid({
           >
             <div className="space-y-1">
               <span
-                className={`text-[10px] font-medium uppercase tracking-wide ${
+                className={`text-[10px] font-medium tracking-wide uppercase ${
                   isAll ? "text-accent" : "text-muted-foreground"
                 }`}
               >
                 {isAll ? "Alles" : "Topic"}
               </span>
-              <h3 className="text-base font-semibold leading-snug text-foreground">
+              <h3 className="text-foreground text-base leading-snug font-semibold">
                 {topicLabel(stat.topic)}
               </h3>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               {srsMode ? (
                 isDone ? (
-                  <span className="font-medium text-muted-foreground">Klaar</span>
+                  <span className="text-muted-foreground font-medium">
+                    Klaar
+                  </span>
                 ) : (
                   <>
-                    <span className="font-medium text-accent">{dueCount}</span>{" "}
-                    {dueCount === 1 ? "klaar voor herhaling" : "klaar voor herhaling"}
+                    <span className="text-accent font-medium">{dueCount}</span>{" "}
+                    {dueCount === 1
+                      ? "klaar voor herhaling"
+                      : "klaar voor herhaling"}
                   </>
                 )
               ) : (
                 <>
-                  {stat.count}{" "}
-                  {stat.count === 1 ? "oefening" : "oefeningen"}
+                  {stat.count} {stat.count === 1 ? "oefening" : "oefeningen"}
                 </>
               )}
             </p>

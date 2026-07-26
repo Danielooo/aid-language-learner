@@ -8,8 +8,8 @@ import {
   updateProfile,
 } from "@/app/(app)/profiel/actions";
 import { initialProfileState } from "@/app/(app)/profiel/_lib/state";
-import { ProfileAvatar } from "@/app/_components/features/profile/profile-avatar";
-import { AppPageHeader } from "@/app/_components/ui/app-page-header";
+import { ProfileAvatar } from "@/components/features/profile/profile-avatar";
+import { AppPageHeader } from "@/components/ui/app-page-header";
 import { cn } from "@/lib/utils";
 
 import type { ProfileActionState } from "@/app/(app)/profiel/_lib/state";
@@ -46,13 +46,18 @@ export function ProfilePageContent({
       />
 
       <section className="flex items-center gap-4" aria-label="Avatar">
-        <ProfileAvatar username={avatarUsername || username} displayName={avatarName} />
+        <ProfileAvatar
+          username={avatarUsername || username}
+          displayName={avatarName}
+        />
         <div className="min-w-0 space-y-1">
-          <p className="truncate text-lg font-semibold text-foreground">{heroName}</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-foreground truncate text-lg font-semibold">
+            {heroName}
+          </p>
+          <p className="text-muted-foreground text-sm">
             @{avatarUsername || username}
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Avatar toont initialen — foto uploaden is niet beschikbaar.
           </p>
         </div>
@@ -77,7 +82,7 @@ export function ProfilePageContent({
       {canDeleteAccount ? (
         <DangerZone username={username} />
       ) : (
-        <div className="rounded-md border border-border bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
+        <div className="border-border bg-muted/40 text-muted-foreground rounded-md border px-3 py-3 text-sm">
           Admin-accounts kunnen niet via deze pagina worden verwijderd.
         </div>
       )}
@@ -96,7 +101,10 @@ function ProfileDetailsForm({
   bio: string | null;
   onPreviewChange: (values: { displayName: string; username: string }) => void;
 }) {
-  const [state, formAction, pending] = useActionState(updateProfile, initialProfileState);
+  const [state, formAction, pending] = useActionState(
+    updateProfile,
+    initialProfileState,
+  );
 
   return (
     <section className="space-y-4" aria-labelledby="profile-details-heading">
@@ -110,7 +118,10 @@ function ProfileDetailsForm({
           defaultValue={displayName ?? ""}
           error={state.fieldErrors?.displayName}
           onChange={(value) =>
-            onPreviewChange({ displayName: value, username: readInputValue("username") || username })
+            onPreviewChange({
+              displayName: value,
+              username: readInputValue("username") || username,
+            })
           }
         />
         <Field
@@ -140,11 +151,7 @@ function ProfileDetailsForm({
 
         <FormFeedback state={state} />
 
-        <button
-          type="submit"
-          disabled={pending}
-          className={primaryButtonClass}
-        >
+        <button type="submit" disabled={pending} className={primaryButtonClass}>
           {pending ? "Opslaan…" : "Profiel opslaan"}
         </button>
       </form>
@@ -178,7 +185,7 @@ function AccountSection({
         {canChangePassword ? (
           <PasswordForm />
         ) : (
-          <div className="rounded-md border border-border bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
+          <div className="border-border bg-muted/40 text-muted-foreground rounded-md border px-3 py-3 text-sm">
             Wachtwoord wijzigen is niet beschikbaar bij SSO-login
             (Google/GitHub).
           </div>
@@ -189,7 +196,10 @@ function AccountSection({
 }
 
 function PasswordForm() {
-  const [state, formAction, pending] = useActionState(changePassword, initialProfileState);
+  const [state, formAction, pending] = useActionState(
+    changePassword,
+    initialProfileState,
+  );
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
@@ -220,13 +230,16 @@ function PasswordForm() {
 }
 
 function DangerZone({ username }: { username: string }) {
-  const [state, formAction, pending] = useActionState(deleteAccount, initialProfileState);
+  const [state, formAction, pending] = useActionState(
+    deleteAccount,
+    initialProfileState,
+  );
   const [confirm, setConfirm] = useState("");
   const matches = confirm === username;
 
   return (
     <section
-      className="space-y-4 rounded-md border border-destructive/40 p-4"
+      className="border-destructive/40 space-y-4 rounded-md border p-4"
       aria-labelledby="danger-heading"
     >
       <SectionHeading
@@ -234,15 +247,15 @@ function DangerZone({ username }: { username: string }) {
         title="Account verwijderen"
         tone="danger"
       />
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         Dit verwijdert je account en bijbehorende gegevens permanent. Typ{" "}
-        <span className="font-medium text-foreground">{username}</span> om te
+        <span className="text-foreground font-medium">{username}</span> om te
         bevestigen.
       </p>
 
       <form action={formAction} className="space-y-4" noValidate>
         <label htmlFor="confirm" className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             Bevestiging
           </span>
           <input
@@ -258,7 +271,7 @@ function DangerZone({ username }: { username: string }) {
             className={inputClass}
           />
           {state.fieldErrors?.confirm && (
-            <span id="confirm-error" className="text-xs text-destructive">
+            <span id="confirm-error" className="text-destructive text-xs">
               {state.fieldErrors.confirm}
             </span>
           )}
@@ -269,7 +282,7 @@ function DangerZone({ username }: { username: string }) {
         <button
           type="submit"
           disabled={pending || !matches}
-          className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-destructive bg-destructive px-4 text-sm font-medium text-white transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="border-destructive bg-destructive hover:bg-destructive/90 inline-flex h-10 cursor-pointer items-center justify-center rounded-md border px-4 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         >
           {pending ? "Verwijderen…" : "Account permanent verwijderen"}
         </button>
@@ -283,7 +296,7 @@ function FormFeedback({ state }: { state: ProfileActionState }) {
     return (
       <div
         role="alert"
-        className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm"
       >
         {state.error}
       </div>
@@ -294,7 +307,7 @@ function FormFeedback({ state }: { state: ProfileActionState }) {
     return (
       <div
         role="status"
-        className="rounded-md border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-foreground"
+        className="border-accent/40 bg-accent/10 text-foreground rounded-md border px-3 py-2 text-sm"
       >
         {state.message}
       </div>
@@ -351,7 +364,7 @@ function Field({
 }) {
   return (
     <label htmlFor={id} className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
         {label}
       </span>
       <input
@@ -371,12 +384,12 @@ function Field({
         className={cn(inputClass, disabled && "cursor-not-allowed opacity-70")}
       />
       {helper && !error && (
-        <span id={`${id}-helper`} className="text-xs text-muted-foreground">
+        <span id={`${id}-helper`} className="text-muted-foreground text-xs">
           {helper}
         </span>
       )}
       {error && (
-        <span id={`${id}-error`} className="text-xs text-destructive">
+        <span id={`${id}-error`} className="text-destructive text-xs">
           {error}
         </span>
       )}
@@ -403,7 +416,7 @@ function TextAreaField({
 }) {
   return (
     <label htmlFor={id} className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
         {label}
       </span>
       <textarea
@@ -415,15 +428,15 @@ function TextAreaField({
         aria-describedby={
           error ? `${id}-error` : helper ? `${id}-helper` : undefined
         }
-        className="min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-destructive"
+        className="border-input bg-background focus-visible:ring-ring aria-[invalid=true]:border-destructive min-h-24 rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
       />
       {helper && !error && (
-        <span id={`${id}-helper`} className="text-xs text-muted-foreground">
+        <span id={`${id}-helper`} className="text-muted-foreground text-xs">
           {helper}
         </span>
       )}
       {error && (
-        <span id={`${id}-error`} className="text-xs text-destructive">
+        <span id={`${id}-error`} className="text-destructive text-xs">
           {error}
         </span>
       )}

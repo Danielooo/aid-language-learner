@@ -75,14 +75,17 @@ export type ActivityAccuracyColorScale = ((
 export function createActivityAccuracyColorScale(): ActivityAccuracyColorScale {
   const scale = ((value: number | { valueOf(): number }) => {
     const numericValue = typeof value === "number" ? value : value.valueOf();
-    if (numericValue === ACTIVITY_ACCURACY_NEUTRAL_VALUE) return ACTIVITY_NEUTRAL_COLOR;
+    if (numericValue === ACTIVITY_ACCURACY_NEUTRAL_VALUE)
+      return ACTIVITY_NEUTRAL_COLOR;
     return getActivityAccuracyColor(numericValue);
   }) as ActivityAccuracyColorScale;
 
   scale.ticks = (count = 4) => {
     if (count <= 1) return [100];
     const step = 100 / (count - 1);
-    return Array.from({ length: count }, (_, index) => Math.round(index * step));
+    return Array.from({ length: count }, (_, index) =>
+      Math.round(index * step),
+    );
   };
 
   return scale;

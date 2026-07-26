@@ -2,7 +2,10 @@
 
 import { useEffect, useRef } from "react";
 
-import type { TopicProgressRow, TopicProgressStatus } from "@/lib/dashboard/types";
+import type {
+  TopicProgressRow,
+  TopicProgressStatus,
+} from "@/lib/dashboard/types";
 
 type TopicProgressModalProps = {
   topic: TopicProgressRow | null;
@@ -25,10 +28,30 @@ const STATUS_BADGE_CLASS: Record<TopicProgressStatus, string> = {
 };
 
 const BUCKET_ROWS = [
-  { key: "nogNiet" as const, label: "Nog niet", detail: "0× goed", barClass: "bg-muted-foreground/40" },
-  { key: "bezig" as const, label: "Bezig", detail: "1–3× goed", barClass: "bg-[#3b82f6]" },
-  { key: "gevorderd" as const, label: "Gevorderd", detail: "4–8× goed", barClass: "bg-chart-neutral" },
-  { key: "beheerst" as const, label: "Beheerst", detail: "9×+ goed", barClass: "bg-chart-correct" },
+  {
+    key: "nogNiet" as const,
+    label: "Nog niet",
+    detail: "0× goed",
+    barClass: "bg-muted-foreground/40",
+  },
+  {
+    key: "bezig" as const,
+    label: "Bezig",
+    detail: "1–3× goed",
+    barClass: "bg-[#3b82f6]",
+  },
+  {
+    key: "gevorderd" as const,
+    label: "Gevorderd",
+    detail: "4–8× goed",
+    barClass: "bg-chart-neutral",
+  },
+  {
+    key: "beheerst" as const,
+    label: "Beheerst",
+    detail: "9×+ goed",
+    barClass: "bg-chart-correct",
+  },
 ];
 
 function CrossIcon() {
@@ -48,7 +71,11 @@ function CrossIcon() {
   );
 }
 
-export function TopicProgressModal({ topic, open, onClose }: TopicProgressModalProps) {
+export function TopicProgressModal({
+  topic,
+  open,
+  onClose,
+}: TopicProgressModalProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
@@ -75,10 +102,10 @@ export function TopicProgressModal({ topic, open, onClose }: TopicProgressModalP
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      className="fixed inset-0 m-auto h-fit max-h-[85vh] w-[min(420px,90vw)] rounded-lg border border-border bg-card p-0 text-card-foreground backdrop:bg-foreground/40"
+      className="border-border bg-card text-card-foreground backdrop:bg-foreground/40 fixed inset-0 m-auto h-fit max-h-[85vh] w-[min(420px,90vw)] rounded-lg border p-0"
     >
       <div className="flex max-h-[85vh] flex-col">
-        <header className="relative space-y-2 border-b border-border px-5 py-4 pr-12">
+        <header className="border-border relative space-y-2 border-b px-5 py-4 pr-12">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-base font-semibold">{topic.topic}</h2>
             <span
@@ -87,10 +114,10 @@ export function TopicProgressModal({ topic, open, onClose }: TopicProgressModalP
               {STATUS_LABEL[topic.status]}
             </span>
           </div>
-          <p className="text-3xl font-semibold tabular-nums tracking-tight">
+          <p className="text-3xl font-semibold tracking-tight tabular-nums">
             {topic.percentMastered}%
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Voortgang tot alles beheerst (9× goed per oefening)
             {topic.masteredCount > 0
               ? ` · ${topic.masteredCount.toLocaleString("nl-NL")} van ${topic.totalCount.toLocaleString("nl-NL")} al op 9×+`
@@ -103,14 +130,14 @@ export function TopicProgressModal({ topic, open, onClose }: TopicProgressModalP
             type="button"
             aria-label="Sluiten"
             onClick={onClose}
-            className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-3 right-3 inline-flex size-8 items-center justify-center rounded-md"
           >
             <CrossIcon />
           </button>
         </header>
 
         <div className="space-y-3 overflow-auto px-5 py-4">
-          <p className="text-xs font-medium text-muted-foreground">Verdeling</p>
+          <p className="text-muted-foreground text-xs font-medium">Verdeling</p>
           <ul className="space-y-2.5">
             {BUCKET_ROWS.map((row) => {
               const count = topic.buckets[row.key];
@@ -118,15 +145,17 @@ export function TopicProgressModal({ topic, open, onClose }: TopicProgressModalP
               return (
                 <li key={row.key} className="space-y-1">
                   <div className="flex items-baseline justify-between gap-2 text-xs">
-                    <span className="font-medium text-foreground">
+                    <span className="text-foreground font-medium">
                       {row.label}{" "}
-                      <span className="font-normal text-muted-foreground">({row.detail})</span>
+                      <span className="text-muted-foreground font-normal">
+                        ({row.detail})
+                      </span>
                     </span>
-                    <span className="tabular-nums text-muted-foreground">
+                    <span className="text-muted-foreground tabular-nums">
                       {count.toLocaleString("nl-NL")}
                     </span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div className="bg-muted h-2 overflow-hidden rounded-full">
                     <div
                       className={`h-full rounded-full ${row.barClass}`}
                       style={{ width: `${widthPct}%` }}

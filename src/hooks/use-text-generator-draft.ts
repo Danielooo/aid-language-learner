@@ -5,9 +5,9 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 import {
   parsePersistedChatMessages,
   type PersistedChatMessage,
-} from "@/app/_components/features/generator/persisted-chat-messages";
-import type { TopicDestinationMode } from "@/app/_components/features/generator/proposal-topic-destination";
-import type { ProposalBatch } from "@/app/_components/features/generator/proposal-table-adapter";
+} from "@/components/features/generator/persisted-chat-messages";
+import type { TopicDestinationMode } from "@/components/features/generator/proposal-topic-destination";
+import type { ProposalBatch } from "@/components/features/generator/proposal-table-adapter";
 
 // Client-only draft voor tekst-generator (batches + chat + topic/selectie).
 // Overleeft refresh/navigatie; wordt gewist na opslaan of “Wis chat”.
@@ -38,7 +38,8 @@ function isValidBatch(value: unknown): value is ProposalBatch {
   if (typeof value !== "object" || value === null) return false;
   const batch = value as Record<string, unknown>;
   if (typeof batch.id !== "string") return false;
-  if (typeof batch.proposal !== "object" || batch.proposal === null) return false;
+  if (typeof batch.proposal !== "object" || batch.proposal === null)
+    return false;
   const proposal = batch.proposal as Record<string, unknown>;
   if (typeof proposal.topic !== "string") return false;
   if (!Array.isArray(proposal.exercises)) return false;
@@ -106,7 +107,7 @@ function writeSnapshot(snapshot: TextGeneratorDraftSnapshot | null): void {
 }
 
 function subscribe(callback: () => void): () => void {
-  if (typeof window === "undefined") return () => { };
+  if (typeof window === "undefined") return () => {};
   const onStorage = (e: StorageEvent) => {
     if (e.key === STORAGE_KEY) callback();
   };
@@ -151,8 +152,5 @@ export function useTextGeneratorDraft(): UseTextGeneratorDraft {
     writeSnapshot(null);
   }, []);
 
-  return useMemo(
-    () => ({ snapshot, save, clear }),
-    [snapshot, save, clear],
-  );
+  return useMemo(() => ({ snapshot, save, clear }), [snapshot, save, clear]);
 }

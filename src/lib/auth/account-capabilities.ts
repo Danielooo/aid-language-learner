@@ -27,7 +27,9 @@ function isOAuthProvider(value: string): value is OAuthProviderId {
  */
 export function getAccountCapabilities(user: User): AccountCapabilities {
   const identities = user.identities ?? [];
-  const hasPasswordIdentity = identities.some((identity) => identity.provider === "email");
+  const hasPasswordIdentity = identities.some(
+    (identity) => identity.provider === "email",
+  );
 
   let oauthProvider: OAuthProviderId | null = null;
   for (const identity of identities) {
@@ -43,7 +45,8 @@ export function getAccountCapabilities(user: User): AccountCapabilities {
   if (oauthProvider) {
     emailHelper = `Beheerd door ${OAUTH_LABELS[oauthProvider]}.`;
   } else if (usesSyntheticEmail) {
-    emailHelper = "Je logt in met je gebruikersnaam; dit adres volgt je username.";
+    emailHelper =
+      "Je logt in met je gebruikersnaam; dit adres volgt je username.";
   } else {
     emailHelper = "E-mailadres van je account (niet te wijzigen hier).";
   }

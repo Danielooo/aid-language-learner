@@ -1,5 +1,5 @@
-import { AdminUsersTable } from "@/app/_components/features/admin/admin-users-table";
-import { AppPageHeader } from "@/app/_components/ui/app-page-header";
+import { AdminUsersTable } from "@/components/features/admin/admin-users-table";
+import { AppPageHeader } from "@/components/ui/app-page-header";
 
 import type { Metadata } from "next";
 

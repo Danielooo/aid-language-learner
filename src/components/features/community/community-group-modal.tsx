@@ -3,7 +3,10 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
 import type { ExerciseMemberSnapshot } from "@/types/exercise-group-submission";
-import type { ExerciseGroupMember, GroupOfferState } from "@/types/exercise-groups";
+import type {
+  ExerciseGroupMember,
+  GroupOfferState,
+} from "@/types/exercise-groups";
 
 type MemberView = {
   key: string;
@@ -46,9 +49,7 @@ function CrossIcon() {
   );
 }
 
-export function membersFromLive(
-  members: ExerciseGroupMember[],
-): MemberView[] {
+export function membersFromLive(members: ExerciseGroupMember[]): MemberView[] {
   return members.map((m) => ({
     key: m.id,
     source_text: m.source_text,
@@ -139,19 +140,19 @@ export function CommunityGroupModal({
   let footer: ReactNode = null;
   if (mode === "offer") {
     footer = (
-      <footer className="space-y-3 border-t border-border px-5 py-3">
+      <footer className="border-border space-y-3 border-t px-5 py-3">
         {showRejectInfo ? (
-          <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
-            <p className="text-xs font-medium text-foreground">
+          <div className="border-border bg-muted/40 rounded-md border px-3 py-2">
+            <p className="text-foreground text-xs font-medium">
               Eerder afgekeurd
             </p>
-            <p className="mt-1 text-sm text-foreground">
+            <p className="text-foreground mt-1 text-sm">
               {rejectReason?.trim()
                 ? rejectReason.trim()
                 : "Geen reden opgegeven."}
             </p>
             {offerState === "rejected" && !changedSinceReject ? (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="text-muted-foreground mt-2 text-xs">
                 Pas dit topic aan in je Leerplan om opnieuw aan te bieden.
               </p>
             ) : null}
@@ -162,7 +163,7 @@ export function CommunityGroupModal({
             type="button"
             disabled={!canOffer}
             onClick={onOffer}
-            className="inline-flex min-h-10 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+            className="bg-accent text-accent-foreground hover:bg-accent/90 inline-flex min-h-10 items-center rounded-md px-4 text-sm font-medium transition-colors disabled:opacity-50"
           >
             {offerButtonLabel(offerState, busy, changedSinceReject)}
           </button>
@@ -171,9 +172,9 @@ export function CommunityGroupModal({
     );
   } else if (rejectReason?.trim()) {
     footer = (
-      <footer className="border-t border-border px-5 py-3">
-        <p className="text-xs text-muted-foreground">Afkeurreden</p>
-        <p className="text-sm text-foreground">{rejectReason.trim()}</p>
+      <footer className="border-border border-t px-5 py-3">
+        <p className="text-muted-foreground text-xs">Afkeurreden</p>
+        <p className="text-foreground text-sm">{rejectReason.trim()}</p>
       </footer>
     );
   }
@@ -182,12 +183,12 @@ export function CommunityGroupModal({
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      className="fixed inset-0 m-auto h-fit max-h-[85vh] w-[min(720px,90vw)] rounded-lg border border-border bg-card p-0 text-card-foreground backdrop:bg-foreground/40"
+      className="border-border bg-card text-card-foreground backdrop:bg-foreground/40 fixed inset-0 m-auto h-fit max-h-[85vh] w-[min(720px,90vw)] rounded-lg border p-0"
     >
       <div className="flex h-full max-h-[85vh] flex-col">
-        <header className="relative space-y-1 border-b border-border px-5 py-3 pr-12">
+        <header className="border-border relative space-y-1 border-b px-5 py-3 pr-12">
           <h2 className="text-base font-semibold">{name}</h2>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             {loading
               ? "Laden…"
               : mode === "snapshot"
@@ -199,7 +200,7 @@ export function CommunityGroupModal({
             aria-label="Sluiten"
             disabled={busy}
             onClick={onClose}
-            className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-3 right-3 inline-flex size-8 items-center justify-center rounded-md disabled:opacity-50"
           >
             <CrossIcon />
           </button>
@@ -207,7 +208,7 @@ export function CommunityGroupModal({
 
         <div className="flex-1 space-y-3 overflow-auto px-5 py-3">
           {error ? (
-            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <p className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm">
               {error}
             </p>
           ) : null}
@@ -217,26 +218,28 @@ export function CommunityGroupModal({
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-16 animate-pulse rounded-md border border-border bg-muted/40"
+                  className="border-border bg-muted/40 h-16 animate-pulse rounded-md border"
                 />
               ))}
             </div>
           ) : members.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Geen oefeningen in dit topic.
             </p>
           ) : (
             members.map((ex) => (
               <div
                 key={ex.key}
-                className="space-y-1 rounded-md border border-border/60 px-3 py-2"
+                className="border-border/60 space-y-1 rounded-md border px-3 py-2"
               >
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-foreground text-sm font-medium">
                   {ex.source_text}
                 </p>
-                <p className="text-sm text-muted-foreground">{ex.target_text}</p>
+                <p className="text-muted-foreground text-sm">
+                  {ex.target_text}
+                </p>
                 {ex.tags?.trim() ? (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-muted-foreground text-[11px]">
                     Tags: {ex.tags}
                   </p>
                 ) : null}

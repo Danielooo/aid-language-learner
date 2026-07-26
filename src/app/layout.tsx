@@ -1,7 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 
-import { QueryProvider } from "@/app/_components/query-provider";
-import { ThemeProvider } from "@/app/_components/theme-provider";
+import { QueryProvider } from "@/components/query-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 
 import type { Metadata, Viewport } from "next";
 

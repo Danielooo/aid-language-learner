@@ -1,6 +1,6 @@
 import type { AudioExerciseProposal } from "@/types/audio-exercise";
 import type { AudioRow } from "@/types/tatoeba";
-import type { UseTranslationCache } from "@/lib/hooks/use-translation-cache";
+import type { UseTranslationCache } from "@/hooks/use-translation-cache";
 
 export type ProposeAudioExercisesOutput = {
   topic: string;
@@ -53,9 +53,7 @@ export function mergeAudioProposalBatches(
   return { topic, exercises };
 }
 
-export function mapAudioBatchToRows(
-  batch: AudioProposalBatch,
-): AudioRow[] {
+export function mapAudioBatchToRows(batch: AudioProposalBatch): AudioRow[] {
   return batch.proposal.exercises.map((ex) => ({
     audio_id: ex.audio_id,
     sentence_id: ex.sentence_id,

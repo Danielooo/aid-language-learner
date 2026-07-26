@@ -1,6 +1,6 @@
 ---
 description: Product-UX — loading, empty, feedback, forms, quiz-a11y (geen chrome/copy)
-globs: app/(app)/**/*.tsx,app/_components/features/**/*.tsx,app/_components/ui/**/*.tsx
+globs: src/app/(app)/**/*.tsx,src/components/features/**/*.tsx,src/components/ui/**/*.tsx
 alwaysApply: false
 ---
 

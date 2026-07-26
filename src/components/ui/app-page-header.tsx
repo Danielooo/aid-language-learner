@@ -23,17 +23,12 @@ type AppPageHeaderProps = {
   descriptionClassName?: string;
 };
 
-function StatItem({
-  label,
-  value,
-  accent,
-  loading,
-}: AppPageHeaderStat) {
+function StatItem({ label, value, accent, loading }: AppPageHeaderStat) {
   if (loading) {
     return (
       <div className="space-y-1.5">
-        <div className="h-7 w-12 animate-pulse rounded bg-muted" />
-        <div className="h-3 w-16 animate-pulse rounded bg-muted/70" />
+        <div className="bg-muted h-7 w-12 animate-pulse rounded" />
+        <div className="bg-muted/70 h-3 w-16 animate-pulse rounded" />
       </div>
     );
   }
@@ -42,13 +37,13 @@ function StatItem({
     <div className="space-y-0.5">
       <p
         className={cn(
-          "text-xl font-semibold tabular-nums tracking-tight",
+          "text-xl font-semibold tracking-tight tabular-nums",
           accent ? "text-accent" : "text-foreground",
         )}
       >
         {value}
       </p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-muted-foreground text-xs">{label}</p>
     </div>
   );
 }
@@ -72,7 +67,7 @@ export function AppPageHeader({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1
           className={cn(
-            "text-2xl font-semibold tracking-tight text-foreground",
+            "text-foreground text-2xl font-semibold tracking-tight",
             titleClassName,
           )}
         >
@@ -81,21 +76,23 @@ export function AppPageHeader({
         <div className="flex flex-wrap items-center gap-3">
           {actions}
           {accountLabel && (
-            <p className="text-sm text-muted-foreground">{accountLabel}</p>
+            <p className="text-muted-foreground text-sm">{accountLabel}</p>
           )}
         </div>
       </div>
 
-      <div className="border-b border-border" />
+      <div className="border-border border-b" />
 
       {meta && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           {meta}
         </div>
       )}
 
       {description && (
-        <p className={cn("text-sm text-muted-foreground", descriptionClassName)}>
+        <p
+          className={cn("text-muted-foreground text-sm", descriptionClassName)}
+        >
           {description}
         </p>
       )}

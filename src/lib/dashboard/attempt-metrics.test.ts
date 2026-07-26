@@ -30,22 +30,36 @@ describe("filterAttemptsByPeriod", () => {
   it("filtert alleen vandaag", () => {
     const filtered = filterAttemptsByPeriod(attempts, "today", NOW);
     assert.equal(filtered.length, 2);
-    assert.ok(filtered.every((attempt) => attempt.is_correct || !attempt.is_correct));
+    assert.ok(
+      filtered.every((attempt) => attempt.is_correct || !attempt.is_correct),
+    );
   });
 
   it("neemt de oudste dag binnen 7 dagen mee", () => {
     const filtered = filterAttemptsByPeriod(attempts, "7d", NOW);
     assert.equal(filtered.length, 4);
-    assert.ok(filtered.some((attempt) => attempt.created_at === attempts[3]?.created_at));
+    assert.ok(
+      filtered.some(
+        (attempt) => attempt.created_at === attempts[3]?.created_at,
+      ),
+    );
   });
 
   it("sluit dagen buiten 7 dagen uit", () => {
     const filtered = filterAttemptsByPeriod(attempts, "7d", NOW);
-    assert.ok(!filtered.some((attempt) => attempt.created_at === attempts[4]?.created_at));
+    assert.ok(
+      !filtered.some(
+        (attempt) => attempt.created_at === attempts[4]?.created_at,
+      ),
+    );
   });
 
   it("geeft lege set terug wanneer er geen data in het venster zit", () => {
-    const filtered = filterAttemptsByPeriod([makeAttempt(400, true)], "30d", NOW);
+    const filtered = filterAttemptsByPeriod(
+      [makeAttempt(400, true)],
+      "30d",
+      NOW,
+    );
     assert.equal(filtered.length, 0);
   });
 

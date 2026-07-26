@@ -3,16 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { AppPageHeader } from "@/app/_components/ui/app-page-header";
+import { AppPageHeader } from "@/components/ui/app-page-header";
 
 import {
   ALL_TOPICS,
   FLASHCARD_ANSWER_CORRECT,
   FLASHCARD_ANSWER_INCORRECT,
-} from "@/app/_components/features/quiz/constants";
-import { ExerciseErrorState } from "@/app/_components/features/quiz/exercise-error-state";
-import { ExerciseChat } from "@/app/_components/features/quiz/exercise-chat";
-import { useQuizStorage } from "@/app/_components/features/quiz/use-quiz-storage";
+} from "@/components/features/quiz/constants";
+import { ExerciseErrorState } from "@/components/features/quiz/exercise-error-state";
+import { ExerciseChat } from "@/components/features/quiz/exercise-chat";
+import { useQuizStorage } from "@/components/features/quiz/use-quiz-storage";
 import { selectionModeLabel } from "@/lib/quiz/selection-config";
 import { buildAttemptPayload } from "@/lib/quiz/record-quiz-attempt";
 
@@ -263,10 +263,10 @@ export function FlashcardDeck() {
   const progressLabel =
     queueTotal > 0
       ? formatQueueProgressLabel(
-        queueProgress,
-        queueTotal,
-        sessionPhase === "review",
-      )
+          queueProgress,
+          queueTotal,
+          sessionPhase === "review",
+        )
       : null;
 
   useEffect(() => {
@@ -292,7 +292,9 @@ export function FlashcardDeck() {
       ref={containerRef}
       tabIndex={-1}
       className={
-        screen === "playing" ? QUIZ_PLAYING_DECK_CLASS : "space-y-6 outline-none"
+        screen === "playing"
+          ? QUIZ_PLAYING_DECK_CLASS
+          : "space-y-6 outline-none"
       }
     >
       <AppPageHeader
@@ -335,12 +337,12 @@ export function FlashcardDeck() {
       )}
 
       {ready && screen === "topic-picker" && selectionMode === "topic" && (
-        <section className="space-y-4 rounded-2xl border border-border bg-gradient-to-b from-muted/30 to-background p-6 sm:p-8">
+        <section className="border-border from-muted/30 to-background space-y-4 rounded-2xl border bg-gradient-to-b p-6 sm:p-8">
           <div className="space-y-1">
-            <h2 className="text-sm font-semibold text-foreground">
+            <h2 className="text-foreground text-sm font-semibold">
               Kies je topic
             </h2>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               {selectionModeLabel(selectionMode)} — selecteer een categorie.
             </p>
           </div>
@@ -363,16 +365,16 @@ export function FlashcardDeck() {
             <QuizQueueProgressBadge label={progressLabel} />
             {(sessionPhase === "main-complete" ||
               sessionPhase === "all-complete") && (
-                <SessionCompleteState
-                  phase={sessionPhase}
-                  correctCount={correctCount}
-                  totalCount={initialQueueTotal}
-                  mistakeCount={mistakeCount}
-                  skippedIneligible={skippedIneligible}
-                  onStartMistakeReview={handleStartMistakeReview}
-                  onFinish={handleFinishSession}
-                />
-              )}
+              <SessionCompleteState
+                phase={sessionPhase}
+                correctCount={correctCount}
+                totalCount={initialQueueTotal}
+                mistakeCount={mistakeCount}
+                skippedIneligible={skippedIneligible}
+                onStartMistakeReview={handleStartMistakeReview}
+                onFinish={handleFinishSession}
+              />
+            )}
             {srsComplete && (
               <SrsCompleteState
                 topic={selectedTopic}
@@ -413,9 +415,7 @@ export function FlashcardDeck() {
               // Na omdraaien mag de chat de vertaling gebruiken (zonder
               // zelfbeoordeling — isCorrect blijft onbekend tot Goed/Fout).
               feedback={
-                phase === "back"
-                  ? { correctAnswer: item.target_text }
-                  : null
+                phase === "back" ? { correctAnswer: item.target_text } : null
               }
               userAnswer=""
             />
@@ -430,7 +430,7 @@ function FlashcardSkeleton() {
   return (
     <div className={QUIZ_PLAYING_FORM_CLASS}>
       <div className={QUIZ_PROMPT_SKELETON_CLASS} />
-      <div className="mt-2 h-12 shrink-0 animate-pulse rounded-xl bg-muted/60" />
+      <div className="bg-muted/60 mt-2 h-12 shrink-0 animate-pulse rounded-xl" />
     </div>
   );
 }

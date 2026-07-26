@@ -33,13 +33,14 @@ alwaysApply: true
 - Geen onbenutte imports (ESLint vangt dit)
 
 ## Types en business logic — waar plaatsen
-- **Globale types**: top-level `types/` (bijv. `types/index.ts`)
+- **Globale types**: `src/types/` (bijv. `src/types/index.ts`)
 - **Feature-specifieke types**: bij het component zelf
-- **Utilities & helpers**: top-level `lib/utils.ts`
-- **API / data-fetching helpers**: top-level `lib/api.ts`
-- **Components**: in `app/_components/ui/` (generiek) of
-  `app/_components/features/` (feature-specifiek). NOOIT een top-level
-  `components/` folder.
+- **Utilities & helpers**: `src/lib/utils.ts`
+- **API / data-fetching helpers**: `src/lib/` (api-helpers)
+- **Components**: in `src/components/ui/` (generiek) of
+  `src/components/features/` (feature-specifiek). Co-located
+  route-components blijven in `src/app/**/_components/`.
+- **Hooks**: gedeelde hooks in `src/hooks/`; feature-hooks bij de feature.
 
 ## Algemene regels
 - Geen `console.log` in commits; gebruik een logging-utility als die er is

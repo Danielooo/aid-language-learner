@@ -5,7 +5,15 @@ export type ProfileActionState = {
   error?: string;
   message?: string;
   fieldErrors?: Partial<
-    Record<"username" | "displayName" | "bio" | "currentPassword" | "newPassword" | "confirm", string>
+    Record<
+      | "username"
+      | "displayName"
+      | "bio"
+      | "currentPassword"
+      | "newPassword"
+      | "confirm",
+      string
+    >
   >;
 };
 

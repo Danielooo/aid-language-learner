@@ -47,19 +47,19 @@ export function QuizModeCard({
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           {icon && (
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent">
+            <span className="bg-accent/10 text-accent flex size-10 shrink-0 items-center justify-center rounded-md">
               {icon}
             </span>
           )}
-          <h3 className="text-base font-semibold text-foreground">{title}</h3>
+          <h3 className="text-foreground text-base font-semibold">{title}</h3>
         </div>
         {comingSoon && (
-          <span className="shrink-0 rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          <span className="border-border bg-muted text-muted-foreground shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium">
             Binnenkort
           </span>
         )}
       </div>
-      <p className="mt-3 text-sm text-muted-foreground">{description}</p>
+      <p className="text-muted-foreground mt-3 text-sm">{description}</p>
     </>
   );
 

@@ -6,6 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/api/fetch-json";
 import { queryKeys } from "@/lib/query-keys";
 
+import { toUserFacingLoadError } from "./user-facing-error";
+
 import type {
   ExerciseGroupDetailSuccess,
   ExerciseGroupsListSuccess,
@@ -63,31 +65,19 @@ export function ProposalTopicDestination({
     trimmedTopic.length > 0 &&
     groups.some((g) => g.name.trim() === trimmedTopic);
 
-  const selectedGroup = useMemo(
-    () => groups.find((g) => g.id === selectedGroupId) ?? null,
-    [groups, selectedGroupId],
-  );
+  const selectedGroup = useMemo(() => {
+    if (mode !== "existing") return null;
+    const selectedById = groups.find((g) => g.id === selectedGroupId);
+    if (selectedById) return selectedById;
+    return groups.find((g) => g.name.trim() === trimmedTopic) ?? null;
+  }, [groups, mode, selectedGroupId, trimmedTopic]);
+  const effectiveSelectedGroupId =
+    mode === "existing" ? (selectedGroup?.id ?? "") : "";
 
   const blocked =
     !trimmedTopic ||
     (mode === "new" && nameConflict) ||
     (mode === "existing" && !selectedGroup);
-
-  // Na hydrate / mode=existing: selectie koppelen aan topicnaam.
-  useEffect(() => {
-    if (mode !== "existing" || groups.length === 0 || !trimmedTopic) return;
-    const match = groups.find((g) => g.name.trim() === trimmedTopic);
-    if (!match) return;
-    if (selectedGroupId === match.id) return;
-    setSelectedGroupId(match.id);
-  }, [mode, groups, trimmedTopic, selectedGroupId]);
-
-  // Reset selectie wanneer parent terug naar “nieuw” gaat (save/clear).
-  useEffect(() => {
-    if (mode === "new") {
-      setSelectedGroupId("");
-    }
-  }, [mode]);
 
   useEffect(() => {
     const key = suggestedTopic.trim();
@@ -102,7 +92,6 @@ export function ProposalTopicDestination({
     if (!match) return;
     newTopicDraftRef.current = topic;
     onModeChange("existing");
-    setSelectedGroupId(match.id);
     onTopicChange(match.name);
   }, [
     suggestedTopic,
@@ -167,7 +156,7 @@ export function ProposalTopicDestination({
         suggestedTopic.trim() &&
         selectedGroup &&
         selectedGroup.name.trim() === suggestedTopic.trim() && (
-          <p className="text-xs text-muted-foreground" role="status">
+          <p className="text-muted-foreground text-xs" role="status">
             AI stelde “{selectedGroup.name}” voor — dat topic heb je al (
             {selectedGroup.exerciseCount} oefening
             {selectedGroup.exerciseCount === 1 ? "" : "en"}).
@@ -177,23 +166,25 @@ export function ProposalTopicDestination({
       <div className="flex flex-wrap items-end gap-3">
         {mode === "new" ? (
           <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-sm">
-            <span className="text-xs text-muted-foreground">Topic</span>
+            <span className="text-muted-foreground text-xs">Topic</span>
             <input
               type="text"
               value={topic}
               onChange={(e) => onTopicChange(e.target.value)}
-              className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground aria-[invalid=true]:border-destructive"
+              className="border-border bg-background text-foreground aria-[invalid=true]:border-destructive h-9 rounded-md border px-3 text-sm"
               aria-label="Naam van het nieuwe topic"
               aria-invalid={nameConflict}
             />
           </label>
         ) : (
           <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-sm">
-            <span className="text-xs text-muted-foreground">Bestaand topic</span>
+            <span className="text-muted-foreground text-xs">
+              Bestaand topic
+            </span>
             <select
-              value={selectedGroupId}
+              value={effectiveSelectedGroupId}
               onChange={(e) => handleSelectGroup(e.target.value)}
-              className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+              className="border-border bg-background text-foreground h-9 rounded-md border px-2 text-sm"
               aria-label="Kies een bestaand topic"
               disabled={groups.length === 0}
             >
@@ -201,7 +192,7 @@ export function ProposalTopicDestination({
                 <option value="">Geen topics in Leerplan</option>
               ) : (
                 <>
-                  {!selectedGroupId && (
+                  {!effectiveSelectedGroupId && (
                     <option value="">Kies een topic…</option>
                   )}
                   {groups.map((g) => (
@@ -224,14 +215,14 @@ export function ProposalTopicDestination({
       </div>
 
       {mode === "new" && nameConflict && (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           Deze naam bestaat al. Kies “Toevoegen aan bestaand” of een andere
           naam.
         </p>
       )}
 
-      {mode === "existing" && selectedGroupId ? (
-        <ExistingTopicPreview groupId={selectedGroupId} />
+      {mode === "existing" && effectiveSelectedGroupId ? (
+        <ExistingTopicPreview groupId={effectiveSelectedGroupId} />
       ) : null}
     </div>
   );
@@ -281,13 +272,13 @@ function ExistingTopicPreview({ groupId }: { groupId: string }) {
   });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Laden…</p>;
+    return <p className="text-muted-foreground text-sm">Laden…</p>;
   }
 
   if (error) {
     return (
-      <p className="text-sm text-destructive" role="alert">
-        {error instanceof Error ? error.message : "Kon topic niet laden."}
+      <p className="text-destructive text-sm" role="alert">
+        {toUserFacingLoadError(error)}
       </p>
     );
   }
@@ -297,7 +288,7 @@ function ExistingTopicPreview({ groupId }: { groupId: string }) {
   // Standaard ingeklapt: voorstel-tabel blijft bereikbaar zonder scrollen.
   return (
     <details className="group space-y-2">
-      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+      <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none items-center gap-1.5 text-xs [&::-webkit-details-marker]:hidden">
         <span
           aria-hidden="true"
           className="inline-block transition-transform group-open:rotate-90"
@@ -307,16 +298,16 @@ function ExistingTopicPreview({ groupId }: { groupId: string }) {
         Bestaande oefeningen in dit topic ({members.length})
       </summary>
       {members.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Dit topic heeft nog geen oefeningen.
         </p>
       ) : (
-        <div className="max-h-48 overflow-y-auto rounded-md border border-border">
-          <ul className="divide-y divide-border">
+        <div className="border-border max-h-48 overflow-y-auto rounded-md border">
+          <ul className="divide-border divide-y">
             {members.map((m) => (
               <li key={m.id} className="space-y-0.5 px-3 py-2">
-                <p className="text-sm text-foreground">{m.source_text}</p>
-                <p className="text-sm text-muted-foreground">{m.target_text}</p>
+                <p className="text-foreground text-sm">{m.source_text}</p>
+                <p className="text-muted-foreground text-sm">{m.target_text}</p>
               </li>
             ))}
           </ul>

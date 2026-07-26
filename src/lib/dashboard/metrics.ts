@@ -34,7 +34,9 @@ function emptyBuckets(): TopicProgressBuckets {
 }
 
 /** Deelt een oefening in op basis van repetition_count (geen progress = 0). */
-function bucketKeyForRepetition(repetitionCount: number): keyof TopicProgressBuckets {
+function bucketKeyForRepetition(
+  repetitionCount: number,
+): keyof TopicProgressBuckets {
   if (repetitionCount >= MASTERED_REPETITION_THRESHOLD) return "beheerst";
   if (repetitionCount >= 4) return "gevorderd";
   if (repetitionCount >= 1) return "bezig";
@@ -45,7 +47,9 @@ function toCardState(row: ProgressRow) {
   return {
     repetitionCount: row.repetition_count,
     intervalDays: row.interval_days,
-    lastReviewedAt: row.last_reviewed_at ? new Date(row.last_reviewed_at) : null,
+    lastReviewedAt: row.last_reviewed_at
+      ? new Date(row.last_reviewed_at)
+      : null,
     nextReviewAt: new Date(row.next_review_at),
   };
 }
@@ -204,9 +208,7 @@ export function computeTopicProgress(
     .map(([topic, bucket]) => {
       const denom = bucket.totalCount * MASTERED_REPETITION_THRESHOLD;
       const percentMastered =
-        denom === 0
-          ? 0
-          : Math.round((bucket.masteryProgressSum / denom) * 100);
+        denom === 0 ? 0 : Math.round((bucket.masteryProgressSum / denom) * 100);
       const hasStarted =
         bucket.hasProgress || bucket.buckets.nogNiet < bucket.totalCount;
       return {

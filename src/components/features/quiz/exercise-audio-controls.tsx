@@ -1,10 +1,7 @@
 "use client";
 
-import {
-  PauseIcon,
-  SpeakerIcon,
-} from "@/app/_components/ui/audio-icons";
-import { useExerciseAudio } from "@/app/_components/features/quiz/hooks/use-exercise-audio";
+import { PauseIcon, SpeakerIcon } from "@/components/ui/audio-icons";
+import { useExerciseAudio } from "@/components/features/quiz/hooks/use-exercise-audio";
 
 type ExerciseAudioControlsProps = {
   mp3Url: string;

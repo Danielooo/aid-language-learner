@@ -7,7 +7,9 @@ import { queryKeys } from "@/lib/query-keys";
 import { fetchJson } from "@/lib/api/fetch-json";
 import { suggestedCommunityCopyName } from "@/lib/exercises/copy-global-group-to-personal";
 
-import { LeerplanGroupModal } from "@/app/_components/features/topics/leerplan-group-modal";
+import { LeerplanGroupModal } from "@/components/features/topics/leerplan-group-modal";
+import { RefreshButton } from "@/components/ui/refresh-button";
+import { TableLoadingSkeleton } from "@/components/ui/table-loading-skeleton";
 
 import type {
   ExerciseGroupBulkCopySuccess,
@@ -75,9 +77,7 @@ async function postCopy(
     | ExerciseGroupsFailure;
   if (!res.ok || !body.ok) {
     const failure = body as ExerciseGroupsFailure;
-    const err: CopyError = new Error(
-      failure.error ?? `Status ${res.status}`,
-    );
+    const err: CopyError = new Error(failure.error ?? `Status ${res.status}`);
     err.code = failure.code;
     err.suggestedName = failure.suggestedName;
     throw err;
@@ -163,13 +163,8 @@ export function CommunityAdoptPanel() {
   }
 
   const singleCopyMutation = useMutation({
-    mutationFn: async ({
-      groupId,
-      name,
-    }: {
-      groupId: string;
-      name?: string;
-    }) => postCopy(groupId, name),
+    mutationFn: async ({ groupId, name }: { groupId: string; name?: string }) =>
+      postCopy(groupId, name),
     onSuccess: (body, variables) => {
       invalidateLists();
       setMessage(`Topic “${body.name}” toegevoegd aan je leerplan.`);
@@ -196,15 +191,12 @@ export function CommunityAdoptPanel() {
         setNameConflict({
           groupId: modalGroupId!,
           baseName: base,
-          draftName:
-            copyErr.suggestedName ?? suggestedCommunityCopyName(base),
+          draftName: copyErr.suggestedName ?? suggestedCommunityCopyName(base),
         });
         setModalError(null);
         return;
       }
-      setModalError(
-        err instanceof Error ? err.message : "Kopiëren mislukt.",
-      );
+      setModalError(err instanceof Error ? err.message : "Kopiëren mislukt.");
     },
   });
 
@@ -224,14 +216,10 @@ export function CommunityAdoptPanel() {
       invalidateLists();
       const parts = [
         body.copied > 0 ? `${body.copied} toegevoegd` : null,
-        body.skipped > 0
-          ? `${body.skipped} overgeslagen (naamconflict)`
-          : null,
+        body.skipped > 0 ? `${body.skipped} overgeslagen (naamconflict)` : null,
       ].filter(Boolean);
       setMessage(
-        parts.length > 0
-          ? parts.join(", ") + "."
-          : "Geen topics toegevoegd.",
+        parts.length > 0 ? parts.join(", ") + "." : "Geen topics toegevoegd.",
       );
       setSelected(new Set());
     },
@@ -387,21 +375,21 @@ export function CommunityAdoptPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-sm">
-          <span className="text-xs text-muted-foreground">Zoeken</span>
+          <span className="text-muted-foreground text-xs">Zoeken</span>
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Topic of tags…"
-            className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+            className="border-border bg-background text-foreground h-9 rounded-md border px-3 text-sm"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs text-muted-foreground">In leerplan</span>
+          <span className="text-muted-foreground text-xs">In leerplan</span>
           <select
             value={inPlanFilter}
             onChange={(e) => setInPlanFilter(e.target.value as InPlanFilter)}
-            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+            className="border-border bg-background text-foreground h-9 rounded-md border px-2 text-sm"
           >
             <option value="all">Alles</option>
             <option value="yes">Ja</option>
@@ -412,23 +400,21 @@ export function CommunityAdoptPanel() {
           <button
             type="button"
             onClick={clearFilters}
-            className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-foreground"
+            className="border-border text-foreground inline-flex h-9 items-center rounded-md border px-3 text-xs"
           >
             Filters wissen
           </button>
         )}
-        <button
-          type="button"
+        <RefreshButton
+          className="ml-auto"
+          isRefreshing={isRefreshing}
           disabled={loading || busy}
           onClick={() =>
             void queryClient.invalidateQueries({
               queryKey: queryKeys.communityGroups(),
             })
           }
-          className="ml-auto inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-foreground disabled:opacity-50"
-        >
-          Ververs
-        </button>
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -436,13 +422,13 @@ export function CommunityAdoptPanel() {
           type="button"
           disabled={busy || selectedIds.length === 0}
           onClick={handleBulkCopy}
-          className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-foreground disabled:opacity-50"
+          className="bg-accent text-accent-foreground inline-flex h-9 items-center rounded-md px-3 text-sm font-medium disabled:opacity-50"
         >
           {bulkCopyMutation.isPending
             ? "Bezig…"
             : `Toevoegen aan leerplan${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
         </button>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           {filtered.length} zichtbaar
           {query.trim() ? ` · filter: “${query.trim()}”` : ""}
           {groups.length > 0 ? ` · ${groups.length} totaal` : ""}
@@ -450,35 +436,33 @@ export function CommunityAdoptPanel() {
       </div>
 
       {error && (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       )}
       {message && (
-        <p className="text-sm text-muted-foreground" role="status">
+        <p className="text-muted-foreground text-sm" role="status">
           {message}
         </p>
       )}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Laden…</p>
+        <TableLoadingSkeleton columns={5} />
       ) : groups.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Geen community-topics beschikbaar.
         </p>
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Geen topics die bij je filters passen.
         </p>
       ) : (
         <div
-          className={
-            isRefreshing ? "opacity-60 transition-opacity" : undefined
-          }
+          className={isRefreshing ? "opacity-60 transition-opacity" : undefined}
         >
-          <div className="overflow-x-auto rounded-md border border-border">
+          <div className="border-border overflow-x-auto rounded-md border">
             <table className="w-full min-w-[44rem] text-left text-sm">
-              <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
+              <thead className="border-border bg-muted/40 text-muted-foreground border-b text-xs">
                 <tr>
                   <th className="w-10 px-3 py-2">
                     <input
@@ -486,7 +470,7 @@ export function CommunityAdoptPanel() {
                       checked={allSelected}
                       onChange={toggleAll}
                       aria-label="Alles selecteren"
-                      className="size-4 rounded border-border accent-accent"
+                      className="border-border accent-accent size-4 rounded"
                     />
                   </th>
                   <th className="px-3 py-2">Topic</th>
@@ -508,7 +492,7 @@ export function CommunityAdoptPanel() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") void openModal(item);
                       }}
-                      className="cursor-pointer border-b border-border/60 hover:bg-muted/40"
+                      className="border-border/60 hover:bg-muted/40 cursor-pointer border-b"
                     >
                       <td
                         className="px-3 py-2 align-middle"
@@ -519,22 +503,22 @@ export function CommunityAdoptPanel() {
                           checked={selected.has(item.id)}
                           onChange={() => toggle(item.id)}
                           aria-label={`Selecteer ${item.name}`}
-                          className="size-4 rounded border-border accent-accent"
+                          className="border-border accent-accent size-4 rounded"
                         />
                       </td>
-                      <td className="px-3 py-2 font-medium text-foreground">
+                      <td className="text-foreground px-3 py-2 font-medium">
                         {item.name}
                       </td>
                       <td
-                        className="max-w-[12rem] truncate px-3 py-2 text-muted-foreground"
+                        className="text-muted-foreground max-w-[12rem] truncate px-3 py-2"
                         title={tagsFull}
                       >
                         {tagsPreview}
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">
+                      <td className="text-muted-foreground px-3 py-2">
                         {item.exerciseCount}
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">
+                      <td className="text-muted-foreground px-3 py-2">
                         {item.alreadyCopied ? (
                           <span>
                             Ja
@@ -554,7 +538,7 @@ export function CommunityAdoptPanel() {
                 })}
               </tbody>
             </table>
-            <p className="px-3 py-2 text-[11px] text-muted-foreground">
+            <p className="text-muted-foreground px-3 py-2 text-[11px]">
               Klik op een rij om te bekijken; vink aan voor bulk toevoegen.
             </p>
           </div>
@@ -579,7 +563,7 @@ export function CommunityAdoptPanel() {
         onClose={() => {
           if (!singleCopyMutation.isPending) setNameConflict(null);
         }}
-        className="fixed inset-0 m-auto h-fit w-[min(28rem,90vw)] rounded-lg border border-border bg-card p-0 text-card-foreground backdrop:bg-foreground/40"
+        className="border-border bg-card text-card-foreground backdrop:bg-foreground/40 fixed inset-0 m-auto h-fit w-[min(28rem,90vw)] rounded-lg border p-0"
       >
         {nameConflict ? (
           <form
@@ -591,14 +575,14 @@ export function CommunityAdoptPanel() {
           >
             <header className="space-y-1">
               <h2 className="text-base font-semibold">Andere topicnaam</h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 “{nameConflict.baseName}” staat al in je leerplan. Kies een
                 nieuwe naam om het community-topic alsnog binnen te halen.
               </p>
             </header>
 
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-xs text-muted-foreground">Topicnaam</span>
+              <span className="text-muted-foreground text-xs">Topicnaam</span>
               <input
                 ref={nameInputRef}
                 type="text"
@@ -608,7 +592,7 @@ export function CommunityAdoptPanel() {
                     prev ? { ...prev, draftName: e.target.value } : prev,
                   )
                 }
-                className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+                className="border-border bg-background text-foreground h-9 rounded-md border px-3 text-sm"
                 disabled={singleCopyMutation.isPending}
               />
             </label>
@@ -618,21 +602,18 @@ export function CommunityAdoptPanel() {
                 type="button"
                 disabled={singleCopyMutation.isPending}
                 onClick={() => setNameConflict(null)}
-                className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm text-foreground disabled:opacity-50"
+                className="border-border text-foreground inline-flex h-9 items-center rounded-md border px-3 text-sm disabled:opacity-50"
               >
                 Annuleren
               </button>
               <button
                 type="submit"
                 disabled={
-                  singleCopyMutation.isPending ||
-                  !nameConflict.draftName.trim()
+                  singleCopyMutation.isPending || !nameConflict.draftName.trim()
                 }
-                className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-foreground disabled:opacity-50"
+                className="bg-accent text-accent-foreground inline-flex h-9 items-center rounded-md px-3 text-sm font-medium disabled:opacity-50"
               >
-                {singleCopyMutation.isPending
-                  ? "Bezig…"
-                  : "Toch toevoegen"}
+                {singleCopyMutation.isPending ? "Bezig…" : "Toch toevoegen"}
               </button>
             </footer>
           </form>

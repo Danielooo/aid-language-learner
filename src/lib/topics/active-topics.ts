@@ -26,7 +26,9 @@ export async function getActiveTopicsForUser(
 }
 
 /** Converteert actieve set naar array voor PostgREST `.in()`; null = geen actieve topics. */
-export function activeTopicsToArray(activeTopics: Set<string>): string[] | null {
+export function activeTopicsToArray(
+  activeTopics: Set<string>,
+): string[] | null {
   if (activeTopics.size === 0) return null;
   return Array.from(activeTopics);
 }
