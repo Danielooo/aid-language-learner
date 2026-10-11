@@ -47,8 +47,7 @@ next-env.d.ts
 # test credentials (Auth0 seed script)
 CRED.md
 
-# opdrachtbeschrijving (lokaal, niet committen)
-EINDOPDRACHT.md
+
 
 # overig
 verdoc/

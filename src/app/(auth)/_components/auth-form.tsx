@@ -37,7 +37,7 @@ const COPY = {
     ctaLink: "/login",
     ctaLinkLabel: "Naar inloggen",
     helper:
-      "Gebruikersnaam = je login + display-naam. 2-32 tekens, [a-z0-9_-].",
+      "Invoer mag geen spaties bevatten. Wel letters, cijfers en -.",
   },
 } as const;
 
