@@ -55,11 +55,4 @@ Open [http://localhost:3000](http://localhost:3000) in je browser.
 | `npm test` | Unit tests |
 | `npm run seed:dummy` | Seed demo-users en -data (vereist server-keys in `.env.local`) |
 
-## Demo-account
 
-Na `npm run seed:dummy` kun je inloggen met:
-
-- **Gebruikersnaam:** `testuser1`
-- **Wachtwoord:** `q1q1Q!Q!`
-
-Alternatief: `testuser2` of `testadmin` (zelfde wachtwoord).
